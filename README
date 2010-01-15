@@ -1,0 +1,31 @@
+Setting up the code
+-------------------
+
+The project depends on Nutch v1.0 (http://lucene.apache.org/nutch/) and Hadoop 
+Core v0.19 (http://hadoop.apache.org/).  Please, download and include the 
+corresponding jars in your classpath.
+
+Running the code
+----------------
+
+1. Data preprocessing
+
+The first step is to extract and process data in a nutch database and handle 
+incremental updates.  The pre-processing stage is split in the following steps:
+
+ a. Extract pages from a nutch database (babel.prep.extract.NutchPageExtractor).
+    Versions of each page fetched by multiple nutch crawls and containing parse
+    and content metadata along with parsed content are aggregated and collected
+    into a page dataset.
+
+ b. Merge two existing page datasets (babel.prep.merge.PageMerger).
+
+ c. Collect page language information (babel.prep.langid.LangIdentifier). Page
+    content language is identified for pages in a dataset with missing language
+    metadata.
+
+ d. Generate per-language dataset (babel.prep.corpus.CorpusGenerator).  A 
+    dataset is split per-language and (optionally) saved as a set of XML 
+    documents.
+
+2. More coming...
