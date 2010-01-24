@@ -16,6 +16,8 @@ package babel.prep.langid;
 
 import java.io.IOException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MapReduceBase;
@@ -33,6 +35,8 @@ import babel.util.language.google.GoogleLangDetector;
 
 public class LangIdMapper extends MapReduceBase implements Mapper<Text, Page, Text, Page>
 {
+  static final Log LOG = LogFactory.getLog(LangIdMapper.class);
+  
   /**
    * Sets up the language detector.
    */
@@ -85,6 +89,10 @@ public class LangIdMapper extends MapReduceBase implements Mapper<Text, Page, Te
         if ((content = ver.getContent()).length() > 0)
         {
           langResult = m_detector.detect(content);
+          
+          if (LOG.isInfoEnabled())
+          { LOG.info("Language " + langResult.language().toString() + " for page " + page.pageURL());
+          }
           
           if (langResult.language() != null)
           {

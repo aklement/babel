@@ -14,17 +14,25 @@
 
 package babel.prep.corpus;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.lib.MultipleSequenceFileOutputFormat;
 
 import babel.content.pages.Page;
 
 public class MultipleLangFileOutputFormat extends MultipleSequenceFileOutputFormat<Text, Page>
-{  
+{
+  static final Log LOG = LogFactory.getLog(MultipleLangFileOutputFormat.class);
+  
   protected String generateFileNameForKeyValue(Text key, Page page, String name)
   {
     String lang = page.pageProperties().getFirst(Page.PROP_LANG);
     lang = (lang == null || lang.length() == 0) ? "none" : lang;
+
+    if (LOG.isInfoEnabled())
+    { LOG.info("Language " + lang + " for page " + page.pageURL());
+    }
     
     CorpusGenerator.Stats.incLangPageCount(lang);
     

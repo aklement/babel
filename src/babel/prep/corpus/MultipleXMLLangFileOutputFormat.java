@@ -18,6 +18,8 @@ import java.io.IOException;
 
 import javax.xml.stream.XMLStreamException;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
@@ -37,10 +39,16 @@ import babel.util.xmlpersistence.XMLObjectWriter;
  */
 class MultipleXMLLangFileOutputFormat extends MultipleOutputFormat<Text, Page> 
 {
+  static final Log LOG = LogFactory.getLog(MultipleXMLLangFileOutputFormat.class);
+  
   protected String generateFileNameForKeyValue(Text key, Page page, String name)
   {
     String lang = page.pageProperties().getFirst(Page.PROP_LANG);
     lang = (lang == null || lang.length() == 0) ? "none" : lang;
+    
+    if (LOG.isInfoEnabled())
+    { LOG.info("Language " + lang + " for page " + page.pageURL());
+    }
     
     CorpusGenerator.Stats.incLangPageCount(lang);
     
