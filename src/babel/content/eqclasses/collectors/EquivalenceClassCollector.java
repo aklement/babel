@@ -2,9 +2,9 @@ package babel.content.eqclasses.collectors;
 
 import java.io.InputStreamReader;
 
+import java.util.HashSet;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.filters.EquivalenceClassFilter;
@@ -20,17 +20,24 @@ public abstract class EquivalenceClassCollector
   {
     CURRENT_EQCLASS_ID = 0;
   }
+
+  public EquivalenceClassCollector(String eqClassName, boolean caseSensitive)
+  {
+    this(eqClassName, null, caseSensitive);
+  }
   
   /**
    * @param EqClassName name of a EquivalenceClass class
    * @param caseSensitive whether or not make EquivalenceClass case sensitive
    */
-  public EquivalenceClassCollector(String EqClassName, boolean caseSensitive)
+  @SuppressWarnings("unchecked")
+  public EquivalenceClassCollector(String eqClassName, List<EquivalenceClassFilter> filters, boolean caseSensitive)
   {
-    m_eqs = new ArrayList<EquivalenceClass>();
     m_eqCaseSensitive = caseSensitive;
+    m_filters = filters;
+    
     try
-    { m_eqClass = (Class<? extends EquivalenceClass>)Class.forName(EqClassName);
+    { m_eqClass = (Class<? extends EquivalenceClass>)Class.forName(eqClassName);
     }
     catch(Exception e)
     { throw new IllegalArgumentException(e.toString());
@@ -38,82 +45,58 @@ public abstract class EquivalenceClassCollector
   }
   
   /**
-   * Collects EquivalenceClass of a specific kind from the given corpus.
+   * Collects EquivalenceClass of a specific kind from the given corpus.  Only
+   * keeps those equivalence classes which passed the supplied filters (if any).
+   * 
    * @param corpusReader Corpus from which to collect
    * @param maxEquivalenceClass maximum number of eq classes to extract (-1 if all)
-   * @return number of EquivalenceClass extracted
+   * @return map between an equivalence class stem and the corresponding equivalence class
+   * @throws Exception 
    */
-  public abstract int collect(InputStreamReader corpusReader, int maxEquivalenceClass);
-  
-  /**
-   * Prune the set of EquivalenceClass using the supplied filters.
-   * @param filters and array of filters
-   */
-  public void filter(List<EquivalenceClassFilter> filters)
-  {
-    EquivalenceClassCollector.filter(m_eqs, filters);
-  }
+  public abstract Set<EquivalenceClass> collect(InputStreamReader corpusReader, int maxEquivalenceClass) throws Exception;
 
-  /**
-   * Prune the set of given EquivalenceClass using the supplied filters.
-   * @param filters and array of filters
-   */
-  public static void filter(List<EquivalenceClass> eqs, List<EquivalenceClassFilter> filters)
+  public static Set<EquivalenceClass> filter(Set<EquivalenceClass> eqs, List<EquivalenceClassFilter> filters)
   {
-    if (filters != null)
-    {     
-      Iterator<EquivalenceClass> eqIter = eqs.iterator();
-      Iterator<EquivalenceClassFilter> filterIter;
-      EquivalenceClass curEq;
-      boolean remove;
-
-      // Apply all filters to all words
-      while (eqIter.hasNext())
+    HashSet<EquivalenceClass> newEqs = null;
+    
+    if (eqs != null)
+    {
+      newEqs = new HashSet<EquivalenceClass>();
+      
+      for (EquivalenceClass eq : eqs)
       {
-        curEq = eqIter.next();
-        remove = false;
-        
-        for (filterIter = filters.iterator(); (!remove) && filterIter.hasNext();)
-        { remove = !filterIter.next().acceptEquivalenceClass(curEq);
-        }
-        
-        // If at least one filter does not accept - remove 
-        if (remove)
-        { eqIter.remove();
+        if (keep(eq, filters))
+        { newEqs.add(eq);
         }
       }
     }
+   
+    return newEqs;
   }
   
   /**
-   * @return the collection of found/filtered EquivalenceClass. 
+   * Checks if an equivalence class should be retained (passes all filters). 
+   * Should be called by collect().
    */
-  public List<EquivalenceClass> getEquivalenceClass()
+  protected static boolean keep(EquivalenceClass eq, List<EquivalenceClassFilter> filters)
   {
-    return m_eqs;
-  }
-  
-  /**
-   * @return the size of the collection.
-   */
-  public int size()
-  {
-    return m_eqs.size();
-  }
-  
-  /**
-   * Prints all equivalence classes in the collection.
-   */
-  public void printAllEquivalenceClasses()
-  {
-    for (EquivalenceClass curEq : m_eqs)
-    { System.out.println(curEq);
+    boolean keep = true;
+    
+    if (filters != null)
+    {
+      for (EquivalenceClassFilter filter : filters)
+      {
+        if (!(keep = filter.acceptEquivalenceClass(eq)))
+        { break;
+        }
+      }
     }
+    
+    return keep;
   }
   
   /** Collected EquivalenceClass. */
-  protected ArrayList<EquivalenceClass> m_eqs;
   protected boolean m_eqCaseSensitive;
   protected Class<? extends EquivalenceClass> m_eqClass;
+  protected List<EquivalenceClassFilter> m_filters;
 }
-

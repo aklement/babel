@@ -14,6 +14,7 @@
 
 package babel.util.xmlpersistence;
 
+import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.stream.XMLStreamException;
 
@@ -24,4 +25,5 @@ import javax.xml.stream.XMLStreamException;
 public interface XMLPersistable
 {
   public void persist(XMLStreamWriter writer) throws XMLStreamException;
+  public void unpersist(XMLStreamReader reader) throws XMLStreamException;
 }

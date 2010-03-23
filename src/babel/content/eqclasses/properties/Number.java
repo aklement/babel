@@ -28,13 +28,18 @@ public class Number extends Property
   }
   
   public double increment()
-  {
+  { 
     return ++m_num;
   }
   
   public double decrement()
   {
     return --m_num;
+  }
+  
+  public String toString()
+  {
+    return String.valueOf(m_num);
   }
   
   protected double m_num;

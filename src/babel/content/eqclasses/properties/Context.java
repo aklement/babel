@@ -1,122 +1,208 @@
 package babel.content.eqclasses.properties;
 
-import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.SimpleEquivalenceClass;
-
 import babel.content.eqclasses.comparators.OverlapComparator;
-import babel.content.eqclasses.comparators.NumberComparator;
+import babel.ranking.scorers.context.DictScorer;
 
 /**
  * Bag of EquivalenceClass in the context around NE/candidate EquivalenceClass.
  */
 public class Context extends Property
-{ 
-  protected static final int BAG_SIZE = 20;
-  protected static final int BAG_MAX = 250;
-    
+{     
   protected static final Comparator<EquivalenceClass> OVERLAP_COMPARATOR = new OverlapComparator();
-  protected static final Comparator<EquivalenceClass> NUMBER_COMPARATOR = new NumberComparator(false);
-  
-  public Context()
-  {
-    m_neighborIds = new ArrayList<Integer>();
-  }
-  
-  public List<Integer> getNeighborIds()
-  {
-    return m_neighborIds;
-  }
 
   /**
-   * @return true iff the word's equiv. class had not been seen in this context
-   * before
+   * @param eq equivalence class associated with this context.
+   * @param totalNumEqs total number of eqs for which we are collecting context.
    */
-  boolean addContextWord(Class<? extends EquivalenceClass> equivClass, boolean caseSensitive, String contextWord)
+  public Context(EquivalenceClass eq, int totalNumEqs)
   {
-    EquivalenceClass tmpEq;
-    boolean newContextEq = false;
-    int index;
-
-    if (m_neighbors == null)
-    { m_neighbors = new ArrayList<EquivalenceClass>();
-    }
+    this(eq, totalNumEqs, -1);
+  }
+  
+  private Context(EquivalenceClass eq, int totalNumEqs, int maxBag)
+  {
+    m_eq = eq;
+    m_totalNumEqs = totalNumEqs;
+    m_maxBag = maxBag;
+    m_neighborsMap = new HashMap<String, ContextualItem>();
+    m_allContextCounts = 0;
+  }
+  
+  public int size()
+  {
+    return m_neighborsMap.size();
+  }
+  
+  public Collection<ContextualItem> getContext()
+  {
+    return m_neighborsMap.values();
+  }
+  
+  EquivalenceClass addContextWord(Class<? extends EquivalenceClass> equivClass, boolean caseSensitive, HashMap<String, EquivalenceClass> contextEqsMap, String contextWord)
+  {
+    EquivalenceClass contextEq = null;
+    ContextualItem contextItem = null;
     
-    if ((contextWord != null) && (contextWord.trim().length() > 0) && m_neighbors.size() <= BAG_MAX )
+    if ((contextWord != null) && (contextWord.trim().length() > 0))
     {
       try
       {
-        tmpEq = equivClass.newInstance();
-        tmpEq.init(-1, contextWord, caseSensitive);
+        contextEq = equivClass.newInstance();
+        contextEq.init(-1, contextWord, caseSensitive);
         
-        // Look in top neighbor list
-        if ((index = Collections.binarySearch(m_neighbors, tmpEq, OVERLAP_COMPARATOR)) >= 0)
-        { // Found it - add the word to the existing equivalence class
-          (tmpEq = m_neighbors.get(index)).addMorph(contextWord);
+        // If we already saw it in context - just increment count
+        if (null != (contextItem = m_neighborsMap.get(contextEq.getStem())))
+        {
+          contextEq = contextItem.m_contextEq;
+          contextItem.incrementCount();
+          m_allContextCounts++;
+        }
+        // Otherwise, if it is the contextual item from our large list and there is space for it - add it
+        else if ((m_maxBag < 0 || m_neighborsMap.size() <= m_maxBag) && (null != (contextEq = contextEqsMap.get(contextEq.getStem()))))  
+        {
+          m_neighborsMap.put(contextEq.getStem(), new ContextualItem(this, contextEq));
+          m_allContextCounts++;
         }
         else
-        { // Didn't find it - add to the list
-          m_neighbors.add(-(index + 1), tmpEq);
-          newContextEq = true;
+        {
+          contextEq = null;
         }
-        
-        // Keep track of counts
-        Number count = (Number)tmpEq.getProperty(Number.class.getName());
-          
-        if (count == null)
-        { tmpEq.setProperty(count = new Number());
-        }
-        count.increment();
-        
       }
       catch (Exception e)
       { throw new IllegalStateException(e.toString());
       }
     }
     
-    return newContextEq;
+    return contextEq;
   }
   
-  void sortTrimAndLookup(double threshold, List<EquivalenceClass> allEqs)
-  {
-    // Sort in the descending order
-    Collections.sort(m_neighbors, NUMBER_COMPARATOR);
-    
-    // Extrtact top occuring eq classes
-    if (m_neighbors.size() > BAG_SIZE)
+  public void pruneContext(int numKeep, Comparator<ContextualItem> comparator)
+  {    
+    if ((m_neighborsMap != null) && (numKeep >= 0) && (m_neighborsMap.size() > numKeep))
     {
-      m_neighbors.subList(Math.min(m_neighbors.size(), BAG_SIZE), m_neighbors.size()).clear();
-    }
-    
-    // Remove context eq classes with score <= threshold (if non-negative)
-    if (threshold >= 0)
-    {
-      SimpleEquivalenceClass tmpEq = new SimpleEquivalenceClass();
-      tmpEq.init(-1, "none", false);
-      tmpEq.setProperty(new Number(threshold));
+      LinkedList<ContextualItem> valList = new LinkedList<ContextualItem>(m_neighborsMap.values());
+      ContextualItem val;
       
-      int index = Collections.binarySearch(m_neighbors, tmpEq, NUMBER_COMPARATOR);
+      // Sort according to a given comparator
+      Collections.sort(valList, comparator);
       
-      m_neighbors.subList((index < 0) ? -index-1 : index, m_neighbors.size()).clear();
-    }
-    
-    // Look up all of the context eq in the repository and keep their repository ids
-    int curIdx;
-    
-    for (EquivalenceClass curNeighbor : m_neighbors)
-    {
-      if ((curIdx = Collections.binarySearch(allEqs, curNeighbor, OVERLAP_COMPARATOR)) >= 0)
-      { m_neighborIds.add(new Integer(((EquivalenceClass)allEqs.get(curIdx)).getId()));
+      m_neighborsMap.clear();
+      
+      for (int i = 0; i < Math.min(valList.size(), numKeep); i++)
+      {
+        val = valList.get(i);
+        m_neighborsMap.put(val.m_contextEq.getStem(), val);
       }
     }
-    
-    m_neighbors = null;
   }
   
-  ArrayList<EquivalenceClass> m_neighbors;
-  protected ArrayList<Integer> m_neighborIds;
+  public ContextualItem lookup(EquivalenceClass contextEq)
+  {    
+    return (m_neighborsMap == null) ? null : m_neighborsMap.get(contextEq.getStem());
+  }
+  
+  public String toString()
+  {
+    return m_neighborsMap.values().toString();
+  }
+  
+  protected HashMap<String, ContextualItem> m_neighborsMap;
+  protected int m_maxBag;
+  /** Source equivalence class. */
+  protected EquivalenceClass m_eq;
+  /** Number of all word occurences in context. */
+  protected int m_allContextCounts;
+  /** Total number of equivalence classes we are collecting contexts for. */
+  protected int m_totalNumEqs;
+  
+  public static class CountComparator implements Comparator<ContextualItem>
+  {
+    public int compare(ContextualItem item1, ContextualItem item2)
+    {
+      return item2.getCount() - item1.getCount();
+    }
+  }
+
+  public static class ScoreComparator implements Comparator<ContextualItem>
+  {
+    public ScoreComparator(DictScorer scorer)
+    {
+      m_scorer = scorer;
+    }
+    
+    public int compare(ContextualItem item1, ContextualItem item2)
+    {
+      double score1 = m_scorer.scoreContItem(item1);
+      double score2 = m_scorer.scoreContItem(item2);
+      int direction = m_scorer.smallerScoresAreBetter() ? -1 : 1;
+      
+      return score1 == score2 ? 0 : direction * (score2 > score1 ? 1 : -1);
+    }
+    
+    protected DictScorer m_scorer;
+  }  
+  
+  public static class EqOverlapComparator implements Comparator<ContextualItem>
+  {
+    public int compare(ContextualItem item1, ContextualItem item2)
+    {
+      return OVERLAP_COMPARATOR.compare(item1.m_contextEq, item2.m_contextEq);
+    }
+  }
+  
+  public static class ContextualItem
+  {
+    public int hashCode()
+    {
+      return m_contextEq.hashCode();
+    }
+
+    public ContextualItem(Context context, EquivalenceClass contextEq)
+    {
+      this(context, contextEq, 1);
+    }
+    
+    public ContextualItem(Context context, EquivalenceClass contextEq, int count)
+    {
+      m_contextEq = contextEq;
+      m_context = context;
+      m_count = count;
+    }
+    
+    public void incrementCount()
+    {
+      m_count++;
+    }
+    
+    public int getCount()
+    {
+      return m_count;
+    }
+    
+    public Context getContext()
+    {
+      return m_context;
+    }
+    
+    public EquivalenceClass getContextEq()
+    {
+      return m_contextEq;
+    }
+    
+    public String toString()
+    {
+      return m_contextEq.toString() + " ( " + m_count + " )"; 
+    }
+    
+    protected Context m_context;    
+    protected int m_count;
+    protected EquivalenceClass m_contextEq;
+  }
 }

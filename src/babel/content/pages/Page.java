@@ -23,7 +23,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
 
 import org.apache.commons.logging.Log;
@@ -181,7 +183,7 @@ public class Page implements XMLPersistable, Writable
     StringBuilder strBld = new StringBuilder();
     
     strBld.append("Page URL: " + m_pageURL + "\n\n");
-    
+        
     for (PageVersion ver : m_versions)
     { strBld.append(ver.toString() + "\n");
     }
@@ -203,6 +205,42 @@ public class Page implements XMLPersistable, Writable
     }
     
     writer.writeEndElement();
+  }
+  
+
+  public void unpersist(XMLStreamReader reader) throws XMLStreamException
+  {
+    String elemTag;
+    PageVersion ver;
+    
+    m_pageURL = reader.getAttributeValue(0);
+    m_versions.clear();
+    
+    while (true)
+    {
+      int event = reader.next();
+      
+      if (event == XMLStreamConstants.END_ELEMENT && XML_TAG_PAGE.equals(reader.getName().toString()))
+      { break;
+      }
+
+      if (event == XMLStreamConstants.START_ELEMENT)
+      {
+        elemTag = reader.getName().toString();
+        
+        if ("MetaData".equals(elemTag))
+        {
+          m_pageProps.unpersist(reader);
+        }
+        else if ("PageVersion".equals(elemTag))
+        {
+          ver = new PageVersion();
+          ver.unpersist(reader);
+          
+          m_versions.add(ver);
+        }
+      }
+    }
   }
   
   public void readFields(DataInput in) throws IOException

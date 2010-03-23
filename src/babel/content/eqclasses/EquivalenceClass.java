@@ -42,31 +42,20 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
   }
   
   /**
-   * Checks if the given word is in the equivalence class. If it does, adds it 
+   * Checks if the given word is in the equivalence class. If it is, adds it 
    * as a variant and returns true.
+   * 
    * @param word
    * @return
    */
   public abstract boolean addMorph(String word);
-  
-  /**
-   * Checks if the given word was already added.
-   */
-  public abstract boolean isMorph(String word);
 
-  /**
-   * Checks if the given word is in the equivalence class.
-   */
-  public abstract boolean canBeMorph(String word);
-  
+  public abstract boolean merge(EquivalenceClass other);
   /**
    * @return All words which were added.
    */
   public abstract Collection<String> getAllWords();
   
-  /**
-   * @return the common stem of the EquivalenceClass
-   */
   public abstract String getStem();
   
   /**
@@ -82,6 +71,13 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
   public boolean isCaseSensitive()
   {
     return m_caseSensitive;
+  }
+  
+  // TODO: Is this the right thing to do?  Make sure it is correct for the other
+  // equivalence classes return
+  public int hashCode()
+  {
+    return getStem().hashCode();
   }
   
   /**

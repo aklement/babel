@@ -18,7 +18,9 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
 
 import org.apache.hadoop.io.Text;
@@ -93,6 +95,11 @@ public class MetaData implements XMLPersistable, Writable
   public void remove(String key)
   {
     m_metadata.remove(key);
+  }
+  
+  public void clear()
+  {
+    m_metadata.clear();
   }
   
   /**
@@ -197,6 +204,32 @@ public class MetaData implements XMLPersistable, Writable
     }
 
     writer.writeEndElement();
+  }
+  
+  public void unpersist(XMLStreamReader reader) throws XMLStreamException
+  {
+    String elemTag;
+    String elemVal;
+    
+    m_typeLabel = reader.getAttributeValue(0);
+    m_metadata.clear();
+    
+    while (true)
+    {
+      int event = reader.next();
+      if (event == XMLStreamConstants.END_ELEMENT && XML_TAG_METADATA.equals(reader.getName().toString()))
+      {
+         break;
+      }
+
+      if (event == XMLStreamConstants.START_ELEMENT)
+      {
+        elemTag = reader.getName().toString();
+        elemVal = reader.getElementText();
+        
+        add(elemTag, elemVal);
+      }
+    }
   }
   
   public void readFields(DataInput in) throws IOException

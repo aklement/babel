@@ -26,18 +26,13 @@ public class SimpleEquivalenceClass extends EquivalenceClass
   
   public boolean addMorph(String word)
   {
-    return isMorph(word);
-  }
-
-  public boolean isMorph(String word)
-  {
     checkInitialized();
     return m_word.equals(getWordOfAppropriateForm(word)); 
   }
-
-  public boolean canBeMorph(String word)
+  
+  public boolean merge(EquivalenceClass other)
   {
-    return isMorph(word);
+    return overlap(other);
   }
   
   public Collection<String> getAllWords()
@@ -60,10 +55,8 @@ public class SimpleEquivalenceClass extends EquivalenceClass
    * @return simple String representation of EquivalenceClassSimple.
    */
   public String toString()
-  {
-    String retStr = m_word;
-    
-    return retStr;
+  {    
+    return m_word;
   }
   
   public boolean equals(Object obj)

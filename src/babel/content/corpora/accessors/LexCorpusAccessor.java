@@ -1,42 +1,32 @@
 package babel.content.corpora.accessors;
 
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FilenameFilter;
 import java.io.InputStreamReader;
 import java.io.SequenceInputStream;
-import java.util.regex.Pattern;
 
-import babel.util.config.Configurator;
 import babel.util.misc.FileList;
+import babel.util.misc.RegExFileNameFilter;
 
 /**
  * A simple corpus accessor - reads corpus files in lexicographic order.
  */
 public class LexCorpusAccessor extends CorpusAccessor
 {
-  protected static final String CORPUS_PATH;
   protected static final String DEFAULT_CHARSET = "UTF-8";
-  
-  /** Populate missing parameters from configurator. */
-  static
-  { 
-    CORPUS_PATH = Configurator.getResourcePath() + "/" + Configurator.lookup("CORPUS_PATH");
-  }
 
-  public LexCorpusAccessor(String fileNameRegEx)
+  public LexCorpusAccessor(String fileNameRegEx, String corpusDir)
   {
-    this(fileNameRegEx, DEFAULT_CHARSET);
+    this(fileNameRegEx, corpusDir, DEFAULT_CHARSET);
   }
   
-  public LexCorpusAccessor(String fileNameRegEx, String charset)
+  public LexCorpusAccessor(String fileNameRegEx, String corpusDir, String charset)
   {
     super();
     
     resetFiles();
     
     m_fileNameFilter = new RegExFileNameFilter(fileNameRegEx);
-    m_files = new FileList(CORPUS_PATH, m_fileNameFilter);
+    m_files = new FileList(corpusDir, m_fileNameFilter);
     m_encoding = charset;
   }
   
@@ -128,31 +118,6 @@ public class LexCorpusAccessor extends CorpusAccessor
   protected FileList m_files;
   protected RegExFileNameFilter m_fileNameFilter;
   
-  class RegExFileNameFilter implements FilenameFilter
-  {
 
-    public RegExFileNameFilter()
-    { 
-      this(null);
-    }
-    
-    public RegExFileNameFilter(String regEx)
-    { 
-      super();
-      m_regEx = regEx;
-    }
-    
-    public void setRegEx(String regEx)
-    {
-      m_regEx = regEx;      
-    }
-    
-    public boolean accept(File dir, String name)
-    {
-      return (m_regEx == null) || Pattern.matches(m_regEx, name);
-    }
-    
-    protected String m_regEx;
-  }
 
 }
