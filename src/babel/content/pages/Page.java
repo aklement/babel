@@ -36,7 +36,7 @@ import org.apache.hadoop.io.WritableUtils;
 
 import babel.prep.extract.NutchChunk;
 
-import babel.util.xmlpersistence.XMLPersistable;
+import babel.util.persistence.XMLPersistable;
 
 public class Page implements XMLPersistable, Writable
 {

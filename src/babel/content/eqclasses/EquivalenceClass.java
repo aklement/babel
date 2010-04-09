@@ -58,6 +58,19 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
   
   public abstract String getStem();
   
+  public String persistToString()
+  {
+    StringBuilder strBld = new StringBuilder();
+    
+    strBld.append(m_id);
+    strBld.append("\t");
+    strBld.append(m_initialized);
+    strBld.append("\t");
+    strBld.append(m_caseSensitive); 
+ 
+    return strBld.toString();
+  }
+  
   /**
    * Checks if the other object represents the same equivalence class.
    * @param eq EquivalenceClass object to check.
@@ -165,7 +178,7 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
   }
   
   /**
-   * Converts a sting to a normal form.
+   * Converts a sting to the normal form.
    * @param word given string
    * @return converted string
    */

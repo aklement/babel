@@ -36,7 +36,7 @@ import org.apache.nutch.parse.ParseText;
 import org.apache.nutch.protocol.Content;
 
 import babel.prep.extract.NutchChunk;
-import babel.util.xmlpersistence.XMLPersistable;
+import babel.util.persistence.XMLPersistable;
 
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;

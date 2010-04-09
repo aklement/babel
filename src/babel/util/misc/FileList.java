@@ -12,6 +12,11 @@ import java.util.Arrays;
 
 public class FileList implements Enumeration<InputStream>
 {
+  public FileList(String directory) 
+  {
+    this(directory, null);
+  }
+  
   public FileList(String directory, FilenameFilter nameFilter) 
   {
     m_nameFilter = nameFilter;
@@ -65,7 +70,8 @@ public class FileList implements Enumeration<InputStream>
   
   public void gather()
   {
-    m_listOfFiles = m_dir.list(m_nameFilter);
+    
+    m_listOfFiles = (m_nameFilter == null) ? m_dir.list() : m_dir.list(m_nameFilter);
     m_current = 0;
     
     for (int i = 0; (m_listOfFiles != null) && (i < m_listOfFiles.length); i++)

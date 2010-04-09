@@ -43,4 +43,27 @@ public class Number extends Property
   }
   
   protected double m_num;
+
+  public String persistToString()
+  {
+    return Double.toString(m_num);
+  }
+
+  public boolean unpersistFromString(String str)
+  {
+    boolean done = false;
+    
+    try
+    { m_num = Double.parseDouble(str);
+    }
+    catch (Exception e)
+    {
+      if (LOG.isErrorEnabled())
+      {
+        LOG.error(e.toString());
+      } 
+    }
+    
+    return done;
+  }
 }

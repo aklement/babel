@@ -2,6 +2,7 @@ package babel.content.eqclasses;
 
 import java.util.Collection;
 import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * Equivalence class includes just the word itself.
@@ -43,7 +44,7 @@ public class SimpleEquivalenceClass extends EquivalenceClass
     { m_allWords.add(m_word);
     }
 
-    return m_allWords;
+    return Collections.unmodifiableList(m_allWords);
   }
   
   public String getStem()
@@ -74,6 +75,16 @@ public class SimpleEquivalenceClass extends EquivalenceClass
   public boolean overlap(EquivalenceClass eqs)
   {
     return equals(eqs);
+  }
+  
+  public String persistToString()
+  {
+    StringBuilder strBld = new StringBuilder(super.persistToString());
+    
+    strBld.append("\t");
+    strBld.append(m_word);
+    
+    return strBld.toString();
   }
   
   protected String m_word;

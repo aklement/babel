@@ -19,20 +19,13 @@ public class Context extends Property
 
   /**
    * @param eq equivalence class associated with this context.
-   * @param totalNumEqs total number of eqs for which we are collecting context.
    */
-  public Context(EquivalenceClass eq, int totalNumEqs)
-  {
-    this(eq, totalNumEqs, -1);
-  }
-  
-  private Context(EquivalenceClass eq, int totalNumEqs, int maxBag)
+  public Context(EquivalenceClass eq)
   {
     m_eq = eq;
-    m_totalNumEqs = totalNumEqs;
-    m_maxBag = maxBag;
     m_neighborsMap = new HashMap<String, ContextualItem>();
     m_allContextCounts = 0;
+    m_contItemsScored = false;
   }
   
   public int size()
@@ -40,9 +33,25 @@ public class Context extends Property
     return m_neighborsMap.size();
   }
   
+  public EquivalenceClass getEq()
+  {
+    return m_eq;
+  }
+  
   public Collection<ContextualItem> getContext()
   {
     return m_neighborsMap.values();
+  }
+  
+  public boolean contextualItemsScored()
+  {
+    return m_contItemsScored;
+  }
+  
+  public void scoreContextualItems(DictScorer scorer)
+  {
+    scorer.scoreContext(this);
+    m_contItemsScored = true;
   }
   
   EquivalenceClass addContextWord(Class<? extends EquivalenceClass> equivClass, boolean caseSensitive, HashMap<String, EquivalenceClass> contextEqsMap, String contextWord)
@@ -64,8 +73,8 @@ public class Context extends Property
           contextItem.incrementCount();
           m_allContextCounts++;
         }
-        // Otherwise, if it is the contextual item from our large list and there is space for it - add it
-        else if ((m_maxBag < 0 || m_neighborsMap.size() <= m_maxBag) && (null != (contextEq = contextEqsMap.get(contextEq.getStem()))))  
+        // Otherwise, if it is the contextual item from our large list - add it
+        else if (null != (contextEq = contextEqsMap.get(contextEq.getStem()))) 
         {
           m_neighborsMap.put(contextEq.getStem(), new ContextualItem(this, contextEq));
           m_allContextCounts++;
@@ -113,14 +122,41 @@ public class Context extends Property
     return m_neighborsMap.values().toString();
   }
   
+  public String persistToString()
+  {
+    StringBuilder strBld = new StringBuilder();
+    boolean first = true;
+    
+    for (String key : m_neighborsMap.keySet())
+    {
+      if (first)
+      { first = false;
+      }
+      else
+      { strBld.append("\t");
+      }
+      strBld.append(m_neighborsMap.get(key).persistToString());
+    }
+    
+    return strBld.toString();
+  }
+
+  public boolean unpersistFromString(String str)
+  {
+    // TODO: Finish
+    m_allContextCounts = 0;
+    m_contItemsScored = false;
+    
+    return false;
+  }
+  
   protected HashMap<String, ContextualItem> m_neighborsMap;
-  protected int m_maxBag;
   /** Source equivalence class. */
   protected EquivalenceClass m_eq;
   /** Number of all word occurences in context. */
   protected int m_allContextCounts;
-  /** Total number of equivalence classes we are collecting contexts for. */
-  protected int m_totalNumEqs;
+  /** true iff scores have been assigned to the contextual items */
+  protected boolean m_contItemsScored;
   
   public static class CountComparator implements Comparator<ContextualItem>
   {
@@ -191,6 +227,16 @@ public class Context extends Property
       return m_context;
     }
     
+    public void setScore(double score)
+    {
+      m_score = score;
+    }
+
+    public double getScore()
+    {
+      return m_score;
+    }
+    
     public EquivalenceClass getContextEq()
     {
       return m_contextEq;
@@ -198,11 +244,30 @@ public class Context extends Property
     
     public String toString()
     {
-      return m_contextEq.toString() + " ( " + m_count + " )"; 
+      return m_contextEq.toString() + " (" + m_count + ")"; 
+    }
+    
+    public String persistToString()
+    {
+      StringBuilder strBld = new StringBuilder();
+      
+      strBld.append(m_contextEq.getId());
+      strBld.append(" ("); strBld.append(m_count); strBld.append(")");
+      
+      return strBld.toString();
+    }
+
+    public boolean unpersistFromString(String str)
+    {
+      //TODO: Finish
+      m_score = 0;
+      
+      return false;
     }
     
     protected Context m_context;    
     protected int m_count;
+    protected double m_score;
     protected EquivalenceClass m_contextEq;
   }
 }

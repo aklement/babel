@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+<corpora>	
+	<plaintext>
+		<Path>/mnt/data/wmt10.en-es/data/</Path>
+		<SrcRegExp>.*\\.en</SrcRegExp>
+		<TrgRegExp>.*\\.es</TrgRegExp>
+	</plaintext>
+	<crawls>
+		<Path>/mnt/data/babel/Resources/Crawls/InProgress.010610/corpus/corpus.xml/</Path>
+		<SrcPages>en.xml</SrcPages>
+		<TrgPages>es.xml</TrgPages>
+	</crawls>
+	<europarl>
+		<Path>/mnt/data/babel/Resources/EuroParl/</Path>
+		<SrcSubDir>es-en/en/</SrcSubDir>
+		<TrgSubDir>es-en/es/</TrgSubDir>
+		<DateFrom>96-04-15</DateFrom>
+		<DateTo>06-10-13</DateTo></europarl>
+</corpora>
+<resources>
+	<stopwords>
+		<Path>/home/aklement/Resources/StopWordLists/</Path>
+		<SrcStopWords>en.stop</SrcStopWords>
+		<TrgStopWords>es.stop</TrgStopWords></stopwords>
+	<dictionaries>
+		<Path>/mnt/data/babel/Resources/Dictionaries/</Path>
+		<TestDictionary>en-es.dict</TestDictionary>
+		<UseDictionary>en-es.dict</UseDictionary>
+	</dictionaries>
+</resources>
+<preprocessing>
+		<Path>./preprocessing/</Path>
+		<SrcEqClasses>src.map</SrcEqClasses>
+		<TrgEqClasses>trg.map</TrgEqClasses>
+</preprocessing>
+<output>
+	<Path>./output/</Path>
+	<NBestTurk>es.nbest</NBestTurk>
+</output>
+<experiments>
+	<AugDictionary>lang.aug.dict</AugDictionary>
+	<NumRankingThreads>20</NumRankingThreads>
+	<NumSource>1000</NumSource>
+	<NumTranslationsToAddPerSource>100</NumTranslationsToAddPerSource>
+	<DictionaryPercentToUse>0.9</DictionaryPercentToUse>
+	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
+	<Iterations>1</Iterations>
+	<FilterRomanTrg>false</FilterRomanTrg>
+	
+	<context>
+		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
+		<PruneEqIfOccursFewerThan>5</PruneEqIfOccursFewerThan>
+		<PruneContextToSize>-1</PruneContextToSize>
+	</context>
+	<candidates>
+		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
+		<PruneIfOccursFewerThan>5</PruneIfOccursFewerThan>
+	</candidates>
+</experiments>
+</configuration>

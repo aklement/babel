@@ -304,6 +304,31 @@ public class TimeDistribution extends Property implements Cloneable
     return distro;
   }
   
+  @Override
+  public String persistToString()
+  {
+    StringBuilder strBld = new StringBuilder();
+
+    strBld.append(m_sum); strBld.append("\t");
+    strBld.append(m_sumSquares); strBld.append("\t");
+    strBld.append(m_count); strBld.append("\t");
+    strBld.append(m_normalized);
+    
+    for (Double windowCount : m_windows)
+    {
+      strBld.append("\t");
+      strBld.append(windowCount);
+    }
+    
+    return strBld.toString();
+  }
+
+  @Override
+  public boolean unpersistFromString(String str)
+  {
+    // TODO Auto-generated method stub
+    return false;
+  }
   
   /** Time windows containing counts per window. */
   protected ArrayList<Double> m_windows;

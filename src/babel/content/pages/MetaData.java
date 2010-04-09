@@ -27,7 +27,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.nutch.metadata.Metadata;
 
-import babel.util.xmlpersistence.XMLPersistable;
+import babel.util.persistence.XMLPersistable;
 
 /**
  * Stores key-value matadata (allowing for multiple values per key).

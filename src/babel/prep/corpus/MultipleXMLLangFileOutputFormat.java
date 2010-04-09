@@ -32,7 +32,7 @@ import org.apache.hadoop.util.Progressable;
 
 import babel.content.pages.Page;
 
-import babel.util.xmlpersistence.XMLObjectWriter;
+import babel.util.persistence.XMLObjectWriter;
 
 /** 
  * Generates multiple XML files each containing pages in a single nalguage.

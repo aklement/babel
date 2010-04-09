@@ -47,5 +47,17 @@ public class Topics extends Property
   }
   
   protected ArrayList<Integer> m_clusterIds;
+
+  public String persistToString()
+  {
+    // TODO: Finish
+    return null;
+  }
+
+  public boolean unpersistFromString(String str)
+  {
+    // TODO: Finish
+    return false;
+  }
 }
 
