@@ -1,61 +1,48 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <configuration>
-<corpora>	
-	<plaintext>
-		<Path>/mnt/data/wmt10.en-es/data/</Path>
-		<SrcRegExp>.*\\.en</SrcRegExp>
-		<TrgRegExp>.*\\.es</TrgRegExp>
-	</plaintext>
+<corpora>
+	
+	<plaintext><Path>/Users/aklement/Resources/d/</Path><SrcRegExp>.*\\.en\\.small</SrcRegExp><TrgRegExp>.*\\.es\\.small</TrgRegExp>
+		</plaintext>
 	<crawls>
-		<Path>/mnt/data/babel/Resources/Crawls/InProgress.010610/corpus/corpus.xml/</Path>
-		<SrcPages>en.xml</SrcPages>
-		<TrgPages>es.xml</TrgPages>
-	</crawls>
+		<Path>/Users/aklement/Resources/TestCrawls/Tiny/corpus/corpus.xml</Path>
+		<SrcPages>en.xml</SrcPages><TrgPages>ru.xml</TrgPages></crawls>
 	<europarl>
-		<Path>/mnt/data/babel/Resources/EuroParl/</Path>
-		<SrcSubDir>es-en/en/</SrcSubDir>
-		<TrgSubDir>es-en/es/</TrgSubDir>
+		<Path>/Users/aklement/Resources/Corpora/parallel/</Path>
+		<SrcSubDir>es-en.small/en/</SrcSubDir>
+		<TrgSubDir>es-en.small/es/</TrgSubDir>
 		<DateFrom>96-04-15</DateFrom>
-		<DateTo>06-10-13</DateTo></europarl>
-</corpora>
+		<DateTo>06-10-13</DateTo></europarl></corpora>
 <resources>
 	<stopwords>
-		<Path>/home/aklement/Resources/StopWordLists/</Path>
-		<SrcStopWords>en.stop</SrcStopWords>
-		<TrgStopWords>es.stop</TrgStopWords></stopwords>
+		<Path>/Users/aklement/Resources/d/</Path>
+		<SrcStopWords>english.stop</SrcStopWords><TrgStopWords>spanish.stop</TrgStopWords></stopwords>
 	<dictionaries>
-		<Path>/mnt/data/babel/Resources/Dictionaries/</Path>
-		<TestDictionary>en-es.dict</TestDictionary>
-		<UseDictionary>en-es.dict</UseDictionary>
-	</dictionaries>
-</resources>
+		<Path>/Users/aklement/Resources/d/</Path><TestDictionary>frozen_span_dict</TestDictionary>
+		<UseDictionary>frozen_span_dict</UseDictionary>
+		</dictionaries>
+	</resources>
 <preprocessing>
-		<Path>./preprocessing/</Path>
-		<SrcEqClasses>src.map</SrcEqClasses>
-		<TrgEqClasses>trg.map</TrgEqClasses>
-</preprocessing>
-<output>
-	<Path>./output/</Path>
+		<Path>/Users/aklement/Projects/Java/babel/</Path>
+		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
+		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
+		<FilterRomanTrg>false</FilterRomanTrg><context>
+		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan><PruneEqIfOccursFewerThan>5</PruneEqIfOccursFewerThan><PruneContextToSize>-1</PruneContextToSize>
+		</context><candidates>
+		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
+		<PruneIfOccursFewerThan>5</PruneIfOccursFewerThan></candidates></preprocessing><output>
+	<Path>/Users/aklement/Projects/Java/babel/</Path>
 	<NBestTurk>es.nbest</NBestTurk>
-</output>
+	</output>
 <experiments>
 	<AugDictionary>lang.aug.dict</AugDictionary>
-	<NumRankingThreads>20</NumRankingThreads>
+	<NumRankingThreads>1</NumRankingThreads>
 	<NumSource>1000</NumSource>
 	<NumTranslationsToAddPerSource>100</NumTranslationsToAddPerSource>
 	<DictionaryPercentToUse>0.9</DictionaryPercentToUse>
 	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
-	<Iterations>1</Iterations>
-	<FilterRomanTrg>false</FilterRomanTrg>
 	
-	<context>
-		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
-		<PruneEqIfOccursFewerThan>5</PruneEqIfOccursFewerThan>
-		<PruneContextToSize>-1</PruneContextToSize>
-	</context>
-	<candidates>
-		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
-		<PruneIfOccursFewerThan>5</PruneIfOccursFewerThan>
-	</candidates>
-</experiments>
-</configuration>
+	
+	
+	</experiments>
+	</configuration>

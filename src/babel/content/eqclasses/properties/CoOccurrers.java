@@ -1,5 +1,6 @@
 package babel.content.eqclasses.properties;
 
+import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -26,18 +27,18 @@ public class CoOccurrers extends Property
   {
     return m_coOccurers;
   }
-
-  protected HashSet<EquivalenceClass> m_coOccurers;
-
+  
   public String persistToString()
   {
     // TODO: Finish
     return null;
   }
 
-  public boolean unpersistFromString(String str)
+  @Override
+  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception
   {
     // TODO: Finish
-    return false;
   }
+  
+  protected HashSet<EquivalenceClass> m_coOccurers;
 }

@@ -20,7 +20,7 @@ public class ContextCollector extends PropertyCollector
   public static final Log LOG = LogFactory.getLog(ContextCollector.class);
   
   protected static final String SENT_DELIM_REGEX = "[\\.\\?¿!¡]+";
-  protected static final String WORD_DELIM_REGEX = "[\\s\"\'\\-+=,;:«»{}()<>\\[\\]–“’ ]+";
+  protected static final String WORD_DELIM_REGEX = "[\\s\"\'\\-+=,;:«»{}()<>\\[\\]–“”‘’ ]+";
     
   @SuppressWarnings("unchecked")
   public ContextCollector(String eqClassName, boolean caseSensitive, int leftSize, int rightSize, Set<EquivalenceClass> contextEqs) throws Exception

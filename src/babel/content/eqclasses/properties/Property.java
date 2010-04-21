@@ -1,7 +1,11 @@
 package babel.content.eqclasses.properties;
 
+import java.util.Map;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import babel.content.eqclasses.EquivalenceClass;
 
 /**
  * Superclass for property of an EquivalnceClass.
@@ -18,5 +22,5 @@ public abstract class Property
   }
   
   public abstract String persistToString();
-  public abstract boolean unpersistFromString(String str);
+  public abstract void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception;
 }

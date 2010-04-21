@@ -30,7 +30,7 @@ public class TimeDistributionCosineScorer extends Scorer
 				(distroOne.getSize() != distroTwo.getSize()))
 		{ throw new IllegalArgumentException("At least one of the EquivalenceClass doesn't have a distribution property, or they aren't the same size.");
 		}
-    
+
     // Normalize them
     if (!distroOne.isNormalized())
     { distroOne.normalize();

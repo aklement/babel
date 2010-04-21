@@ -15,7 +15,7 @@ import babel.content.corpora.accessors.CorpusAccessor;
 public class TimeDistributionCollector extends PropertyCollector
 {
   protected static final Log LOG = LogFactory.getLog(TimeDistributionCollector.class);
-  protected static final String DELIM_REGEX = "[\\s\"\'\\-+=,;:гх{}()<>\\[\\]\\.\\?ю!апруй]+";  
+  protected static final String DELIM_REGEX = "[\\s\"\'\\-+=,;:гх{}()<>\\[\\]\\.\\?ю!апрстуй]+";  
   
   /**
    * @param slidingWindow

@@ -15,7 +15,7 @@ public class NumberAndTypeCollector extends PropertyCollector
 {
   public static final Log LOG = LogFactory.getLog(NumberAndTypeCollector.class);
 
-  protected static final String DELIM_REGEX = "[\\s\"\'\\-+=,;:гх{}()<>\\[\\]\\.\\?ю!апруй]+";
+  protected static final String DELIM_REGEX = "[\\s\"\'\\-+=,;:гх{}()<>\\[\\]\\.\\?ю!апрстуй]+";
     
   @SuppressWarnings("unchecked")
   public NumberAndTypeCollector(String eqClassName, boolean caseSensitive, EqType type) throws Exception

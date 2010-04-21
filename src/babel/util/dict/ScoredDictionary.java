@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -27,7 +28,6 @@ import babel.content.eqclasses.properties.Context;
 import babel.content.eqclasses.properties.Context.ContextualItem;
 import babel.ranking.EquivClassCandRanking;
 import babel.ranking.EquivClassPairsRanking;
-import babel.ranking.EquivClassCandRanking.ScoredCandidate;
 import babel.ranking.EquivClassPairsRanking.ScoredPair;
 
 import babel.util.misc.FileList;
@@ -244,12 +244,15 @@ public class ScoredDictionary
   public void write(String fileName) throws Exception
   {
     BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
+    LinkedHashMap<EquivalenceClass, Double> scoredCands;
     
     for (EquivalenceClass key : m_map.keySet())
     {
-      for (ScoredCandidate cand : m_map.get(key).getScoredCandidates())      
+      scoredCands = m_map.get(key).getOrderedScoredCandidates();
+      
+      for (EquivalenceClass cand : scoredCands.keySet())      
       {
-        writer.write(key + "\t" + cand.getCandidate() + "\t" + cand.getScore());
+        writer.write(key + "\t" + cand + "\t" + scoredCands.get(cand));
         writer.newLine();
       }
     }

@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Map;
 
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.comparators.OverlapComparator;
@@ -17,6 +18,11 @@ public class Context extends Property
 {     
   protected static final Comparator<EquivalenceClass> OVERLAP_COMPARATOR = new OverlapComparator();
 
+  public Context()
+  {
+    this(null);
+  }
+  
   /**
    * @param eq equivalence class associated with this context.
    */
@@ -141,13 +147,25 @@ public class Context extends Property
     return strBld.toString();
   }
 
-  public boolean unpersistFromString(String str)
+  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEqs, String str) throws Exception
   {
-    // TODO: Finish
-    m_allContextCounts = 0;
-    m_contItemsScored = false;
+    m_eq = eq;
+    m_allContextCounts = 0;    
+    m_neighborsMap.clear();
+    m_contItemsScored = false;    
     
-    return false;
+    if (!str.isEmpty())
+    {
+      String[] toks = str.split("\t");
+      ContextualItem cItem;
+    
+      for (int i = 0; i < toks.length; i++)
+      {
+        (cItem = new ContextualItem(this)).unpersistFromString(toks[i], allEqs);
+        m_allContextCounts += cItem.m_count;
+        m_neighborsMap.put(cItem.m_contextEq.getStem(), cItem);
+      }
+    }
   }
   
   protected HashMap<String, ContextualItem> m_neighborsMap;
@@ -195,9 +213,11 @@ public class Context extends Property
   
   public static class ContextualItem
   {
-    public int hashCode()
+    protected ContextualItem(Context context)
     {
-      return m_contextEq.hashCode();
+      m_context = context;
+      m_contextEq = null;
+      m_count = 0;
     }
 
     public ContextualItem(Context context, EquivalenceClass contextEq)
@@ -210,6 +230,11 @@ public class Context extends Property
       m_contextEq = contextEq;
       m_context = context;
       m_count = count;
+    }
+    
+    public int hashCode()
+    {
+      return m_contextEq.hashCode();
     }
     
     public void incrementCount()
@@ -247,22 +272,24 @@ public class Context extends Property
       return m_contextEq.toString() + " (" + m_count + ")"; 
     }
     
-    public String persistToString()
+    protected String persistToString()
     {
       StringBuilder strBld = new StringBuilder();
       
       strBld.append(m_contextEq.getId());
-      strBld.append(" ("); strBld.append(m_count); strBld.append(")");
+      strBld.append("("); strBld.append(m_count); strBld.append(")");
       
       return strBld.toString();
     }
-
-    public boolean unpersistFromString(String str)
+    
+    public void unpersistFromString(String str, Map<Integer, EquivalenceClass> map) throws Exception
     {
-      //TODO: Finish
       m_score = 0;
       
-      return false;
+      String[] toks = str.split("[()]");
+
+      m_contextEq = map.get(Integer.parseInt(toks[0]));
+      m_count = Integer.parseInt(toks[1]); 
     }
     
     protected Context m_context;    

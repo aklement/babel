@@ -14,7 +14,7 @@ import babel.content.eqclasses.filters.EquivalenceClassFilter;
 
 public class SimpleEquivalenceClassCollector extends EquivalenceClassCollector
 {
-  protected static final String WORD_DELIM_REGEX = "[\\s\"\'\\-+=,;:гх{}()<>\\[\\]\\.\\?ю!апруй]+";
+  protected static final String WORD_DELIM_REGEX = "[\\s\"\'\\-+=,;:гх{}()<>\\[\\]\\.\\?ю!апрстуй]+";
   protected static final Comparator<EquivalenceClass> OVERLAP_COMPARATOR = new OverlapComparator();
 
   public SimpleEquivalenceClassCollector(String eqClassName, List<EquivalenceClassFilter> filters, boolean caseSensitive)

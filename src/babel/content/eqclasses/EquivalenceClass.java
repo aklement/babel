@@ -58,18 +58,9 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
   
   public abstract String getStem();
   
-  public String persistToString()
-  {
-    StringBuilder strBld = new StringBuilder();
-    
-    strBld.append(m_id);
-    strBld.append("\t");
-    strBld.append(m_initialized);
-    strBld.append("\t");
-    strBld.append(m_caseSensitive); 
- 
-    return strBld.toString();
-  }
+  public abstract String persistToString();
+  
+  public abstract void unpersistFromString(String str) throws Exception;  
   
   /**
    * Checks if the other object represents the same equivalence class.

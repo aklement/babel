@@ -1,11 +1,18 @@
 package babel.ranking;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
@@ -13,9 +20,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import babel.content.eqclasses.EquivalenceClass;
+import babel.util.dict.Dictionary;
 
 /**
- * Simple container prividing a mechanism for associating a list of scored
+ * Simple container prividing a mechanism for associating scored target 
  * candidates with a source EquivalenceClass object.
  */
 public class EquivClassCandRanking
@@ -23,8 +31,8 @@ public class EquivClassCandRanking
   protected static final Log LOG = LogFactory.getLog(EquivClassCandRanking.class);
 
   /**
-   * @param EquivalenceClass a EquivalenceClass object with which this list is associated
-   * @param numBest maximum number of candidates to keep in the list (neg valuw means all of them)
+   * @param EquivalenceClass source EquivalenceClass object
+   * @param numBest maximum number of candidates to keep (negative => no limit)
    * @param smallerIsBetter the smaller the score the better
    */
   public EquivClassCandRanking(EquivalenceClass eqClass, int numBest, boolean smallerIsBetter)
@@ -35,34 +43,34 @@ public class EquivClassCandRanking
     
     m_eq = eqClass;
     m_numBest = numBest;
-    m_smallerIsBetter = smallerIsBetter;
-    m_scoredCands = (numBest < 0) ? new LinkedList<ScoredCandidate>() : new ArrayList<ScoredCandidate>(numBest + 1);
+    m_scoreComparator = new ScoreComparator(smallerIsBetter);    
+    m_scoredCandSets = (numBest < 0) ? new LinkedList<ScoredCandidateSet>() : new ArrayList<ScoredCandidateSet>(numBest + 1);
     m_cands = new HashMap<EquivalenceClass, Double>();
-    m_rand = new Random(1);
+    m_rand = new Random(1); 
   }
   
-  @SuppressWarnings("unchecked")
   public EquivClassCandRanking clone()
   {
-    EquivClassCandRanking other = new EquivClassCandRanking(m_eq, m_numBest, m_smallerIsBetter);
-    other.m_cands = (HashMap<EquivalenceClass, Double>)m_cands.clone();
-    other.m_scoredCands =  (m_numBest < 0) ? new LinkedList<ScoredCandidate>() : new ArrayList<ScoredCandidate>(m_numBest + 1);
+    EquivClassCandRanking other = new EquivClassCandRanking(m_eq, m_numBest, smallerScoresAreBetter());
     
-    for (int i = 0; i < m_scoredCands.size(); i++)
-    { other.m_scoredCands.add(m_scoredCands.get(i));
+    for (int i = 0; i < m_scoredCandSets.size(); i++)
+    { other.m_scoredCandSets.add(m_scoredCandSets.get(i).clone());
+    }
+    
+    for (EquivalenceClass candidate : m_cands.keySet())
+    { other.m_cands.put(candidate, m_cands.get(candidate));
     }
     
     return other;
   }
   
   public boolean smallerScoresAreBetter()
-  {
-    return m_smallerIsBetter;
+  { return m_scoreComparator.m_smallerIsBetter;
   }
   
   /**
-   * Attempt to add another candidate into the candidate list. Will not update
-   * the existing candidate with a different score.
+   * Attempt to add another candidate. Note: will not update the existing
+   * candidate with a different score.
    * 
    * @param candidate candidate EquivalenceClass
    * @param score candidate's score
@@ -76,154 +84,187 @@ public class EquivClassCandRanking
     }
     else
     {
-      ScoredCandidate newCand = new ScoredCandidate(score, candidate);
-      int insIdx = Collections.binarySearch(m_scoredCands, newCand);
-      int listSize = m_scoredCands.size();
-    
-      if (insIdx < 0)
+      ScoredCandidateSet candSet = new ScoredCandidateSet(score, candidate);
+      int insIdx = Collections.binarySearch(m_scoredCandSets, candSet, m_scoreComparator);
+      boolean newSet;
+      
+      if (newSet = (insIdx < 0))
       { insIdx = -(insIdx + 1);
       }
     
-      // If there is room or it's better than the current worst scoring element - insert
-      if (m_numBest < 0 || listSize < m_numBest || insIdx < listSize)
+      if (m_numBest < 0 || m_numBest > m_cands.size() || insIdx < m_scoredCandSets.size())
       {
+        // Either add to an existing candidate set or create/add a new one
+        if (newSet)
+        { m_scoredCandSets.add(insIdx, candSet);
+        }
+        else
+        { m_scoredCandSets.get(insIdx).add(candidate);
+        }
+        
         m_cands.put(candidate, score);
-        m_scoredCands.add(insIdx, newCand);
         added = true;
         
-        // Trim the size if too large - drop the last (worst) element.
-        if (listSize == m_numBest)
-        { 
-          m_cands.remove(m_scoredCands.get(listSize).m_candidate);
-          m_scoredCands.remove(listSize);
+        // Trim the size if too large
+        if (m_cands.size() == m_numBest + 1)
+        {
+          candSet = m_scoredCandSets.get(m_scoredCandSets.size() - 1);
+          EquivalenceClass cand = candSet.randCandidate();
+          candSet.remove(cand);
+          m_cands.remove(cand);
+          
+          if (candSet.size() == 0)
+          { m_scoredCandSets.remove(candSet);
+          }
         }
       }
     }
     
     return added;
   }
-  
+
   public boolean containsCandidate(EquivalenceClass cand)
-  {
-    return (cand != null) && (m_cands.containsKey(cand));
+  { return (cand != null) && (m_cands.containsKey(cand));
   }
 
   public void threshold(double lower, double upper)
   {
-    ScoredCandidate scoredCand;
+    ScoredCandidateSet candSet;
     
-    for (int idx = (m_scoredCands.size() - 1); idx >= 0; idx--)
+    for (int idx = (m_scoredCandSets.size() - 1); idx >= 0; idx--)
     {
-      scoredCand = m_scoredCands.get(idx);
+      candSet = m_scoredCandSets.get(idx);
    
-      if (scoredCand.m_score < lower || scoredCand.m_score > upper)
+      if (candSet.m_score < lower || candSet.m_score > upper)
       {
-        m_cands.remove(scoredCand.m_candidate);
-        m_scoredCands.remove(idx);
-      }
-    }
-  }
-  
-  public void retainTop(int k)
-  {
-    if (k >= 0 && k < m_scoredCands.size())
-    {
-      for (int idx = m_scoredCands.size() - 1; idx >= k; idx--)
-      {
-        m_cands.remove(m_scoredCands.get(idx).m_candidate);
-        m_scoredCands.remove(idx);
+        for (EquivalenceClass eq : candSet.m_candidates)
+        { m_cands.remove(eq);
+        }
+        
+        m_scoredCandSets.remove(idx);
       }
     }
   }
   
   public void clear()
   {
-    m_scoredCands.clear();
+    m_scoredCandSets.clear();
     m_cands.clear();
   }
-  
-  /**
-   * @return the source English EquivalenceClass for which the candidate list is 
-   *   created. 
-   */
+ 
   public EquivalenceClass getEqClass()
-  {
-    return m_eq;
+  { return m_eq;
   }
   
   public Set<EquivalenceClass> getCandidates()
-  {
-    return Collections.unmodifiableSet(m_cands.keySet());
+  { return Collections.unmodifiableSet(m_cands.keySet());
   }
 
-  public List<ScoredCandidate> getScoredCandidates()
+  public Map<EquivalenceClass, Double> getScoredCandidates()
+  { return Collections.unmodifiableMap(m_cands);
+  }
+  
+  /**
+   * Note: more expensive than getScoredCandidates().
+   * @return a map sorted by scores in descending order.
+   */
+  public LinkedHashMap<EquivalenceClass, Double> getOrderedScoredCandidates()
   {
-    return Collections.unmodifiableList(m_scoredCands);
+    LinkedHashMap<EquivalenceClass, Double> map = new LinkedHashMap<EquivalenceClass, Double>();
+   
+    for (ScoredCandidateSet candSet : m_scoredCandSets)
+    {
+      for (EquivalenceClass eq : candSet.m_candidates)
+      { map.put(eq, candSet.m_score);
+      }
+    }
+    
+    return map;
   }
   
   public Double scoreOf(EquivalenceClass candidate)
-  {
-    return m_cands.get(candidate);
+  { return m_cands.get(candidate);
   }
   
-  public int rankOf(EquivalenceClass candidate)
+  
+  /**
+   * @return rank of the candidate (1 - smallest rank), or -1 if it was not 
+   * found.
+   */
+  public double rankOf(EquivalenceClass candidate)
   {
-    int rank = -1;
+    double rank = -1;
     
     if (m_cands.containsKey(candidate))
-    { rank = m_scoredCands.indexOf(new ScoredCandidate(m_cands.get(candidate), candidate));
+    {
+      rank = 0;
+      double curSize = 0;
+      
+      for (int i = 0; i < m_scoredCandSets.size(); i++)
+      {
+        curSize = m_scoredCandSets.get(i).size();
+        
+        if (!m_scoredCandSets.get(i).contains(candidate))
+        { 
+          rank += curSize;
+        }
+        else
+        {
+          rank += (curSize + 1.0) / 2.0;
+          break;
+        }
+      }      
     }
     
     return rank;
   }
   
+  /**
+   * @return Number of candidates in cands with rank k or higher.
+   */
   public int numInTopK(Collection<EquivalenceClass> cands, int k)
   {
-    int rank;
+    double rank;
     int num = 0;
     
     for (EquivalenceClass eq : cands)
     {
-      if ((rank = rankOf(eq)) >= 0 && rank < k)
+      if ((rank = rankOf(eq)) > 0 && rank <= k)
       { num++;
       }
     }
     
     return num;
   }
-  
+
   /**
-   * @return Best scoring candidate
+   * @return a random candidate from the best scoring candidate set.
    */
   public EquivalenceClass getBestCandidate()
-  { 
-    return (m_scoredCands.size() == 0) ? null : m_scoredCands.get(0).getCandidate();
+  { return (m_scoredCandSets.size() == 0) ? null : m_scoredCandSets.get(0).randCandidate();
   }
   
+  /**
+   * @return a random candidate.
+   */
   public EquivalenceClass getRandomCandidate()
-  {
-    return (m_scoredCands.size() == 0) ? null : m_scoredCands.get(m_rand.nextInt(m_scoredCands.size())).m_candidate;
+  { return (m_scoredCandSets.size() == 0) ? null : m_scoredCandSets.get(m_rand.nextInt(m_scoredCandSets.size())).randCandidate();
   }
   
   /**
    * @return best score or null if list is empty
    */
   public Double getBestScore()
-  {
-    return (m_scoredCands.size() == 0) ? null : m_scoredCands.get(0).getScore();
+  { return (m_scoredCandSets.size() == 0) ? null : m_scoredCandSets.get(0).score();
   }
   
   /**
    * @return number of candidates in the list
    */
   public int numCandidates()
-  {
-    return m_scoredCands.size();
+  { return m_cands.size();
   }
   
-  /**
-   * @return String representation of the object
-   */
   public String toString()
   {
     StringBuffer strBuf = new StringBuffer();
@@ -232,78 +273,185 @@ public class EquivClassCandRanking
     strBuf.append(m_eq.toString());
     strBuf.append(">\n");       
 
-    for (ScoredCandidate curCand : m_scoredCands)
+    for (ScoredCandidateSet curSet : m_scoredCandSets)
     {
       strBuf.append("   ");
-      strBuf.append(curCand);
+      strBuf.append(curSet);
       strBuf.append("\n");      
     }
     
     return strBuf.toString();
   }
   
-  /** List sorted according to score */
-  protected List<ScoredCandidate> m_scoredCands;
+  protected void flagTranslations(Collection<EquivalenceClass> translations)
+  {
+    for (ScoredCandidateSet set : m_scoredCandSets)
+    { set.flagIfContainsAnyCandidates(translations);
+    }
+  }
+  
+  public static void dumpToFile(Dictionary dict, Collection<EquivClassCandRanking> candRankings, String fileName) throws Exception
+  {
+    BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
+    List<EquivalenceClass> translations;
+    
+    for (EquivClassCandRanking candRanking : candRankings)
+    {
+      if (null != (translations = dict.getTranslations(candRanking.m_eq)))
+      { candRanking.flagTranslations(translations);
+      }
+      
+      writer.write(candRanking.toString());
+      writer.newLine();
+    }
+    
+    writer.close();
+  }
+  
+  /** List of scored cand sets (kept sorted according to score). */
+  protected List<ScoredCandidateSet> m_scoredCandSets;
+  /** Map of each candidate to its score for fast lookuo. */
   protected HashMap<EquivalenceClass, Double> m_cands;
-  protected boolean m_smallerIsBetter;
-  protected EquivalenceClass m_eq;  
+  /** Used to keep m_scoredCandSets sorted. */
+  protected ScoreComparator m_scoreComparator;
+  /** Source equivalence class. */
+  protected EquivalenceClass m_eq;
+  /** Number of candidates to keep (negative => no limit). */
   protected int m_numBest;
   protected Random m_rand;
   
   /**
-   * Manages a candidate / score pair.
+   * Keeps a set of candidates assigned the same score.
    */
-  public class ScoredCandidate implements Comparable<ScoredCandidate>
+  public class ScoredCandidateSet
   {
-    public ScoredCandidate(double score, EquivalenceClass candidate)
+    private ScoredCandidateSet(double score)
+    {
+      m_candidates = new LinkedHashSet<EquivalenceClass>();
+      m_score = score;
+      m_flag = false;
+    }
+    
+    public ScoredCandidateSet(double score, EquivalenceClass candidate)
+    {
+      this(score);
+      add(candidate);
+    }
+    
+    public ScoredCandidateSet clone()
+    {
+      ScoredCandidateSet set = new ScoredCandidateSet(m_score);
+      set.m_flag = m_flag;
+
+      for (EquivalenceClass candidate : m_candidates)
+      { set.add(candidate);
+      }
+            
+      return set;
+    }
+    
+    public boolean add(EquivalenceClass candidate)
     {
       if (candidate == null)
       { throw new IllegalArgumentException("No candidate EquivalenceClass specified.");
       }
       
-      m_candidate = candidate;
-      m_score = score;
+      return m_candidates.add(candidate);
     }
     
-    public Double getScore()
+    boolean remove(EquivalenceClass candidate)
+    { return m_candidates.remove(candidate);
+    }
+    
+    public void flagIfContainsAnyCandidates(Collection<EquivalenceClass> cands)
+    {
+      m_flag = false;
+      
+      for (EquivalenceClass cand : cands)
+      {
+        if (m_candidates.contains(cand))
+        {
+          m_flag = true;
+          break;
+        }
+      }
+    }
+    
+    public boolean contains(EquivalenceClass cand)
+    { return m_candidates.contains(cand);
+    }
+    
+    public Double score()
     { return m_score;
     }
     
-    public EquivalenceClass getCandidate()
-    { return m_candidate;
+    public Set<EquivalenceClass> candidates()
+    { return Collections.unmodifiableSet(m_candidates);
+    }
+    
+    public EquivalenceClass randCandidate()
+    {
+      int idx = m_rand.nextInt(m_candidates.size());
+      Iterator<EquivalenceClass> iter = m_candidates.iterator();
+      EquivalenceClass eq = null;
+      
+      for (int i = 0; i <= idx; i++)
+      { eq = iter.next();
+      }
+      
+      return eq;
+    }
+    
+    public int size()
+    { return m_candidates.size();
     }
     
     public String toString()
-    { return "[" + m_score + "], " + m_candidate;
+    { 
+      StringBuilder strBld = new StringBuilder((m_flag ? "* " : "") + "[" + m_score + "]");
+      
+      for (EquivalenceClass eq : m_candidates)
+      {
+        strBld.append(" ");
+        strBld.append(eq.toString());
+      }
+      
+      return strBld.toString();
     }
     
-    /**
-     * Used to sort the candidates in descending order (best scoring candidates
-     * first).
-     */
-    public int compareTo(ScoredCandidate otherCand)
+    protected LinkedHashSet<EquivalenceClass> m_candidates;
+    protected double m_score;
+    protected boolean m_flag;
+  }
+  
+  /**
+   * Used to sort the candidate sets in descending according to their scores
+   * (best scoring candidates first).
+   */
+  protected class ScoreComparator implements Comparator<ScoredCandidateSet>
+  {
+    public ScoreComparator(boolean smallerIsBetter)
+    { m_smallerIsBetter = smallerIsBetter;
+    }
+
+    public boolean smallerScoresAreBetter()
+    { return m_smallerIsBetter;
+    }
+    
+    public int compare(ScoredCandidateSet setOne, ScoredCandidateSet setTwo)
     {
       int score = 0;
       
-      if (m_score > otherCand.m_score)
+      if (setOne.m_score > setTwo.m_score)
       { score = m_smallerIsBetter ? 1 : -1;
       }
-      else if (m_score < otherCand.m_score)
+      else if (setOne.m_score < setTwo.m_score)
       { score = m_smallerIsBetter ? -1 : 1;
-      }
-      else
-      { score = m_candidate.compareTo(otherCand.m_candidate);
       }
       
       return score;
     }
-    
-    public boolean equals(Object obj)
-    {
-      return (obj instanceof ScoredCandidate) && (0 == compareTo((ScoredCandidate)obj));
-    }
-    
-    protected EquivalenceClass m_candidate;
-    protected double m_score;
+
+    protected boolean m_smallerIsBetter;
   }
 }

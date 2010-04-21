@@ -1,5 +1,8 @@
 package babel.content.eqclasses.properties;
 
+import java.util.Map;
+
+import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.properties.Property;
 
 /**
@@ -49,21 +52,9 @@ public class Number extends Property
     return Double.toString(m_num);
   }
 
-  public boolean unpersistFromString(String str)
+  @Override
+  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception
   {
-    boolean done = false;
-    
-    try
-    { m_num = Double.parseDouble(str);
-    }
-    catch (Exception e)
-    {
-      if (LOG.isErrorEnabled())
-      {
-        LOG.error(e.toString());
-      } 
-    }
-    
-    return done;
+    m_num = Double.parseDouble(str);    
   }
 }

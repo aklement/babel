@@ -4,6 +4,9 @@ import java.io.PrintStream;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import babel.content.eqclasses.EquivalenceClass;
 
 public class TimeDistribution extends Property implements Cloneable
 {
@@ -57,8 +60,7 @@ public class TimeDistribution extends Property implements Cloneable
   public void addBin(int count)
   {
     if (m_normalized)
-    {
-      throw new IllegalStateException("TimeDistribution is normalized: cannot add more bins.");
+    { throw new IllegalStateException("TimeDistribution is normalized: cannot add more bins.");
     }
     
     m_windows.add(new Double(count));
@@ -104,15 +106,16 @@ public class TimeDistribution extends Property implements Cloneable
   {
     if (!m_normalized)
     {
-      double curValue = 0;
-      
+      double curValue = 0.0;
+      m_sumSquares = m_sum = 0.0;
+
       for (int i = 0; (m_count != 0) && (i < m_windows.size()); i++)
       {
-        curValue = ((Double)m_windows.get(i)).doubleValue() / m_count;
+        curValue = ((Double)m_windows.get(i)).doubleValue() / (double)m_count;
         m_windows.set(i, new Double(curValue));
         
         m_sum += curValue;
-        m_sumSquares += Math.pow(curValue, 2);
+        m_sumSquares += curValue*curValue;
       }
       
       m_normalized = true;
@@ -324,10 +327,19 @@ public class TimeDistribution extends Property implements Cloneable
   }
 
   @Override
-  public boolean unpersistFromString(String str)
+  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEqs, String str) throws Exception
   {
-    // TODO Auto-generated method stub
-    return false;
+    String[] toks = str.split("\t");
+    
+    m_sum = Double.parseDouble(toks[0]);
+    m_sumSquares = Double.parseDouble(toks[1]);
+    m_count = Integer.parseInt(toks[2]);
+    m_normalized = Boolean.parseBoolean(toks[3]);
+    
+    m_windows.clear();
+    for (int i = 4; i < toks.length; i++)
+    { m_windows.add(Double.parseDouble(toks[i]));
+    }
   }
   
   /** Time windows containing counts per window. */

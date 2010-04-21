@@ -2,6 +2,9 @@ package babel.content.eqclasses.properties;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import babel.content.eqclasses.EquivalenceClass;
 
 public class Topics extends Property
 {   
@@ -48,16 +51,17 @@ public class Topics extends Property
   
   protected ArrayList<Integer> m_clusterIds;
 
+  @Override
   public String persistToString()
   {
     // TODO: Finish
     return null;
   }
 
-  public boolean unpersistFromString(String str)
+  @Override
+  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception
   {
     // TODO: Finish
-    return false;
   }
 }
 

@@ -4,11 +4,11 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.ranking.EquivClassCandRanking.ScoredCandidate;
 
 public class EquivClassPairsRanking
 {
@@ -58,20 +58,17 @@ public class EquivClassPairsRanking
   public void addPairsFromRanking(EquivClassCandRanking ranking, int maxPairs)
   {
     EquivalenceClass srcEq = ranking.getEqClass();
-    List<ScoredCandidate> candidates = ranking.getScoredCandidates();
-    int numToCheck = candidates.size();
+    LinkedHashMap<EquivalenceClass, Double> scoredCands = ranking.getOrderedScoredCandidates();
+    int numToCheck = scoredCands.size();
     numToCheck = ((maxPairs < 0) || (maxPairs >= numToCheck)) ? numToCheck : maxPairs;
-    ScoredCandidate scoredTrgEq;
-    
-    for (int num = 0; num < numToCheck; num++)
+
+    for (EquivalenceClass eq : scoredCands.keySet())
     {
-      scoredTrgEq = candidates.get(num);
-      
-      if (!add(srcEq, scoredTrgEq.getCandidate(), scoredTrgEq.getScore()))
-      {
-        // If couldn't add this one, no sense to continue trying to add worse candidates
-        break;
+      if ((numToCheck == 0) || !add(srcEq, eq, scoredCands.get(eq)))
+      { break;
       }
+      
+      numToCheck--;
     }
   }
   
@@ -124,11 +121,11 @@ public class EquivClassPairsRanking
     return strBuf.toString();
   }
   
-  public void dumpToFile(String fileName) throws Exception
+  public static void dumpToFile(EquivClassPairsRanking pairsRanking, String fileName) throws Exception
   {
     BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
     
-    for(ScoredPair pair : m_pairs)
+    for (ScoredPair pair : pairsRanking.m_pairs)
     {
       writer.write(pair.toString());
       writer.newLine();

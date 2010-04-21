@@ -76,15 +76,35 @@ public class SimpleEquivalenceClass extends EquivalenceClass
   {
     return equals(eqs);
   }
-  
+
+  @Override
   public String persistToString()
   {
-    StringBuilder strBld = new StringBuilder(super.persistToString());
+    StringBuilder strBld = new StringBuilder();
     
+    strBld.append(m_id);
+    strBld.append("\t");
+    strBld.append(m_initialized);
+    strBld.append("\t");
+    strBld.append(m_caseSensitive);
     strBld.append("\t");
     strBld.append(m_word);
     
     return strBld.toString();
+  }
+  
+  @Override
+  public void unpersistFromString(String str) throws Exception
+  {
+    String[] toks = str.split("\t");
+      
+    m_id = Integer.parseInt(toks[0]);
+    m_initialized = Boolean.parseBoolean(toks[1]);
+    m_caseSensitive = Boolean.parseBoolean(toks[2]);
+    m_word = toks[3];
+      
+    m_allWords.clear();
+    m_properties.clear();
   }
   
   protected String m_word;

@@ -83,7 +83,7 @@ public class MRRAggregator
         { rr = 0.0;
         }
         else
-        { rr = 1.0 / (rr + 1.0);
+        { rr = 1.0 / rr;
         }
         
         mrr += rr;
