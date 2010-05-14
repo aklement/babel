@@ -7,3 +7,4 @@ preprocessing
 output
 log4j.*
 babel.log
+src/main/Test.java
