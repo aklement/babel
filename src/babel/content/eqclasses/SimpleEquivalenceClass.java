@@ -17,23 +17,29 @@ public class SimpleEquivalenceClass extends EquivalenceClass
     m_allWords = new ArrayList<String>();
   }
   
-  public void init(int id, String word, boolean caseSensitive)
+  public void init(String word, boolean caseSensitive)
   {
-    super.init(id, word, caseSensitive);
+    super.init(word, caseSensitive);
     
-    m_word = getWordOfAppropriateForm(word);
+    m_word = getWordOfAppropriateForm(word, m_caseSensitive);
     m_allWords.clear();
+  }
+  
+  public boolean isInEqClass(String word)
+  {
+    checkInitialized();
+    return m_word.equals(getWordOfAppropriateForm(word, m_caseSensitive));
   }
   
   public boolean addMorph(String word)
   {
     checkInitialized();
-    return m_word.equals(getWordOfAppropriateForm(word)); 
+    return m_word.equals(getWordOfAppropriateForm(word, m_caseSensitive)); 
   }
   
   public boolean merge(EquivalenceClass other)
   {
-    return overlap(other);
+    return sameEqClass(other);
   }
   
   public Collection<String> getAllWords()
@@ -47,37 +53,21 @@ public class SimpleEquivalenceClass extends EquivalenceClass
     return Collections.unmodifiableList(m_allWords);
   }
   
+  public String getWord()
+  {
+    return m_word;
+  }
+  
   public String getStem()
   {
     return m_word;
   }
   
-  /**
-   * @return simple String representation of EquivalenceClassSimple.
-   */
   public String toString()
   {    
     return m_word;
   }
-  
-  public boolean equals(Object obj)
-  {
-    return ((obj != null) && (obj instanceof SimpleEquivalenceClass) && 
-            (m_caseSensitive == ((SimpleEquivalenceClass)obj).m_caseSensitive) &&
-            m_word.equals(((SimpleEquivalenceClass)obj).m_word));
-  }
-  
-  public int compareTo(EquivalenceClass obj) throws ClassCastException
-  {
-    return m_word.compareTo(((SimpleEquivalenceClass)obj).m_word);
-  }
-  
-  public boolean overlap(EquivalenceClass eqs)
-  {
-    return equals(eqs);
-  }
 
-  @Override
   public String persistToString()
   {
     StringBuilder strBld = new StringBuilder();
@@ -93,12 +83,11 @@ public class SimpleEquivalenceClass extends EquivalenceClass
     return strBld.toString();
   }
   
-  @Override
   public void unpersistFromString(String str) throws Exception
   {
     String[] toks = str.split("\t");
       
-    m_id = Integer.parseInt(toks[0]);
+    m_id = Long.parseLong(toks[0]);
     m_initialized = Boolean.parseBoolean(toks[1]);
     m_caseSensitive = Boolean.parseBoolean(toks[2]);
     m_word = toks[3];

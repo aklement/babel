@@ -3,7 +3,6 @@ package babel.util.dict;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -12,6 +11,7 @@ import org.json.JSONObject;
 
 import babel.util.language.Language;
 
+// TODO: Finish
 public class GoogleDictionaryCollector 
 {
   /** Maximum size of the sting sent to google for identification. */

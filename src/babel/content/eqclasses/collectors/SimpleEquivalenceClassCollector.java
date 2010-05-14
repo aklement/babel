@@ -9,32 +9,35 @@ import java.util.List;
 import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.SimpleEquivalenceClass;
 import babel.content.eqclasses.comparators.OverlapComparator;
 import babel.content.eqclasses.filters.EquivalenceClassFilter;
+import babel.content.eqclasses.properties.PropertyCollector;
 
 public class SimpleEquivalenceClassCollector extends EquivalenceClassCollector
 {
-  protected static final String WORD_DELIM_REGEX = "[\\s\"\'\\-+=,;:гх{}()<>\\[\\]\\.\\?ю!апрстуй]+";
+  protected static final String WORD_DELIM_REGEX = PropertyCollector.WORD_DELIM_REGEX;
+
   protected static final Comparator<EquivalenceClass> OVERLAP_COMPARATOR = new OverlapComparator();
 
-  public SimpleEquivalenceClassCollector(String eqClassName, List<EquivalenceClassFilter> filters, boolean caseSensitive)
+  public SimpleEquivalenceClassCollector(List<EquivalenceClassFilter> filters, boolean caseSensitive)
   {
-    super(eqClassName, filters, caseSensitive);
+    super(SimpleEquivalenceClass.class.getName(), filters, caseSensitive);
   }
   
-  public SimpleEquivalenceClassCollector(String eqClassName, boolean caseSensitive)
+  public SimpleEquivalenceClassCollector(boolean caseSensitive)
   {
-    this(eqClassName, null, caseSensitive);
+    this(null, caseSensitive);
   }
   
   @Override
   public Set<EquivalenceClass> collect(InputStreamReader corpusReader, int maxEquivalenceClass) throws Exception
   {
     BufferedReader reader = new BufferedReader(corpusReader);
-    HashMap<String, EquivalenceClass> eqs = new HashMap<String, EquivalenceClass>();
+    HashMap<String, SimpleEquivalenceClass> eqs = new HashMap<String, SimpleEquivalenceClass>();
     String line;
     String[] toks;
-    EquivalenceClass tmpeq, eq;
+    SimpleEquivalenceClass tmpEq;
     int count = 0;
 
     while ((line = reader.readLine()) != null)
@@ -43,17 +46,13 @@ public class SimpleEquivalenceClassCollector extends EquivalenceClassCollector
         
       for (String tok : toks)
       {
-        tmpeq = (EquivalenceClass)m_eqClass.newInstance();
-        tmpeq.init(CURRENT_EQCLASS_ID, tok, m_eqCaseSensitive);
-                 
-        if (null != (eq = eqs.get(tmpeq.getStem())))
+        tmpEq = (SimpleEquivalenceClass)m_eqClass.newInstance();
+        tmpEq.init(tok, m_eqCaseSensitive);
+        
+        if (!eqs.containsKey(tmpEq.getWord()) && (maxEquivalenceClass < 0 || count < maxEquivalenceClass) && keep(tmpEq, m_filters))
         {
-          eq.merge(tmpeq);
-        }
-        else if ((maxEquivalenceClass < 0 || count < maxEquivalenceClass) && keep(tmpeq, m_filters))
-        {
-          eqs.put(tmpeq.getStem(), tmpeq);
-          CURRENT_EQCLASS_ID++;
+          tmpEq.assignId();
+          eqs.put(tmpEq.getWord(), tmpEq);
           count++;
         }
       }

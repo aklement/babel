@@ -39,7 +39,6 @@ public class LangIdentifier extends PrepStep
   
   /** Subdirectory of a nutch crawl directory where extracted pages are stored. */
   protected static final String PAGES_SUBDIR = "pages";
-  /** Time when the job began running. */
   protected static final String JOB_PROP_JOB_REFERRER = "langidentifier.referrer";
   
   public LangIdentifier() throws Exception 

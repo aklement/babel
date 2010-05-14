@@ -14,13 +14,6 @@ import babel.content.eqclasses.filters.EquivalenceClassFilter;
  */
 public abstract class EquivalenceClassCollector
 {
-  protected static int CURRENT_EQCLASS_ID;
-  
-  static
-  {
-    CURRENT_EQCLASS_ID = 0;
-  }
-
   public EquivalenceClassCollector(String eqClassName, boolean caseSensitive)
   {
     this(eqClassName, null, caseSensitive);

@@ -1,7 +1,5 @@
 package babel.content.eqclasses.properties;
 
-import java.util.Map;
-
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.properties.Property;
 
@@ -15,27 +13,32 @@ public class Number extends Property
     this(0);
   }
   
-  public Number(double num)
+  public Number(long num)
   {
     m_num = num;
   }
   
-  public void setNumber(double num)
+  public void setNumber(long num)
   {
     m_num = num;
   }
   
-  public double getNumber()
+  public long getNumber()
   {
     return m_num;
   }
   
-  public double increment()
+  public long increment()
   { 
     return ++m_num;
   }
+
+  public long increment(long delta)
+  { 
+    return (m_num = m_num + delta);
+  }
   
-  public double decrement()
+  public long decrement()
   {
     return --m_num;
   }
@@ -45,16 +48,16 @@ public class Number extends Property
     return String.valueOf(m_num);
   }
   
-  protected double m_num;
+  protected long m_num;
 
   public String persistToString()
   {
-    return Double.toString(m_num);
+    return Long.toString(m_num);
   }
 
   @Override
-  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception
+  public void unpersistFromString(EquivalenceClass eq, String str) throws Exception
   {
-    m_num = Double.parseDouble(str);    
+    m_num = Long.parseLong(str);    
   }
 }

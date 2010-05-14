@@ -1,7 +1,5 @@
 package babel.content.eqclasses.properties;
 
-import java.util.Map;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -22,5 +20,5 @@ public abstract class Property
   }
   
   public abstract String persistToString();
-  public abstract void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception;
+  public abstract void unpersistFromString(EquivalenceClass eq, String str) throws Exception;
 }

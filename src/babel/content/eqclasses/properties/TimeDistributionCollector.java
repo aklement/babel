@@ -15,17 +15,15 @@ import babel.content.corpora.accessors.CorpusAccessor;
 public class TimeDistributionCollector extends PropertyCollector
 {
   protected static final Log LOG = LogFactory.getLog(TimeDistributionCollector.class);
-  protected static final String DELIM_REGEX = "[\\s\"\'\\-+=,;:гх{}()<>\\[\\]\\.\\?ю!апрстуй]+";  
-  
+    
   /**
    * @param slidingWindow
    * @param windowSize - number of days in each bin
    * @throws Exception 
    */
   @SuppressWarnings("unchecked")
-  public TimeDistributionCollector(String eqClassName, boolean caseSensitive, int windowSize, boolean slidingWindow) throws Exception
+  public TimeDistributionCollector(boolean caseSensitive, int windowSize, boolean slidingWindow) throws Exception
   {
-    m_eqClassClass = (Class<? extends EquivalenceClass>)(Class.forName(eqClassName));
     m_caseSensitive = caseSensitive;
     m_slidingWindow = slidingWindow;
     m_window = new HashMap[windowSize];    
@@ -44,11 +42,16 @@ public class TimeDistributionCollector extends PropertyCollector
     { throw new IllegalArgumentException("Did not supply a TemporalCorpusAccessor");
     }
     
-    // TODO: Not memory efficient - think of something better
+    // TODO: Inefficient - think of something better
     HashMap<String, EquivalenceClass> eqsMap = new HashMap<String, EquivalenceClass>(eqs.size());
 
     for (EquivalenceClass eq : eqs)
-    { eqsMap.put(eq.getStem(), eq);
+    {
+      for (String word : eq.getAllWords())
+      { 
+        assert eqsMap.get(word) == null;
+        eqsMap.put(word, eq);
+      }
     }
     
     // Create distribution property objects for all eq
@@ -73,24 +76,25 @@ public class TimeDistributionCollector extends PropertyCollector
    * Records the aggregate count of the whole window it into EquivalenceClass' 
    * time distributions (for each of them).
    */
-  protected void recordWindow(Set<EquivalenceClass> eq)
+  protected void recordWindow(Set<? extends EquivalenceClass> eqs)
   {
-    int entCount = 0;
-    Integer count = 0;
-    String stem;
+    int entCount;
+    Integer count;
  
-    for (EquivalenceClass curEq : eq)
+    for (EquivalenceClass eq : eqs)
     {
       entCount = 0;
-      stem = curEq.getStem();
       
-      for (int curDay = 0; curDay < m_window.length; curDay++)
-      {
-        count = m_window[curDay].get(stem);
-        entCount += (count == null) ? 0 : count;
+      for (String word : eq.getAllWords())
+      {      
+        for (int curDay = 0; curDay < m_window.length; curDay++)
+        {
+          count = m_window[curDay].get(word);
+          entCount += (count == null) ? 0 : count;
+        }
       }
       
-      ((TimeDistribution)curEq.getProperty(TimeDistribution.class.getName())).addBin(entCount);
+      ((TimeDistribution)eq.getProperty(TimeDistribution.class.getName())).addBin(entCount);
     }
   }
   
@@ -152,9 +156,9 @@ public class TimeDistributionCollector extends PropertyCollector
     HashMap<String, Integer> counts = null;
     String curLine;
     String[] curTokens;
-    EquivalenceClass tmpEq;
     Integer count;
     BufferedReader reader = new BufferedReader(corpusAccess.getCurDayReader());
+    String word;
     
     if (reader != null && reader.ready())
     {
@@ -162,19 +166,17 @@ public class TimeDistributionCollector extends PropertyCollector
         
       while ((curLine = reader.readLine()) != null)
       {
-        curTokens = curLine.split(DELIM_REGEX);
+        curTokens = curLine.split(WORD_DELIM_REGEX);
 
         for (int numToken = 0; numToken < curTokens.length; numToken++)
-        { 
-          // Put together a temp equiv class for the current token
-          tmpEq = (EquivalenceClass)m_eqClassClass.newInstance();
-          tmpEq.init(-1, curTokens[numToken], m_caseSensitive);    
+        {
+          word = EquivalenceClass.getWordOfAppropriateForm(curTokens[numToken], m_caseSensitive);
           
           // Is that a word we care about?
-          if (eqsMap.containsKey(tmpEq.getStem()))         
+          if (eqsMap.containsKey(word))
           {
-            count = counts.get(tmpEq.getStem());
-            counts.put(tmpEq.getStem(), count == null ? 1 : count + 1);
+            count = counts.get(word);
+            counts.put(word, count == null ? 1 : count + 1);
           }
         }
       }
@@ -200,7 +202,6 @@ public class TimeDistributionCollector extends PropertyCollector
     return m_binIdx;
   }
   
-  protected Class<? extends EquivalenceClass> m_eqClassClass;
   protected boolean m_caseSensitive;
   /** True iff sliding window. */
   protected boolean m_slidingWindow;

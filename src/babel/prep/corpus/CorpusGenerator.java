@@ -82,7 +82,7 @@ public class CorpusGenerator extends PrepStep
     JobConf job = gen.createJobConf(args[0], args[1], (args.length == 3) && PARAM_XML.equals(args[2]));
     
     if (LOG.isInfoEnabled())
-    { LOG.info("CorpusGenerator: " + job.getJobName());
+    { LOG.info("DatedCorpusGenerator: " + job.getJobName());
     }
     
     gen.runPrepStep(job);
@@ -91,13 +91,13 @@ public class CorpusGenerator extends PrepStep
     { 
       LOG.info(Stats.dumpStats() + "\n");
       LOG.info("Output: "+ FileOutputFormat.getOutputPath(job));
-      LOG.info("CorpusGenerator: done");
+      LOG.info("DatedCorpusGenerator: done");
     }    
   }
   
   protected static void usage()
   {
-    System.err.println("Usage: CorpusGenerator crawl_dir pages_subdir [" + PARAM_XML + "]\n");
+    System.err.println("Usage: DatedCorpusGenerator crawl_dir pages_subdir [" + PARAM_XML + "]\n");
   }
 
   /**

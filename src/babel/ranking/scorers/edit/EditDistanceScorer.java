@@ -19,7 +19,20 @@ public class EditDistanceScorer extends Scorer
    */
   public double score(EquivalenceClass oneEq, EquivalenceClass twoEq)
   {
-    return EditDistance.distance(oneEq.getStem(), twoEq.getStem());
+    double count = 0;
+    double dist = 0;
+    
+    // We'll just compute the average edit distance across all pairs - expensive!  TODO: a better heuristic?
+    for (String oneStr : oneEq.getAllWords())
+    {
+      for (String twoStr : twoEq.getAllWords())
+      {
+        dist += EditDistance.distance(oneStr, twoStr);
+        count++;
+      }
+    }
+   
+    return dist / count;
   }
 
   /**
@@ -29,4 +42,6 @@ public class EditDistanceScorer extends Scorer
   {
     return true;
   }
+  
+  public void prepare(EquivalenceClass eq) {}
 }

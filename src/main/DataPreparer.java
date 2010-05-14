@@ -1,24 +1,32 @@
 package main;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import babel.content.corpora.accessors.CorpusAccessor;
+import babel.content.corpora.accessors.CrawlCorpusAccessor;
 import babel.content.corpora.accessors.EuroParlCorpusAccessor;
 import babel.content.corpora.accessors.LexCorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.SimpleEquivalenceClass;
 import babel.content.eqclasses.collectors.EquivalenceClassCollector;
 import babel.content.eqclasses.collectors.SimpleEquivalenceClassCollector;
+import babel.content.eqclasses.comparators.NumberComparator;
 import babel.content.eqclasses.filters.DictionaryFilter;
 import babel.content.eqclasses.filters.EquivalenceClassFilter;
 import babel.content.eqclasses.filters.GarbageFilter;
@@ -31,62 +39,120 @@ import babel.content.eqclasses.filters.StopWordsFilter;
 import babel.content.eqclasses.properties.Context;
 import babel.content.eqclasses.properties.ContextCollector;
 import babel.content.eqclasses.properties.Number;
-import babel.content.eqclasses.properties.NumberAndTypeCollector;
+import babel.content.eqclasses.properties.NumberCollector;
 import babel.content.eqclasses.properties.TimeDistribution;
 import babel.content.eqclasses.properties.TimeDistributionCollector;
 import babel.content.eqclasses.properties.Type;
 import babel.content.eqclasses.properties.Type.EqType;
 
+import babel.ranking.scorers.Scorer;
 import babel.util.config.Configurator;
 import babel.util.dict.Dictionary;
-import babel.util.dict.Dictionary.DictPair;
+import babel.util.dict.SimpleDictionary;
+import babel.util.dict.SimpleDictionary.DictPair;
 import babel.util.persistence.EqClassPersister;
 
 public class DataPreparer
 {
   protected static final Log LOG = LogFactory.getLog(DataPreparer.class);
   
+  protected static final String INIT_SRC_MAP_FILE = "init.src.map";
+  protected static final String INIT_TRG_MAP_FILE = "init.trg.map";
+
+  protected static final String INIT_SRC_PROP_EXT = ".init.src.map";
+  protected static final String INIT_TRG_PROP_EXT = ".init.trg.map";
+  
   protected static final String SRC_MAP_FILE = "src.map";
   protected static final String TRG_MAP_FILE = "trg.map";
+  
+  protected static final String SRC_PROP_EXT = ".src.map";
+  protected static final String TRG_PROP_EXT = ".trg.map";
 
-  public void prepare() throws Exception
-  { 
-    LOG.info("Reading/preparing seed and context dictionaries ...");
-    //prepareDictionaries();  <--
-    prepareDictionariesFromSingleFile();
+  protected static final String SRC_TO_INDUCT = "srcinduct.list";
+  
+  @SuppressWarnings("unchecked")
+  public void prepareEqs() throws Exception
+  {
+    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
+    String srcClassName = Configurator.CONFIG.getString("preprocessing.SrcEqClass");
+    String trgClassName = Configurator.CONFIG.getString("preprocessing.TrgEqClass");
+    String srcStopFileName = Configurator.CONFIG.getString("resources.stopwords.SrcStopWords");
+    String trgStopFileName = Configurator.CONFIG.getString("resources.stopwords.TrgStopWords");
     
-    // Read / collect eq classes and their properties
+    Class<EquivalenceClass> srcClassClass = (Class<EquivalenceClass>)Class.forName(srcClassName);
+    Class<EquivalenceClass> trgClassClass = (Class<EquivalenceClass>)Class.forName(trgClassName);
+    
+    // Prepare equivalence classes and their properties
     try
     {
-      LOG.info("Reading previously collected eq. classes / properties ...");
-      readEqClasses();
-      readProps();
-    }
-    catch (Exception e)
-    {
-      LOG.info("Failed to read eq. classes / properties (" + e.toString() + "), collecting from scratch ...");
-      CorpusAccessor srcAccessor = getEuroParlAccessor(true);
-      CorpusAccessor trgAccessor = getEuroParlAccessor(false);
+      LOG.info("Reading previously collected initial source classes from " + INIT_SRC_MAP_FILE + " and target from " + INIT_TRG_MAP_FILE + "...");
+      m_allSrcEqs = readEqClasses(true, SimpleEquivalenceClass.class, INIT_SRC_MAP_FILE, INIT_SRC_PROP_EXT);
+      m_allTrgEqs = readEqClasses(false, SimpleEquivalenceClass.class, INIT_TRG_MAP_FILE, INIT_TRG_PROP_EXT);
+      LOG.info("All initial source classes: " + m_allSrcEqs.size());
+      LOG.info("All initial target classes: " + m_allTrgEqs.size());
+  
       
-      collectAndWriteEqClasses(srcAccessor, trgAccessor);
-      collectAndWriteProps(m_seedDict, srcAccessor, trgAccessor);
+      LOG.info("Reading previously constructed source classes from " + SRC_MAP_FILE + " and target from " + TRG_MAP_FILE + "...");
+      m_srcEqs = readEqClasses(true, srcClassClass, SRC_MAP_FILE, SRC_PROP_EXT);
+      m_trgEqs = readEqClasses(false, trgClassClass, TRG_MAP_FILE, TRG_PROP_EXT);
+      LOG.info("All source classes: " + m_srcEqs.size());
+      LOG.info("All target classes: " + m_trgEqs.size());
+      
+      prepareDictionariesFromSingleFile(m_allSrcEqs, m_allTrgEqs, m_srcEqs, m_trgEqs);
+      
+      LOG.info("Reading source and target properties...");
+      readProps(true, m_srcEqs, SRC_PROP_EXT);
+      readProps(false, m_trgEqs, TRG_PROP_EXT);
+    }
+    catch(Exception e)
+    { 
+      LOG.info("Failed to read initial classes (" + e.toString() + "), collecting from scratch ...");
+      m_allSrcEqs = collectInitEqClasses(true, INIT_SRC_MAP_FILE, INIT_SRC_PROP_EXT, false);
+      m_allTrgEqs = collectInitEqClasses(false, INIT_TRG_MAP_FILE, INIT_TRG_PROP_EXT, filterRomanTrg);
+      LOG.info("All initial source classes: " + m_allSrcEqs.size());
+      LOG.info("All initial target classes: " + m_allTrgEqs.size() + (filterRomanTrg ? " (without romanization) " : ""));
+      
+      LOG.info("Constructing source and target classes...");
+      m_srcEqs = constructEqClasses(true, m_allSrcEqs, srcClassClass, SRC_MAP_FILE, SRC_PROP_EXT);
+      m_trgEqs = constructEqClasses(false, m_allTrgEqs, trgClassClass, TRG_MAP_FILE, TRG_PROP_EXT);
+      LOG.info("All source classes: " + m_srcEqs.size());
+      LOG.info("All target classes: " + m_trgEqs.size());
+      
+      prepareDictionariesFromSingleFile(m_allSrcEqs, m_allTrgEqs, m_srcEqs, m_trgEqs);
+      
+      LOG.info("Collecting source and target properties...");
+      
+      collectProps(true, m_srcEqs, m_allSrcEqs, m_seedDict, SRC_PROP_EXT);
+      collectProps(false, m_trgEqs, m_allTrgEqs, m_seedDict, TRG_PROP_EXT);
     }
     
     // Measure dictionary coverage
     dictCoverage(m_seedDict, m_allSrcEqs, true);
     dictCoverage(m_seedDict, m_allTrgEqs, false);
+   
     collectTokenCounts(m_allSrcEqs, m_allTrgEqs);
     
-    // Prune source and target candidates  
-    pruneEqClasses();
+    // Prune source and target candidates 
+    LOG.info("Pruning source and target equivalence classes...");
+    m_srcEqs = (Set<EquivalenceClass>) pruneEqClasses(m_srcEqs, true, srcStopFileName, srcClassName, false);
+    m_trgEqs = (Set<EquivalenceClass>) pruneEqClasses(m_trgEqs, false, trgStopFileName, trgClassName, filterRomanTrg);
+    LOG.info("Pruned source classes: " + m_srcEqs.size());
+    LOG.info("Pruned target classes: " + m_trgEqs.size());    
+  }
+  
+  public void prepareProperties(boolean src, Set<? extends EquivalenceClass> eqs, Scorer contextScorer, Scorer timeScorer)
+  {
+    LOG.info("Projecting and scoring " + (src ? "source" : "target") + " contextual items with " + contextScorer.toString() + " and time distributions with " + timeScorer.toString() + "...");
+
+    for (EquivalenceClass eq : eqs)
+    { 
+      contextScorer.prepare(eq);
+      timeScorer.prepare(eq);
+    }
   }
   
   public Dictionary getSeedDict()
   { return m_seedDict;
-  }
-  
-  public Dictionary getUseDict()
-  { return m_useDict;
   }
   
   public Dictionary getTestDict() 
@@ -94,11 +160,11 @@ public class DataPreparer
   }
   
   public Set<EquivalenceClass> getSrcEqs()
-  { return m_allSrcEqs;
+  { return m_srcEqs;
   }
   
   public Set<EquivalenceClass> getTrgEqs()
-  { return m_allTrgEqs;
+  { return m_trgEqs;
   }
   
   public double getNumSrcToks()
@@ -115,185 +181,171 @@ public class DataPreparer
   
   public double getMaxTrgTokCount()
   { return m_maxTokCountInTrg; 
-  } 
-  
-  @SuppressWarnings("unchecked")
-  protected void readEqClasses() throws Exception
-  {
-    String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");     
-    String srcEqClassName = Configurator.CONFIG.getString("preprocessing.SrcEqClass");
-    String trgEqClassName = Configurator.CONFIG.getString("preprocessing.TrgEqClass");
-    
-    LOG.info("Reading equivalence classes from " + preProcDir);
-    
-    // Extract the equivalence classes themselves
-    m_allSrcEqs = EqClassPersister.unpersistEqClasses((Class<? extends EquivalenceClass>)Class.forName(srcEqClassName), preProcDir + SRC_MAP_FILE);
-    m_allTrgEqs = EqClassPersister.unpersistEqClasses((Class<? extends EquivalenceClass>)Class.forName(trgEqClassName), preProcDir + TRG_MAP_FILE);
-
-    LOG.info("All source classes: " + m_allSrcEqs.size());
-    LOG.info("All target classes: " + m_allTrgEqs.size());
-    
-    LOG.info("Reading corpus counts ...");
-    
-    // Read all of their properties
-    EqClassPersister.unpersistProperty(m_allSrcEqs, Number.class, preProcDir + Number.class.getSimpleName() + ".src.map"); 
-    EqClassPersister.unpersistProperty(m_allTrgEqs, Number.class, preProcDir + Number.class.getSimpleName() + ".trg.map");
-    EqClassPersister.unpersistProperty(m_allSrcEqs, Type.class, preProcDir + Type.class.getSimpleName() + ".src.map");
-    EqClassPersister.unpersistProperty(m_allTrgEqs, Type.class, preProcDir + Type.class.getSimpleName() + ".trg.map");
   }
   
-  protected void collectAndWriteEqClasses(CorpusAccessor srcAccessor, CorpusAccessor trgAccessor) throws Exception
+  protected Set<EquivalenceClass> readEqClasses(boolean src, Class<? extends EquivalenceClass> eqClsssClass, String eqfileName, String propFileExtension) throws Exception
   {
-    String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");  
-    String srcEqClasses = Configurator.CONFIG.getString("preprocessing.SrcEqClass");
-    String trgEqClasses = Configurator.CONFIG.getString("preprocessing.TrgEqClass");
-    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
-
-    // Get all equivalence classes for source and target (subject to a couple of simple filters)
-    LOG.info("Collecting equivalence classes ...");
-
-    // Collect for source
+    // Read init classes
+    String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");        
+    Set<EquivalenceClass> eqClasses = EqClassPersister.unpersistEqClasses(eqClsssClass, preProcDir + eqfileName);
+    
+    // Read counts property
+    EqClassPersister.unpersistProperty(eqClasses, Number.class.getName(), preProcDir + Number.class.getSimpleName() + propFileExtension);
+    
+    // Assign type property
+    assignTypeProp(eqClasses, src ? EqType.SOURCE : EqType.TARGET);
+    
+    return eqClasses;
+  }
+  
+  protected Set<EquivalenceClass> collectInitEqClasses(boolean src, String eqfileName, String propFileExtension, boolean filterRomanTrg) throws Exception
+  {
+    String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");
+    Set<EquivalenceClass> eqClasses;
+  
     ArrayList<EquivalenceClassFilter> filters = new ArrayList<EquivalenceClassFilter>(3);
     filters.add(new GarbageFilter());
     filters.add(new LengthFilter(2));
-    
-    SimpleEquivalenceClassCollector collector = new SimpleEquivalenceClassCollector(srcEqClasses, filters, false);
-    m_allSrcEqs = collector.collect(srcAccessor.getCorpusReader(), -1);
-    
-    // Collect for target
     if (filterRomanTrg)
     { filters.add(new RomanizationFilter());
     }
-    collector = new SimpleEquivalenceClassCollector(trgEqClasses, filters, false);
-    m_allTrgEqs = collector.collect(trgAccessor.getCorpusReader(), -1);    
     
-    EqClassPersister.persistEqClasses(m_allSrcEqs, preProcDir + SRC_MAP_FILE);
-    EqClassPersister.persistEqClasses(m_allTrgEqs, preProcDir + TRG_MAP_FILE);
+    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);
     
-    LOG.info("All source classes: " + m_allSrcEqs.size());
-    LOG.info("All target classes: " + m_allTrgEqs.size() + (filterRomanTrg ? " (without romanization) " : ""));
-    
-    LOG.info("Collecting corpus counts...");
-    (new NumberAndTypeCollector(SimpleEquivalenceClass.class.getName(), false, EqType.SOURCE)).collectProperty(srcAccessor, m_allSrcEqs);    
-    (new NumberAndTypeCollector(SimpleEquivalenceClass.class.getName(), false, EqType.TARGET)).collectProperty(trgAccessor, m_allTrgEqs);
-    
-    EqClassPersister.persistProperty(m_allSrcEqs, Number.class, preProcDir + Number.class.getSimpleName() + ".src.map");
-    EqClassPersister.persistProperty(m_allTrgEqs, Number.class, preProcDir + Number.class.getSimpleName() + ".trg.map");
-    EqClassPersister.persistProperty(m_allSrcEqs, Type.class, preProcDir + Type.class.getSimpleName() + ".src.map");
-    EqClassPersister.persistProperty(m_allTrgEqs, Type.class, preProcDir + Type.class.getSimpleName() + ".trg.map");
-  }
-   
-  protected void readProps() throws Exception
-  {
-    String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");     
+    // Collect init classes
+    SimpleEquivalenceClassCollector collector = new SimpleEquivalenceClassCollector(filters, false);
+    eqClasses = collector.collect(accessor.getCorpusReader(), -1);
+    EqClassPersister.persistEqClasses(eqClasses, preProcDir + eqfileName);        
 
-    LOG.info("Reading context...");
-    EqClassPersister.unpersistProperty(m_allSrcEqs, Context.class, preProcDir + Context.class.getSimpleName() + ".src.map");
-    EqClassPersister.unpersistProperty(m_allTrgEqs, Context.class, preProcDir + Context.class.getSimpleName() + ".trg.map");
+    // Collect counts property
+    (new NumberCollector(false)).collectProperty(accessor, eqClasses);
+    EqClassPersister.persistProperty(eqClasses, Number.class.getName(), preProcDir + Number.class.getSimpleName() + propFileExtension);
+
+    // Assign type property
+    assignTypeProp(eqClasses, src ? EqType.SOURCE : EqType.TARGET);
     
-    LOG.info("Reading temporal distributions...");
-    EqClassPersister.unpersistProperty(m_allSrcEqs, TimeDistribution.class, preProcDir + TimeDistribution.class.getSimpleName() + ".src.map");
-    EqClassPersister.unpersistProperty(m_allTrgEqs, TimeDistribution.class, preProcDir + TimeDistribution.class.getSimpleName() + ".trg.map"); 
+    return eqClasses;
+  }
+
+  protected Set<EquivalenceClass> constructEqClasses(boolean src, Set<EquivalenceClass> allEqs, Class<? extends EquivalenceClass> eqClassClass, String eqfileName, String propFileExtension) throws Exception
+  {
+    String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");
+    
+    HashMap<String, EquivalenceClass> eqsMap = new HashMap<String, EquivalenceClass>();
+    EquivalenceClass newEq, foundEq;
+    String newWord;
+    long newCount;
+    
+    for (EquivalenceClass eq : allEqs)
+    {
+      newWord = ((SimpleEquivalenceClass)eq).getWord(); // TODO: not pretty
+      newCount = ((Number)eq.getProperty(Number.class.getName())).getNumber();
+      
+      newEq = eqClassClass.newInstance();
+      newEq.init(newWord, false);
+      
+      if (null == (foundEq = eqsMap.get(newEq.getStem())))
+      {
+        newEq.assignId();
+        
+        newEq.setProperty(new Number(newCount));
+        newEq.setProperty(new Type(src ? EqType.SOURCE : EqType.TARGET));
+        
+        eqsMap.put(newEq.getStem(), newEq);
+      }
+      else
+      {
+        foundEq.merge(newEq);
+ 
+        ((Number)foundEq.getProperty(Number.class.getName())).increment(newCount);
+      }
+    }
+    
+    HashSet<EquivalenceClass> eqClasses = new HashSet<EquivalenceClass>(eqsMap.values());
+    
+    EqClassPersister.persistEqClasses(eqClasses, preProcDir + eqfileName);        
+    EqClassPersister.persistProperty(eqClasses, Number.class.getName(), preProcDir + Number.class.getSimpleName() + propFileExtension);
+    
+    return eqClasses;
   }
   
-  protected void collectAndWriteProps(Dictionary contextDict, CorpusAccessor srcAccessor, CorpusAccessor trgAccessor) throws Exception
+  protected void readProps(boolean src, Set<EquivalenceClass> eqClasses, String propFileExtension) throws Exception
+  {
+    String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");
+    
+    // Read properties
+    EqClassPersister.unpersistProperty(eqClasses, Number.class.getName(), preProcDir + Number.class.getSimpleName() + propFileExtension); 
+    EqClassPersister.unpersistProperty(eqClasses, Context.class.getName(), preProcDir + Context.class.getSimpleName() + propFileExtension);  
+    EqClassPersister.unpersistProperty(eqClasses, TimeDistribution.class.getName(), preProcDir + TimeDistribution.class.getSimpleName() + propFileExtension);
+    
+    // Assign type property
+    assignTypeProp(eqClasses, src ? EqType.SOURCE : EqType.TARGET);
+  }
+  
+  protected void collectProps(boolean src, Set<EquivalenceClass> eqClasses, Set<EquivalenceClass> contextEqs, Dictionary contextDict, String propFileExtension) throws Exception
   {
     String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");  
     int pruneContEqIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.context.PruneEqIfOccursFewerThan");
     int pruneContEqIfOccursMoreThan = Configurator.CONFIG.getInt("preprocessing.context.PruneEqIfOccursMoreThan");
+    int contextWindowSize = Configurator.CONFIG.getInt("preprocessing.context.Window");
+    int timeWindowSize = Configurator.CONFIG.getInt("preprocessing.time.Window");
+    boolean slidingWindow = Configurator.CONFIG.getBoolean("preprocessing.time.SlidingWindow");
     
-    LOG.info("Preparing contextual words: keeping those in dict [" + contextDict.toString() + "] and occuring (" + pruneContEqIfOccursFewerThan + "," + pruneContEqIfOccursMoreThan + ") times...");    
-    Set<EquivalenceClass> srcContextEq = new HashSet<EquivalenceClass>(m_allSrcEqs);
-    Set<EquivalenceClass> trgContextEq = new HashSet<EquivalenceClass>(m_allTrgEqs);
-    LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
-    
-    filters.add(new DictionaryFilter(contextDict, true, true));
-    filters.add(new NumOccurencesFilter(pruneContEqIfOccursFewerThan, true));
-    filters.add(new NumOccurencesFilter(pruneContEqIfOccursMoreThan, false));
-    srcContextEq = EquivalenceClassCollector.filter(srcContextEq, filters);
+    Set<EquivalenceClass> filtContextEqs = new HashSet<EquivalenceClass>(contextEqs);
 
-    filters.clear();
-    filters.add(new DictionaryFilter(contextDict, true, false)); 
+    LOG.info("Preparing contextual words for " + (src ? "source" : "target") + ": keeping those in dict [" + contextDict.toString() + "] and occuring (" + pruneContEqIfOccursFewerThan + "," + pruneContEqIfOccursMoreThan + ") times...");
+    LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
+    filters.add(new DictionaryFilter(contextDict, true, src)); 
     filters.add(new NumOccurencesFilter(pruneContEqIfOccursFewerThan, true));
     filters.add(new NumOccurencesFilter(pruneContEqIfOccursMoreThan, false));
-    trgContextEq = EquivalenceClassCollector.filter(trgContextEq, filters);
+    filtContextEqs = EquivalenceClassCollector.filter(filtContextEqs, filters);
+    LOG.info("Context " + (src ? "source" : "target") + " classes: " + filtContextEqs.size());
     
-    LOG.info("Context source classes: " + srcContextEq.size());
-    LOG.info("Context target classes: " + trgContextEq.size());
+    // Collect properties
+    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
+    (new ContextCollector(false, contextWindowSize, contextWindowSize, filtContextEqs)).collectProperty(accessor, eqClasses);    
+
+    accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), src);    
+    (new TimeDistributionCollector(false, timeWindowSize, slidingWindow)).collectProperty(accessor, eqClasses);
     
-    LOG.info("Collecting context...");
-    (new ContextCollector(SimpleEquivalenceClass.class.getName(), false, 2, 2, srcContextEq)).collectProperty(srcAccessor, m_allSrcEqs);    
-    (new ContextCollector(SimpleEquivalenceClass.class.getName(), false, 2, 2, trgContextEq)).collectProperty(trgAccessor, m_allTrgEqs);
-        
-    LOG.info("Collecting temporal distributions...");
-    (new TimeDistributionCollector(SimpleEquivalenceClass.class.getName(), false, 1, false)).collectProperty(srcAccessor, m_allSrcEqs);    
-    (new TimeDistributionCollector(SimpleEquivalenceClass.class.getName(), false, 1, false)).collectProperty(trgAccessor, m_allTrgEqs);
+    EqClassPersister.persistProperty(eqClasses, Context.class.getName(), preProcDir + Context.class.getSimpleName() + propFileExtension);
+    EqClassPersister.persistProperty(eqClasses, TimeDistribution.class.getName(), preProcDir + TimeDistribution.class.getSimpleName() + propFileExtension);
     
-    // Save collected propereties
-    EqClassPersister.persistProperty(m_allSrcEqs, Context.class, preProcDir + Context.class.getSimpleName() + ".src.map");
-    EqClassPersister.persistProperty(m_allTrgEqs, Context.class, preProcDir + Context.class.getSimpleName() + ".trg.map");
-    EqClassPersister.persistProperty(m_allSrcEqs, TimeDistribution.class, preProcDir + TimeDistribution.class.getSimpleName() + ".src.map");
-    EqClassPersister.persistProperty(m_allTrgEqs, TimeDistribution.class, preProcDir + TimeDistribution.class.getSimpleName() + ".trg.map");  
+    // Assign type property
+    assignTypeProp(eqClasses, src ? EqType.SOURCE : EqType.TARGET);
   }
-  
-  protected void pruneEqClasses() throws Exception
+
+  protected Set<EquivalenceClass> pruneEqClasses(Set<EquivalenceClass> eqClasses, boolean src, String stopWordsFileName, String eqClassName, boolean filterRomanTrg) throws Exception
   {
     String stopWordsDir = Configurator.CONFIG.getString("resources.stopwords.Path");
-    String srcStop = Configurator.CONFIG.getString("resources.stopwords.SrcStopWords");
-    String trgStop = Configurator.CONFIG.getString("resources.stopwords.TrgStopWords");
-    String srcEqClasses = Configurator.CONFIG.getString("preprocessing.SrcEqClass");
-    String trgEqClasses = Configurator.CONFIG.getString("preprocessing.TrgEqClass");
     int pruneCandIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.candidates.PruneIfOccursFewerThan");
     int pruneCandIfOccursMoreThan = Configurator.CONFIG.getInt("preprocessing.candidates.PruneIfOccursMoreThan");    
-    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
 
-    LOG.info("Reading stop words ...");
-
-    // Collect for source
     LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
     filters.add(new GarbageFilter());
-    
-    SimpleEquivalenceClassCollector collector = new SimpleEquivalenceClassCollector(srcEqClasses, filters, false);
-    Set<EquivalenceClass> srcStopEq = ((new File(stopWordsDir + srcStop)).exists()) ?
-      collector.collect((new LexCorpusAccessor(srcStop, stopWordsDir)).getCorpusReader(), -1) :
-      new HashSet<EquivalenceClass>();
-    
-    // Collect for target
     if (filterRomanTrg)
     { filters.add(new RomanizationFilter());
     }
-    
-    collector = new SimpleEquivalenceClassCollector(trgEqClasses, filters, false);
-    Set<EquivalenceClass> trgStopEq = ((new File(stopWordsDir + trgStop)).exists()) ? 
-      collector.collect((new LexCorpusAccessor(trgStop, stopWordsDir)).getCorpusReader(),-1) :
+        
+    SimpleEquivalenceClassCollector collector = new SimpleEquivalenceClassCollector(filters, false);
+    Set<? extends EquivalenceClass> stopEqs = ((new File(stopWordsDir + stopWordsFileName)).exists()) ?
+      collector.collect((new LexCorpusAccessor(stopWordsFileName, stopWordsDir)).getCorpusReader(), -1) :
       new HashSet<EquivalenceClass>();
     
-    LOG.info("Source stop words:" + srcStopEq.size() + ", target stop words:" + trgStopEq.size() + (filterRomanTrg ? " (without romanization) " : ""));  
-    LOG.info("Pruning candidate words: removing stop words, eq classes with no context or distro, and keeping if occur (" + pruneCandIfOccursFewerThan + "," + pruneCandIfOccursMoreThan + ") times..."); 
-    
+    LOG.info("Pruning " + (src ? "source" : "target")  + " candidate words: removing " + stopEqs.size()  + " stop words, eq classes with no context or distro, and keeping if occur (" + pruneCandIfOccursFewerThan + "," + pruneCandIfOccursMoreThan + ") times..."); 
+        
     filters.clear();
-    filters.add(new StopWordsFilter(srcStopEq));
+    filters.add(new StopWordsFilter(stopEqs));
     filters.add(new NoContextFilter());
     filters.add(new NoTimeDistributionFilter());
     filters.add(new NumOccurencesFilter(pruneCandIfOccursFewerThan, true));
     filters.add(new NumOccurencesFilter(pruneCandIfOccursMoreThan, false));
-    m_allSrcEqs = EquivalenceClassCollector.filter(m_allSrcEqs, filters);
     
-    filters.clear();
-    filters.add(new StopWordsFilter(trgStopEq));
-    filters.add(new NoContextFilter());
-    filters.add(new NoTimeDistributionFilter());
-    filters.add(new NumOccurencesFilter(pruneCandIfOccursFewerThan, true));
-    filters.add(new NumOccurencesFilter(pruneCandIfOccursMoreThan, false));
-    m_allTrgEqs = EquivalenceClassCollector.filter(m_allTrgEqs, filters);
-    
-    LOG.info("Candidate source classes: " + m_allSrcEqs.size());
-    LOG.info("Candidate target classes: " + m_allTrgEqs.size());
+    return EquivalenceClassCollector.filter(eqClasses, filters);    
   }
-  
-  protected void dictCoverage(Dictionary dict, Set<EquivalenceClass> eqs, boolean source)
+
+  protected void dictCoverage(Dictionary dict, Set<EquivalenceClass> eqs, boolean src)
   {
-    Set<EquivalenceClass> dictEntries = source ? dict.getAllKeys() : dict.getAllVals();  
     DecimalFormat df = new DecimalFormat("0.00");
     double tokTotal = 0;
     double tokCovered = 0;
@@ -307,7 +359,7 @@ public class DataPreparer
       {  
         num = numProp.getNumber();
       
-        if (dictEntries.contains(eq))
+        if ((src && dict.containsSrc(eq)) || (!src && dict.containsTrg(eq)))
         {
           tokCovered += num;
           typCovered++;
@@ -317,10 +369,10 @@ public class DataPreparer
       }
     }    
    
-    LOG.info("[" + dict.getName() + (source ? "]: source" : "]: target") + " dictionary coverage " + df.format(100.0 * tokCovered / tokTotal) + "% tokens and " + df.format(100.0 * typCovered / (double)eqs.size()) + "% types.");
+    LOG.info("[" + dict.getName() + (src ? "]: source" : "]: target") + " dictionary coverage " + df.format(100.0 * tokCovered / tokTotal) + "% tokens and " + df.format(100.0 * typCovered / (double)eqs.size()) + "% types.");
   }
   
-  protected void collectTokenCounts(Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs)
+  protected void collectTokenCounts(Set<? extends EquivalenceClass> srcEqs, Set<? extends EquivalenceClass> trgEqs)
   {
     m_maxTokCountInSrc = 0;
     m_maxTokCountInTrg = 0;
@@ -356,6 +408,26 @@ public class DataPreparer
     LOG.info("Maximum occurrences: src = " + m_maxTokCountInSrc + ", trg = " + m_maxTokCountInTrg + ".");
     LOG.info("Total Counts: src = " + m_numToksInSrc + ", trg = " + m_numToksInTrg + ".");    
   }
+
+  protected CorpusAccessor getAccessor(String kind, boolean src) throws Exception
+  {
+    CorpusAccessor accessor = null;
+    
+    if ("europarl".equals(kind))
+    { accessor = getEuroParlAccessor(src);
+    }
+    else if ("wiki".equals(kind))
+    { accessor = getWikiAccessor(src);
+    }
+    else if ("crawls".equals(kind))
+    { accessor = getCrawlsAccessor(src);
+    }
+    else
+    { LOG.error("Could not find corpus accessor for " + kind);
+    }
+    
+    return accessor;
+  }
   
   protected EuroParlCorpusAccessor getEuroParlAccessor(boolean src) throws Exception
   {    
@@ -366,118 +438,184 @@ public class DataPreparer
     Date fromDate = sdf.parse(Configurator.CONFIG.getString("corpora.europarl.DateFrom"));
     Date toDate = sdf.parse(Configurator.CONFIG.getString("corpora.europarl.DateTo"));
     
-    return new EuroParlCorpusAccessor(path + subDir, fromDate, toDate);
+    return new EuroParlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate);
   }
   
-  protected LexCorpusAccessor getPlainTextAccessor(boolean src)
-  {
-    String path = Configurator.CONFIG.getString("corpora.plaintext.Path");
-    String fileRegExp = src ? Configurator.CONFIG.getString("corpora.plaintext.SrcRegExp") : Configurator.CONFIG.getString("corpora.plaintext.TrgRegExp");
-  
-    return new LexCorpusAccessor(fileRegExp, path);
+  protected CrawlCorpusAccessor getCrawlsAccessor(boolean src) throws Exception
+  {    
+    String path = Configurator.CONFIG.getString("corpora.crawls.Path"); 
+    String subDir = src ? Configurator.CONFIG.getString("corpora.crawls.SrcSubDir") : Configurator.CONFIG.getString("corpora.crawls.TrgSubDir");
+
+    SimpleDateFormat sdf = new SimpleDateFormat( "yy-MM-dd" );
+    Date fromDate = sdf.parse(Configurator.CONFIG.getString("corpora.crawls.DateFrom"));
+    Date toDate = sdf.parse(Configurator.CONFIG.getString("corpora.crawls.DateTo"));
+    
+    return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate);
   }
   
-  protected void prepareDictionariesFromSingleFile() throws Exception
+  protected LexCorpusAccessor getWikiAccessor(boolean src)
   {
-    String dictDir = Configurator.CONFIG.getString("resources.dictionaries.Path");
-    String useDictFile = Configurator.CONFIG.getString("resources.dictionaries.UseDictionary");
-    String augDictFile = Configurator.CONFIG.containsKey("experiments.AugDictionary") ? Configurator.CONFIG.getString("experiments.AugDictionary") : null;
+    String path = Configurator.CONFIG.getString("corpora.wiki.Path");
+    String fileRegExp = src ? Configurator.CONFIG.getString("corpora.wiki.SrcRegExp") : Configurator.CONFIG.getString("corpora.wiki.TrgRegExp");
+  
+    return new LexCorpusAccessor(fileRegExp, appendSep(path));
+  }
+  
+  protected void prepareDictionariesFromSingleFile(
+      Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs,
+      Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs) throws Exception
+  {
+    String dictDir = Configurator.CONFIG.getString("resources.dictionary.Path");
+    String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
     boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
     int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
+
+    LOG.info("Reading/preparing dictionaries ...");
     
-    m_useDict = new Dictionary(dictDir + useDictFile, SimpleEquivalenceClass.class, SimpleEquivalenceClass.class, "Usable", filterRomanTrg);
-    m_useDict.pruneCounts(ridDictNumTrans);
+    m_entireDict = new SimpleDictionary(dictDir + dictFileName, "Entire", filterRomanTrg);
+    m_entireDict.pruneCounts(ridDictNumTrans);
     
-    // Create seed and test dictionaries
+    // Split into seed and test dictionaries
+    DictPair pair;
+    
     if (Configurator.CONFIG.containsKey("experiments.DictionaryPercentToUse") && Configurator.CONFIG.containsKey("experiments.DictionaryNumberToUse"))
     { throw new IllegalArgumentException("Both percentage and number defined");
     }
     else if (Configurator.CONFIG.containsKey("experiments.DictionaryPercentToUse"))
     {
       double percentSeedDict = Configurator.CONFIG.getDouble("experiments.DictionaryPercentToUse");
-      DictPair dicts = m_useDict.splitPercent(percentSeedDict * 100 + "%-of-Usable", (1.0 - percentSeedDict) * 100 + "%-of-Usable", percentSeedDict);
-      m_seedDict = dicts.dict;
-      m_testDict = dicts.rest;
+      pair = m_entireDict.splitPercent(percentSeedDict * 100 + "%-of-Usable", (1.0 - percentSeedDict) * 100 + "%-of-Usable", percentSeedDict);
     }
     else if (Configurator.CONFIG.containsKey("experiments.DictionaryNumberToUse"))
     {
       int numberSeedDict = Configurator.CONFIG.getInt("experiments.DictionaryNumberToUse");
-      DictPair dicts = m_useDict.splitPart(numberSeedDict + "-entries-from-Usable", (m_useDict.size() - numberSeedDict) + "-entries-from-Usable", numberSeedDict);
-      m_seedDict = dicts.dict;
-      m_testDict = dicts.rest;
+      pair = m_entireDict.splitPart(numberSeedDict + "-entries-from-Usable", (m_entireDict.size() - numberSeedDict) + "-entries-from-Usable", numberSeedDict);
     }
     else
     { throw new IllegalArgumentException();
     }
+       
+    m_seedDict = new Dictionary(srcContEqs, trgContEqs, pair.dict, pair.dict.getName());
+    m_testDict = new Dictionary(srcEqs, trgEqs, pair.rest, pair.rest.getName());
     
-    LOG.info("Use Dictionary: " + m_useDict.toString());    
+    LOG.info("Entire Dictionary: " + m_entireDict.toString());    
     LOG.info("Seed Dictionary: " + m_seedDict.toString());
     LOG.info("Test Dictionary: " + m_testDict.toString());
+  }
 
-    // Augment seed dictionary with aug dict (if given)
-    if ((augDictFile != null) && (new File(dictDir + augDictFile).exists()))
-    {
-      Dictionary augDict = new Dictionary(dictDir + augDictFile, SimpleEquivalenceClass.class, SimpleEquivalenceClass.class, "AugDictionary", filterRomanTrg);
-      m_seedDict.augment(augDict, false);
-      LOG.info("Seed dictionary augmented (without replacement) with: " + augDict.toString());
-      LOG.info("New seed dictionary: " + m_seedDict.toString());
+  /*
+  protected void prepareSingleLangDictionaries(boolean src) throws Exception
+  {  
+    String eqClassName = src ? Configurator.CONFIG.getString("preprocessing.SrcEqClass") : Configurator.CONFIG.getString("preprocessing.TrgEqClass");
+    Set<EquivalenceClass> eqClasses = src ? m_allSrcEqs : m_allTrgEqs;
+    
+    LOG.info("Preparing monolingual dictionaries ...");
+    
+    m_entireDict = new Dictionary(eqClassName, eqClassName, "Monolingual-Dict");
+        
+    for (EquivalenceClass eq : eqClasses)
+    { m_entireDict.add(eq, eq);
+    }
+    
+    m_seedDict = m_testDict = m_entireDict;
+    LOG.info("Use, seed and test dictionary: " + m_entireDict.toString());
+  }
+*/
+
+  protected void assignTypeProp(Set<? extends EquivalenceClass> eqClasses, EqType type)
+  {
+    for (EquivalenceClass eq : eqClasses)
+    { eq.setProperty(new Type(type));
     }
   }
 
-  protected void prepareDictionaries() throws Exception
+  /** Selects most frequent test dictionary tokens for induction. */
+  protected Set<EquivalenceClass> selectMostFrequentSrcTokens(Dictionary testDict, Set<EquivalenceClass> srcEqs) throws IOException
   {
-    String dictDir = Configurator.CONFIG.getString("resources.DictPath");
-    String testDictFile = Configurator.CONFIG.getString("resources.dictionaries.TestDictionary");
-    String useDictFile = Configurator.CONFIG.getString("resources.dictionaries.UseDictionary");
-    String augDictFile = Configurator.CONFIG.containsKey("experiments.AugDictionary") ? Configurator.CONFIG.getString("experiments.AugDictionary") : null;
-    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
-    int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
+    int numToKeep = Configurator.CONFIG.containsKey("experiments.NumSource") ? Configurator.CONFIG.getInt("experiments.NumSource") : -1;
+    String outDir = Configurator.CONFIG.getString("output.Path");
+    Set<EquivalenceClass> srcSubset = new HashSet<EquivalenceClass>(srcEqs);
+    
+    srcSubset.retainAll(testDict.getAllSrc());
+    
+    if ((numToKeep >= 0) && (srcSubset.size() > numToKeep))
+    {
+      LinkedList<EquivalenceClass> valList = new LinkedList<EquivalenceClass>(srcSubset);
+      Collections.sort(valList, new NumberComparator(false));
+      
+      for (int i = numToKeep; i < valList.size(); i++)
+      {
+        srcSubset.remove(valList.get(i));
+      }
+    }
+    
+    BufferedWriter writer = new BufferedWriter(new FileWriter(outDir + SRC_TO_INDUCT));
+    
+    for (EquivalenceClass eq : srcSubset)
+    { writer.write(((Number)eq.getProperty(Number.class.getName())).getNumber() + "\t" + eq.toString() + "\n");
+    }
+    
+    writer.close();
+    
+    LOG.info("Selected " + srcSubset.size() + " most frequent test dictionary source classes (see " + outDir + SRC_TO_INDUCT + ").");
 
-    m_useDict = new Dictionary(dictDir + useDictFile, SimpleEquivalenceClass.class, SimpleEquivalenceClass.class, "Usable", filterRomanTrg);
-    m_useDict.pruneCounts(ridDictNumTrans);
-    
-    m_testDict = new Dictionary(dictDir + testDictFile, SimpleEquivalenceClass.class, SimpleEquivalenceClass.class, "Test", filterRomanTrg);
-    m_testDict.pruneCounts(ridDictNumTrans);
-    
-    // Create seed dictionary
-    if (Configurator.CONFIG.containsKey("experiments.DictionaryPercentToUse") && Configurator.CONFIG.containsKey("experiments.DictionaryNumberToUse"))
-    { throw new IllegalArgumentException("Both percentage and number defined");
-    }
-    else if (Configurator.CONFIG.containsKey("experiments.DictionaryPercentToUse"))
-    {
-      double percentSeedDict = Configurator.CONFIG.getDouble("experiments.DictionaryPercentToUse");
-      m_seedDict = m_useDict.splitPercent(percentSeedDict * 100 + "%-of-Usable", "", percentSeedDict).dict;
-    }
-    else if (Configurator.CONFIG.containsKey("experiments.DictionaryNumberToUse"))
-    {
-      int numberSeedDict = Configurator.CONFIG.getInt("experiments.DictionaryNumberToUse");
-      m_seedDict = m_useDict.splitPart(numberSeedDict + "-entries-from-Usable", "", numberSeedDict).dict;
-    }
-    else
-    { throw new IllegalArgumentException();
-    }
-    
-    LOG.info("Use Dictionary: " + m_useDict.toString());
-    LOG.info("Test Dictionary: " + m_testDict.toString());
-    LOG.info("Seed Dictionary: " + m_seedDict.toString());
+    return srcSubset;
+  }
 
-    // Augment seed dictionary with aug dict (if given)
-    if ((augDictFile != null) && (new File(dictDir + augDictFile).exists()))
+  /** Selects random test dictionary tokens for induction. */
+  protected Set<EquivalenceClass> selectRandSrcTokens(Dictionary testDict, Set<EquivalenceClass> srcEqs) throws Exception
+  {
+    int numToKeep = Configurator.CONFIG.containsKey("experiments.NumSource") ? Configurator.CONFIG.getInt("experiments.NumSource") : -1;
+    String outDir = Configurator.CONFIG.getString("output.Path");
+    Set<EquivalenceClass> srcSubset = new HashSet<EquivalenceClass>(srcEqs);
+    
+    srcSubset.retainAll(testDict.getAllSrc());
+    
+    if ((numToKeep >= 0) && (srcSubset.size() > numToKeep))
     {
-      Dictionary augDict = new Dictionary(dictDir + augDictFile, SimpleEquivalenceClass.class, SimpleEquivalenceClass.class, "AugDictionary", filterRomanTrg);
-      m_seedDict.augment(augDict, false);
-      LOG.info("Seed dictionary augmented (without replacement) with: " + augDict.toString());
-      LOG.info("New seed dictionary: " + m_seedDict.toString());
+      LinkedList<EquivalenceClass> valList = new LinkedList<EquivalenceClass>(srcSubset);
+      srcSubset.clear();
+
+      for (int i = 0; i < numToKeep; i++)
+      { srcSubset.add(valList.remove(m_rand.nextInt(valList.size())));
+      }
     }
+        
+    BufferedWriter writer = new BufferedWriter(new FileWriter(outDir + SRC_TO_INDUCT));
+    
+    for (EquivalenceClass eq : srcSubset)
+    { writer.write(((Number)eq.getProperty(Number.class.getName())).getNumber()  + "\t" + eq.toString() + "\n");
+    }
+    
+    writer.close();
+    
+    LOG.info("Selected " + srcSubset.size() + " random test dictionary source classes (see " + outDir + SRC_TO_INDUCT + ").");
+
+    return srcSubset;
   }
   
+  protected String appendSep(String str)
+  {
+    String ret = (str == null) ? null : str.trim();
+    
+    if (ret != null && ret.length() > 0 && !ret.endsWith(File.separator))
+    { ret += File.separator; 
+    }
+    
+    return ret;
+  }
+
+  protected SimpleDictionary m_entireDict;
   protected Dictionary m_seedDict;
-  protected Dictionary m_useDict;
   protected Dictionary m_testDict;
   protected Set<EquivalenceClass> m_allSrcEqs;
   protected Set<EquivalenceClass> m_allTrgEqs;
+  protected Set<EquivalenceClass> m_srcEqs;
+  protected Set<EquivalenceClass> m_trgEqs;
   protected double m_numToksInSrc;
-  protected double m_numToksInTrg;  
+  protected double m_numToksInTrg;
   protected double m_maxTokCountInSrc;
   protected double m_maxTokCountInTrg;  
+  protected Random m_rand = new Random(1);
+
 }

@@ -1,17 +1,19 @@
 package babel.ranking.scorers.context;
 
 import babel.content.eqclasses.properties.Context.ContextualItem;
+import babel.content.eqclasses.properties.Type.EqType;
+import babel.util.dict.Dictionary;
 
 public class FungS0Scorer extends DictScorer
 {
-  public FungS0Scorer()
+  public FungS0Scorer(Dictionary dict)
   {
-    super();
+    super(dict);
   }
   
-  public double scoreContItem(ContextualItem contItem)
+  protected double scoreContItem(ContextualItem contItem, EqType type)
   {
-    return contItem.getCount();
+    return contItem.getContextCount();
   }
   
   protected double m_srcMaxCount;

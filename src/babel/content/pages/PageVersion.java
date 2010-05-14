@@ -20,8 +20,6 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
@@ -75,9 +73,7 @@ public class PageVersion implements XMLPersistable, Writable
    * Should only be used by NutchPageExtractor.
    */
   public PageVersion(String segmentId, List<NutchChunk> chunks)
-  {
-    this();
-    
+  {    
     Writable curVal;
     CrawlDatum curCD;
     //Content curCT;
@@ -154,166 +150,16 @@ public class PageVersion implements XMLPersistable, Writable
     String prop = m_verProps.getFirst(PROP_FETCH_TIME);
     return (prop != null ? Long.parseLong(prop) : null);
   }
-
+  
   public Long getModificationTime()
   {
     String prop = m_verProps.getFirst(PROP_MODIFIED_TIME);
-        
-    if ("0".equals(prop))
-    {
-      Pattern p1 = Pattern.compile("Page last updated at [^,]*,");
-      Pattern p2 = Pattern.compile("Последнее обновление: ");
-      
-      Matcher m1 = p1.matcher(m_content);
-      Matcher m2 = p2.matcher(m_content);
-      
-      
-      if (m1.find())
-      {
-        int i = m1.end();
-        
-        String[] split = m_content.substring(i, Math.min(i + 100, m_content.length())).trim().split("[\\s,]+");
-
-        if (split.length >= 4)
-        {
-          try
-          {
-            int m = getEngMonth(split[2]);
-            
-            if (m == -1)
-            {
-              throw new IllegalArgumentException();
-            }
-            
-            int y = Integer.parseInt(split[3]);
-            int d = Integer.parseInt(split[1]);
-            
-            Date date = new Date(y, m, d);
-            prop = Long.toString(date.getTime());
-          }
-          catch(Exception e)
-          {}          
-        }
-      }
-      else if (m2.find())
-      {
-        int i = m2.end();
-        
-        String[] split = m_content.substring(i, Math.min(i + 100, m_content.length())).trim().split("[\\s,]+");
-
-        if (split.length >= 4)
-        {
-          try
-          {
-            int m = getRusMonth(split[2]);
-            
-            if (m == -1)
-            {
-              throw new IllegalArgumentException();
-            }
-            
-            int y = Integer.parseInt(split[3]);
-            int d = Integer.parseInt(split[1]);
-            
-            Date date = new Date(y, m, d);
-            prop = Long.toString(date.getTime());
-          }
-          catch(Exception e)
-          {}          
-        } 
-      }
-    }
-    
-    return (prop != null ? Long.parseLong(prop) : null);
+    return (prop != null ? Long.parseLong(prop) : null);   
   }
   
-  protected int getEngMonth(String month)
+  public void setModificationTime(Long time)
   {
-    int num = -1;
-    
-    if ("January".equalsIgnoreCase(month))
-    { return 1;
-    }
-    else if ("February".equalsIgnoreCase(month))
-    { return 2;
-    }
-    else if ("March".equalsIgnoreCase(month))
-    { return 3;
-    }
-    else if ("April".equalsIgnoreCase(month))
-    { return 4;
-    }
-    else if ("May".equalsIgnoreCase(month))
-    { return 5;
-    }
-    else if ("June".equalsIgnoreCase(month))
-    { return 6;
-    }
-    else if ("July".equalsIgnoreCase(month))
-    { return 7;
-    }
-    else if ("August".equalsIgnoreCase(month))
-    { return 8;
-    }
-    else if ("September".equalsIgnoreCase(month))
-    { return 9;
-    }
-    else if ("October".equalsIgnoreCase(month))
-    { return 10;
-    }
-    else if ("November".equalsIgnoreCase(month))
-    { return 11;
-    }
-    else if ("December".equalsIgnoreCase(month))
-    { return 12;
-    }
-    
-    return num;
-  }
-  
-  protected int getRusMonth(String mo)
-  {
-    int num = -1;
-    String month = mo.toLowerCase();
-    
-    if (month.startsWith("январ"))
-    { return 1;
-    }
-    else if (month.startsWith("феврал"))
-    { return 2;
-    }
-    else if (month.startsWith("март"))
-    { return 3;
-    }
-    else if (month.startsWith("апрел"))
-    { return 4;
-    }
-    else if (month.startsWith("ма"))
-    { return 5;
-    }
-    else if (month.startsWith("июн"))
-    { return 6;
-    }
-    else if (month.startsWith("июл"))
-    { return 7;
-    }
-    else if (month.startsWith("август"))
-    { return 8;
-    }
-    else if (month.startsWith("сентябр"))
-    { return 9;
-    }
-    else if (month.startsWith("октябр"))
-    { return 10;
-    }
-    else if (month.startsWith("ноябр"))
-    { return 11;
-    }
-    else if (month.startsWith("декабр"))
-    { return 12;
-    }
-    
-    return num;
+    m_verProps.set(PROP_MODIFIED_TIME, Long.toString(time));
   }
   
   public String toString()

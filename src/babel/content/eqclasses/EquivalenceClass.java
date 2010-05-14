@@ -8,12 +8,15 @@ import babel.content.eqclasses.properties.Property;
 public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
 {
   protected static final boolean DEF_CASE_SENSITIVE = false;
-    
+  protected static final long NO_ID = -1;
+  protected static int CURRENT_EQCLASS_ID;
+  
   /**
    * Simple constuctor.
    */
   public EquivalenceClass()
   {
+    m_id = NO_ID;
     m_initialized = false;
     m_caseSensitive = DEF_CASE_SENSITIVE;
     m_properties = new ArrayList<Property>();
@@ -25,32 +28,41 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
    * @param word
    * @param caseSensitive
    */
-  public void init(int id, String word, boolean caseSensitive)
+  public void init(String word, boolean caseSensitive)
   {
     if (word == null)
     { throw new IllegalArgumentException();
     }
     
-    m_id = id;
     m_initialized = true;
     m_caseSensitive = caseSensitive;
     m_properties.clear();
   }
+  
+  public void assignId()
+  {    
+    if (m_id == NO_ID)
+    { m_id = CURRENT_EQCLASS_ID++;
+    }
+    else
+    { throw new IllegalStateException("Class has already been assigned id: " + m_id);
+    }
+  }
 
-  public int getId()
+  public long getId()
   { return m_id;
   }
   
   /**
-   * Checks if the given word is in the equivalence class. If it is, adds it 
-   * as a variant and returns true.
-   * 
-   * @param word
-   * @return
+   * Checks if the given word is in the equivalence class. 
+   */
+  public abstract boolean isInEqClass(String word);
+ 
+  /**
+   * If a word is in the eq class, adds it as a variant.
    */
   public abstract boolean addMorph(String word);
 
-  public abstract boolean merge(EquivalenceClass other);
   /**
    * @return All words which were added.
    */
@@ -64,10 +76,12 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
   
   /**
    * Checks if the other object represents the same equivalence class.
-   * @param eq EquivalenceClass object to check.
-   * @return true iff the other object representes the same equivalence class.
    */
-  public abstract boolean overlap(EquivalenceClass eq);
+  public boolean sameEqClass(EquivalenceClass eq)
+  { return equals(eq);
+  }
+
+  public abstract boolean merge(EquivalenceClass eq);
   
   /**
    * @return true iff EquivalenceClass is case sensitive
@@ -77,17 +91,30 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
     return m_caseSensitive;
   }
   
-  // TODO: Is this the right thing to do?  Make sure it is correct for the other
-  // equivalence classes return
   public int hashCode()
   {
     return getStem().hashCode();
   }
   
+  public boolean equals(Object obj)
+  {
+    return ((obj != null) && (obj instanceof EquivalenceClass) && (compareTo((EquivalenceClass)obj) == 0));
+  }
+
+  public int compareTo(EquivalenceClass eq)
+  {
+    if (eq == null)
+    { throw new NullPointerException();
+    }
+    else if (!getClass().equals(eq.getClass()) || !m_initialized || !eq.m_initialized || (m_caseSensitive != eq.m_caseSensitive))
+    { throw new RuntimeException(); 
+    }
+
+    return getStem().compareTo(eq.getStem());
+  }
+  
   /**
    * Return a property for a given propery ID, or null if none found.
-   * @param propId
-   * @return
    */
   public Property getProperty(String propId)
   {
@@ -173,14 +200,17 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
    * @param word given string
    * @return converted string
    */
-  protected String getWordOfAppropriateForm(String word)
+  public static String getWordOfAppropriateForm(String word, boolean caseSensitive)
   {
-    return m_caseSensitive ? word : 
-      ((word == null) ? null : word.toLowerCase());  
+    return caseSensitive ? word : 
+      ((word == null) ? null : word.toLowerCase().trim());  
   }
   
+  public static void test() {}
+  
+  
   /** Unique id of the EquivalenceClass. */ 
-  protected int m_id;
+  protected long m_id;
   /** True iff init was called. */
   protected boolean m_initialized;
   /** True iff EquivalenceClass is case sensitive. */

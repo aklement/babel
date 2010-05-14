@@ -57,7 +57,7 @@ public class Ranker
     boolean smallerIsBetter = m_scorer.smallerScoresAreBetter();
     EquivClassCandRanking candSet = new EquivClassCandRanking(srcEq, m_numBest, smallerIsBetter);
     double score;
-        
+  
     for (EquivalenceClass trgEq : trgEqs)
     {
       score = m_scorer.score(srcEq, trgEq);

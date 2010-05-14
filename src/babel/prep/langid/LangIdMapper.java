@@ -29,9 +29,9 @@ import babel.content.pages.MetaData;
 import babel.content.pages.Page;
 import babel.content.pages.PageVersion;
 
+import babel.util.language.GoogleLangDetector;
 import babel.util.language.LangDetectionResult;
 import babel.util.language.LangDetector;
-import babel.util.language.google.GoogleLangDetector;
 
 public class LangIdMapper extends MapReduceBase implements Mapper<Text, Page, Text, Page>
 {

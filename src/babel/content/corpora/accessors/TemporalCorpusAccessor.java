@@ -1,6 +1,7 @@
 package babel.content.corpora.accessors;
 
 import java.io.InputStreamReader;
+import java.util.Date;
 
 /**
  * Adds a "per day" way of accessing the corpus.
@@ -23,4 +24,6 @@ public abstract class TemporalCorpusAccessor extends CorpusAccessor
 	 * @return an InputStream reader for a current day view of the corpus.
 	 */
   public abstract InputStreamReader getCurDayReader();
+  
+  public abstract Date getCurDay();
 }

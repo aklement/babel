@@ -5,7 +5,6 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -39,7 +38,7 @@ public class EqClassPersister
     }
   }
   
-  public static Set<EquivalenceClass> unpersistEqClasses(Class<? extends EquivalenceClass> eqClass, String fileName) throws Exception
+  public static Set<EquivalenceClass> unpersistEqClasses(Class<? extends EquivalenceClass> eqClassClass, String fileName) throws Exception
   {
     BufferedReader reader = new BufferedReader(new FileReader(fileName));
     String line;
@@ -48,7 +47,7 @@ public class EqClassPersister
     
     while ((line = reader.readLine()) != null)
     {
-      eq = eqClass.newInstance();
+      eq = eqClassClass.newInstance();
       eq.unpersistFromString(line);
       eqs.add(eq);
     }
@@ -62,7 +61,7 @@ public class EqClassPersister
     return eqs;
   }
   
-  public static void persistProperty(Collection<EquivalenceClass> eqs, Class<? extends Property> propClass, String fileName) throws IOException
+  public static void persistProperty(Set<EquivalenceClass> eqs, String propClassName, String fileName) throws IOException
   {
     BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
     int numNoProp = 0;
@@ -70,9 +69,9 @@ public class EqClassPersister
     
     for (EquivalenceClass eq : eqs)
     {
-      if (null != (prop = eq.getProperty(propClass.getName())))
+      if (null != (prop = eq.getProperty(propClassName)))
       {
-        writer.write(Integer.toString(eq.getId()));
+        writer.write(Long.toString(eq.getId()));
         writer.write(DELIM_OPEN);
         writer.write(prop.persistToString());
         writer.write(DELIM_CLOSE);
@@ -86,22 +85,24 @@ public class EqClassPersister
     writer.close();
     
     if (LOG.isInfoEnabled())
-    { LOG.info("Persisted property " + propClass.getName() + " for " + (eqs.size() - numNoProp) + " eq. classes, " + numNoProp + " did not have the property.");
+    { LOG.info("Persisted property " + propClassName + " for " + (eqs.size() - numNoProp) + " eq. classes, " + numNoProp + " did not have the property.");
     }
   }
 
-  public static void unpersistProperty(Set<EquivalenceClass> eqs, Class<? extends Property> propClass, String fileName) throws Exception
+  @SuppressWarnings("unchecked")
+  public static void unpersistProperty(Set<EquivalenceClass> eqs, String propClassName, String fileName) throws Exception
   {
     BufferedReader reader = new BufferedReader(new FileReader(fileName));
-    HashMap<Integer, EquivalenceClass> map = new HashMap<Integer, EquivalenceClass>();
+    HashMap<Long, EquivalenceClass> eqMap = new HashMap<Long, EquivalenceClass>();
     int numWithProp = 0;
     Property prop;
     EquivalenceClass eq;
     String line;
     int idxOpen, idxClose;
+    Class<? extends Property> propClass = (Class<? extends Property>)Class.forName(propClassName);
         
     for (EquivalenceClass curEq : eqs)
-    { map.put(curEq.getId(), curEq);
+    { eqMap.put(curEq.getId(), curEq);
     }
     
     while ((line = reader.readLine()) != null)
@@ -109,10 +110,10 @@ public class EqClassPersister
       idxOpen = line.indexOf(DELIM_OPEN);
       idxClose = line.lastIndexOf(DELIM_CLOSE);
       
-      eq = map.get(Integer.parseInt(line.substring(0, idxOpen)));
+      eq = eqMap.get(Long.parseLong(line.substring(0, idxOpen)));
 
       prop = propClass.newInstance();
-      prop.unpersistFromString(eq, map, line.substring(idxOpen + DELIM_OPEN.length(), idxClose));
+      prop.unpersistFromString(eq, line.substring(idxOpen + DELIM_OPEN.length(), idxClose));
       
       eq.setProperty(prop);
       numWithProp++;

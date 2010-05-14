@@ -4,7 +4,6 @@ import java.io.PrintStream;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import babel.content.eqclasses.EquivalenceClass;
 
@@ -244,7 +243,7 @@ public class TimeDistribution extends Property implements Cloneable
   /**
    * @return total count
    */
-  public int getTotalOccurences()
+  public long getTotalOccurences()
   {
     return m_count;
   }
@@ -327,13 +326,13 @@ public class TimeDistribution extends Property implements Cloneable
   }
 
   @Override
-  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEqs, String str) throws Exception
+  public void unpersistFromString(EquivalenceClass eq, String str) throws Exception
   {
     String[] toks = str.split("\t");
     
     m_sum = Double.parseDouble(toks[0]);
     m_sumSquares = Double.parseDouble(toks[1]);
-    m_count = Integer.parseInt(toks[2]);
+    m_count = Long.parseLong(toks[2]);
     m_normalized = Boolean.parseBoolean(toks[3]);
     
     m_windows.clear();
@@ -345,7 +344,7 @@ public class TimeDistribution extends Property implements Cloneable
   /** Time windows containing counts per window. */
   protected ArrayList<Double> m_windows;
   /** Count of total occurences. */
-  protected int m_count;
+  protected long m_count;
   protected boolean m_normalized;
   protected double m_sum;
   protected double m_sumSquares;

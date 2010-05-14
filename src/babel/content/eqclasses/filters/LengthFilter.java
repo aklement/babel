@@ -11,7 +11,19 @@ public class LengthFilter implements EquivalenceClassFilter
   @Override
   public boolean acceptEquivalenceClass(EquivalenceClass eqClass) 
   {
-    return (eqClass != null) && (eqClass.getStem().length() > m_size);
+    int length = 0;
+    
+    if (eqClass != null)
+    {
+      for (String word : eqClass.getAllWords())
+      {
+        if (word.length() > length)
+        { length = word.length();
+        }
+      }
+    }
+    
+    return (length > m_size);
   }
   
   protected int m_size;

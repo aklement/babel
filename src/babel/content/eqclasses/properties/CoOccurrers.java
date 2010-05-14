@@ -1,6 +1,5 @@
 package babel.content.eqclasses.properties;
 
-import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -35,7 +34,7 @@ public class CoOccurrers extends Property
   }
 
   @Override
-  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception
+  public void unpersistFromString(EquivalenceClass eq, String str) throws Exception
   {
     // TODO: Finish
   }

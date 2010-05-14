@@ -161,6 +161,11 @@ public class EuroParlCorpusAccessor extends TemporalCorpusAccessor
 		return retReader;
 	}
 	
+  public Date getCurDay()
+  {
+    return m_curDate.getTime();
+  }
+	
   /**
    * Advances current date to the next day (or initializes it to start date if 
    * called for the first time.
@@ -178,7 +183,7 @@ public class EuroParlCorpusAccessor extends TemporalCorpusAccessor
     }
     else
     {
-      // Advance the current date by one da
+      // Advance the current date by one day
       m_curDate.add(Calendar.DATE, 1);
       
       success = m_curDate.before(m_toDate);

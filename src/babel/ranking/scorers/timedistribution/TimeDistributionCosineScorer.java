@@ -28,17 +28,12 @@ public class TimeDistributionCosineScorer extends Scorer
 		
 		if ((distroOne == null) || (distroTwo == null) ||
 				(distroOne.getSize() != distroTwo.getSize()))
-		{ throw new IllegalArgumentException("At least one of the EquivalenceClass doesn't have a distribution property, or they aren't the same size.");
+		{ throw new IllegalArgumentException("At least one of the arguments doesn't have a distribution property, or they aren't the same size.");
 		}
-
-    // Normalize them
-    if (!distroOne.isNormalized())
-    { distroOne.normalize();
-    }
-    
-    if (!distroTwo.isNormalized())
-    { distroTwo.normalize();
-    }
+		
+		if (!distroOne.isNormalized() || !distroTwo.isNormalized())
+    { throw new IllegalArgumentException("At least one of the arguments' distribution property is no normalized.");
+		}
     
     double result = 0.0;
     List<Double> oneBins = distroOne.getBins();
@@ -63,5 +58,19 @@ public class TimeDistributionCosineScorer extends Scorer
   public boolean smallerScoresAreBetter()
   {
     return false;
+  }
+
+  /** Normalizes time distributions. */
+  public void prepare(EquivalenceClass eq)
+  {
+    TimeDistribution distro = (TimeDistribution)eq.getProperty(TimeDistribution.class.getName());   
+
+    if (distro == null)
+    { throw new IllegalArgumentException("Class has no time distribution property.");
+    }
+    
+    if (!distro.isNormalized())
+    { distro.normalize();
+    }
   }
 }

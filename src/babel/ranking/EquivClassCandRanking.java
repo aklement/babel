@@ -293,11 +293,11 @@ public class EquivClassCandRanking
   public static void dumpToFile(Dictionary dict, Collection<EquivClassCandRanking> candRankings, String fileName) throws Exception
   {
     BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
-    List<EquivalenceClass> translations;
+    Set<EquivalenceClass> translations;
     
     for (EquivClassCandRanking candRanking : candRankings)
     {
-      if (null != (translations = dict.getTranslations(candRanking.m_eq)))
+      if (null != (translations = dict.translate(candRanking.m_eq)))
       { candRanking.flagTranslations(translations);
       }
       

@@ -1,6 +1,5 @@
 package babel.content.eqclasses.properties;
 
-import java.util.Map;
 
 import babel.content.eqclasses.EquivalenceClass;
 
@@ -34,7 +33,7 @@ public class Type extends Property
   { return EqType.NONE.equals(m_type) ? NONE : (EqType.SOURCE.equals(m_type) ? SRC : TRG);
   }
 
-  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception
+  public void unpersistFromString(EquivalenceClass eq, String str) throws Exception
   {    
     if (SRC.equalsIgnoreCase(str))
     { m_type = EqType.SOURCE;

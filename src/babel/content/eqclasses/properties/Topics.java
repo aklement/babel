@@ -2,7 +2,6 @@ package babel.content.eqclasses.properties;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import babel.content.eqclasses.EquivalenceClass;
 
@@ -59,7 +58,7 @@ public class Topics extends Property
   }
 
   @Override
-  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEq, String str) throws Exception
+  public void unpersistFromString(EquivalenceClass eq, String str) throws Exception
   {
     // TODO: Finish
   }

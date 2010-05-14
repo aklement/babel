@@ -12,6 +12,22 @@ public class RomanizationFilter implements EquivalenceClassFilter
   @Override
   public boolean acceptEquivalenceClass(EquivalenceClass eqClass) 
   {
-    return ((eqClass != null) && !ROMAN_CHARS_PATTERN.matcher(eqClass.getStem()).find());
+    boolean accept = false;
+    
+    if (eqClass != null)
+    {
+      boolean match = false;
+    
+      for (String word : eqClass.getAllWords())
+      {
+        if (match = ROMAN_CHARS_PATTERN.matcher(word).find())
+        { break;
+        }
+      }
+      
+      accept = !match;
+    }
+    
+    return accept;
   }
 }

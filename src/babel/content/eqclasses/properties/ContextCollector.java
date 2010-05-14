@@ -10,6 +10,7 @@ import org.apache.commons.logging.LogFactory;
 
 import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.SimpleEquivalenceClass;
 
 /**
  * Collects contextual equivalence class.  Does not collect across sentence 
@@ -18,44 +19,46 @@ import babel.content.eqclasses.EquivalenceClass;
 public class ContextCollector extends PropertyCollector
 {
   public static final Log LOG = LogFactory.getLog(ContextCollector.class);
-  
-  protected static final String SENT_DELIM_REGEX = "[\\.\\?¿!¡]+";
-  protected static final String WORD_DELIM_REGEX = "[\\s\"\'\\-+=,;:«»{}()<>\\[\\]–“”‘’ ]+";
-    
-  @SuppressWarnings("unchecked")
-  public ContextCollector(String eqClassName, boolean caseSensitive, int leftSize, int rightSize, Set<EquivalenceClass> contextEqs) throws Exception
+
+  public ContextCollector(boolean caseSensitive, int leftSize, int rightSize, Set<EquivalenceClass> contextEqs) throws Exception
   {
-    m_eqClassClass = (Class<? extends EquivalenceClass>)(Class.forName(eqClassName));
     m_caseSensitive = caseSensitive;
     m_leftSize = leftSize;
     m_rightSize = rightSize;
-    m_allContextEqsMap = new HashMap<String, EquivalenceClass>(contextEqs.size());
-      
+    m_allContextEqsMap = new HashMap<String, SimpleEquivalenceClass>(contextEqs.size());
+    SimpleEquivalenceClass seq;
+    
     for (EquivalenceClass eq : contextEqs)
-    { m_allContextEqsMap.put(eq.getStem(), eq);
+    {
+      seq = (SimpleEquivalenceClass)eq; // TODO: not pretty
+      m_allContextEqsMap.put(seq.getWord(), seq);
     }
   }
   
-  // TODO: check all of the binarySearch calls - replace with HashSet?
   public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> eqs) throws Exception
   {
     BufferedReader reader = new BufferedReader(corpusAccess.getCorpusReader());
     String curLine;
     String[] curSents;
     String[] curSentTokens;
-    EquivalenceClass tmpEq;
+    EquivalenceClass foundEq;
     //EquivalenceClass cntEq;
     //CoOccurrers cntCoOcc;
-    Context tmpEqContext;
+    Context fountEqContext;
     int min, max;
       
-    // TODO: Not memory efficient - think of something better
+    // TODO: Very inefficient - think of something better
     HashMap<String, EquivalenceClass> eqsMap = new HashMap<String, EquivalenceClass>(eqs.size());
  
     for (EquivalenceClass eq : eqs)
-    { eqsMap.put(eq.getStem(), eq);
+    {
+      for (String word : eq.getAllWords())
+      { 
+        assert eqsMap.get(word) == null;
+        eqsMap.put(word, eq);
+      }
     }
-      
+     
     while ((curLine = reader.readLine()) != null)
     {
       // Split into likely sentences
@@ -67,17 +70,13 @@ public class ContextCollector extends PropertyCollector
         curSentTokens = curSents[numSent].split(WORD_DELIM_REGEX);
    
         for (int numToken = 0; numToken < curSentTokens.length; numToken++)
-        { 
-          // Put together a temp equiv class for the current token
-          tmpEq = (EquivalenceClass)m_eqClassClass.newInstance();
-          tmpEq.init(-1, curSentTokens[numToken], m_caseSensitive);
-
-          // Is that a word we care about?
-          if (null != (tmpEq = eqsMap.get(tmpEq.getStem())))            
+        {         
+          // Look for the word's equivalence class
+          if (null != (foundEq = eqsMap.get(EquivalenceClass.getWordOfAppropriateForm(curSentTokens[numToken], m_caseSensitive))))               
           {        
             // Get/set its context prop
-            if ((tmpEqContext = (Context)tmpEq.getProperty(Context.class.getName())) == null)
-            { tmpEq.setProperty(tmpEqContext = new Context(tmpEq));
+            if ((fountEqContext = (Context)foundEq.getProperty(Context.class.getName())) == null)
+            { foundEq.setProperty(fountEqContext = new Context(foundEq));
             }
    
             // A window around the word
@@ -91,7 +90,7 @@ public class ContextCollector extends PropertyCollector
               { 
                 // Add current word to the current equivalence class context
                 //cntEq = 
-                  tmpEqContext.addContextWord(m_eqClassClass, m_caseSensitive, m_allContextEqsMap, curSentTokens[contextIdx]);
+                  fountEqContext.addContextWord(m_caseSensitive, m_allContextEqsMap, curSentTokens[contextIdx]);
                   
                // TODO: Temp
                // if (cntEq != null)
@@ -114,8 +113,7 @@ public class ContextCollector extends PropertyCollector
   }
  
   /** All equivalence classes which from which to construct context. */
-  protected HashMap<String, EquivalenceClass> m_allContextEqsMap;
-  protected Class<? extends EquivalenceClass> m_eqClassClass;
+  protected HashMap<String, SimpleEquivalenceClass> m_allContextEqsMap;
   protected boolean m_caseSensitive;
   protected int m_leftSize;
   protected int m_rightSize;

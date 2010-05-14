@@ -1,23 +1,21 @@
 package babel.content.eqclasses.properties;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Map;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.comparators.OverlapComparator;
+import babel.content.eqclasses.SimpleEquivalenceClass;
 import babel.ranking.scorers.context.DictScorer;
 
 /**
  * Bag of EquivalenceClass in the context around NE/candidate EquivalenceClass.
  */
 public class Context extends Property
-{     
-  protected static final Comparator<EquivalenceClass> OVERLAP_COMPARATOR = new OverlapComparator();
-
+{
   public Context()
   {
     this(null);
@@ -29,8 +27,7 @@ public class Context extends Property
   public Context(EquivalenceClass eq)
   {
     m_eq = eq;
-    m_neighborsMap = new HashMap<String, ContextualItem>();
-    m_allContextCounts = 0;
+    m_neighborsMap = new HashMap<Long, ContextualItem>();
     m_contItemsScored = false;
   }
   
@@ -44,46 +41,61 @@ public class Context extends Property
     return m_eq;
   }
   
-  public Collection<ContextualItem> getContext()
+  public Collection<ContextualItem> getContextualItems()
   {
-    return m_neighborsMap.values();
+    return new ArrayList<ContextualItem>(m_neighborsMap.values());
   }
   
-  public boolean contextualItemsScored()
+  public void clear()
+  {
+    m_neighborsMap.clear();
+  }
+  
+  public ContextualItem getContextualItem(Long contItemId)
+  {
+    return m_neighborsMap.get(contItemId);
+  }
+  
+  public void setContextualItem(ContextualItem contItem)
+  {
+    contItem.m_context = this;
+    m_neighborsMap.put(contItem.m_contEqID, contItem);
+  }
+  
+  public boolean areContItemsScored()
   {
     return m_contItemsScored;
   }
   
-  public void scoreContextualItems(DictScorer scorer)
+  public void contItemsScored()
   {
-    scorer.scoreContext(this);
     m_contItemsScored = true;
   }
-  
-  EquivalenceClass addContextWord(Class<? extends EquivalenceClass> equivClass, boolean caseSensitive, HashMap<String, EquivalenceClass> contextEqsMap, String contextWord)
+   
+  void addContextWord(boolean caseSensitive, HashMap<String, SimpleEquivalenceClass> contextEqsMap, String contextWord)
   {
-    EquivalenceClass contextEq = null;
+    SimpleEquivalenceClass contextEq = null;
     ContextualItem contextItem = null;
-    
-    if ((contextWord != null) && (contextWord.trim().length() > 0))
+    String word = EquivalenceClass.getWordOfAppropriateForm(contextWord, caseSensitive);
+
+    if ((word != null) && (word.length() > 0))
     {
+      if (m_collectedMap == null)
+      { m_collectedMap = new HashMap<String, ContextualItem>(); 
+      }
+      
       try
       {
-        contextEq = equivClass.newInstance();
-        contextEq.init(-1, contextWord, caseSensitive);
-        
         // If we already saw it in context - just increment count
-        if (null != (contextItem = m_neighborsMap.get(contextEq.getStem())))
+        if (null != (contextItem = m_collectedMap.get(word)))
         {
-          contextEq = contextItem.m_contextEq;
-          contextItem.incrementCount();
-          m_allContextCounts++;
+          contextItem.incContextCount();
         }
         // Otherwise, if it is the contextual item from our large list - add it
-        else if (null != (contextEq = contextEqsMap.get(contextEq.getStem()))) 
+        else if (null != (contextEq = contextEqsMap.get(word))) 
         {
-          m_neighborsMap.put(contextEq.getStem(), new ContextualItem(this, contextEq));
-          m_allContextCounts++;
+          m_collectedMap.put(word, contextItem = new ContextualItem(this, contextEq));
+          m_neighborsMap.put(contextItem.getContextEqId(), contextItem);
         }
         else
         {
@@ -93,9 +105,7 @@ public class Context extends Property
       catch (Exception e)
       { throw new IllegalStateException(e.toString());
       }
-    }
-    
-    return contextEq;
+    }    
   }
   
   public void pruneContext(int numKeep, Comparator<ContextualItem> comparator)
@@ -113,14 +123,14 @@ public class Context extends Property
       for (int i = 0; i < Math.min(valList.size(), numKeep); i++)
       {
         val = valList.get(i);
-        m_neighborsMap.put(val.m_contextEq.getStem(), val);
+        m_neighborsMap.put(val.m_contEqID, val);
       }
     }
   }
   
-  public ContextualItem lookup(EquivalenceClass contextEq)
+  public ContextualItem lookup(Long contextEqId)
   {    
-    return (m_neighborsMap == null) ? null : m_neighborsMap.get(contextEq.getStem());
+    return (m_neighborsMap == null) ? null : m_neighborsMap.get(contextEqId);
   }
   
   public String toString()
@@ -133,7 +143,7 @@ public class Context extends Property
     StringBuilder strBld = new StringBuilder();
     boolean first = true;
     
-    for (String key : m_neighborsMap.keySet())
+    for (Long key : m_neighborsMap.keySet())
     {
       if (first)
       { first = false;
@@ -147,10 +157,9 @@ public class Context extends Property
     return strBld.toString();
   }
 
-  public void unpersistFromString(EquivalenceClass eq, Map<Integer, EquivalenceClass> allEqs, String str) throws Exception
+  public void unpersistFromString(EquivalenceClass eq, String str) throws Exception
   {
     m_eq = eq;
-    m_allContextCounts = 0;    
     m_neighborsMap.clear();
     m_contItemsScored = false;    
     
@@ -161,26 +170,26 @@ public class Context extends Property
     
       for (int i = 0; i < toks.length; i++)
       {
-        (cItem = new ContextualItem(this)).unpersistFromString(toks[i], allEqs);
-        m_allContextCounts += cItem.m_count;
-        m_neighborsMap.put(cItem.m_contextEq.getStem(), cItem);
+        cItem = ContextualItem.unpersistFromString(this, toks[i]);
+        m_neighborsMap.put(cItem.getContextEqId(), cItem);
       }
     }
   }
   
-  protected HashMap<String, ContextualItem> m_neighborsMap;
+  protected HashMap<Long, ContextualItem> m_neighborsMap;
   /** Source equivalence class. */
   protected EquivalenceClass m_eq;
-  /** Number of all word occurences in context. */
-  protected int m_allContextCounts;
   /** true iff scores have been assigned to the contextual items */
   protected boolean m_contItemsScored;
+  /** Token to contextul item map - only used during collection */
+  protected HashMap<String, ContextualItem> m_collectedMap = null; 
   
   public static class CountComparator implements Comparator<ContextualItem>
   {
     public int compare(ContextualItem item1, ContextualItem item2)
     {
-      return item2.getCount() - item1.getCount();
+      long diff = item2.getContextCount() - item1.getContextCount();
+      return diff == 0 ? 0 : (diff < 0 ? -1 : 1);
     }
   }
 
@@ -193,58 +202,60 @@ public class Context extends Property
     
     public int compare(ContextualItem item1, ContextualItem item2)
     {
-      double score1 = m_scorer.scoreContItem(item1);
-      double score2 = m_scorer.scoreContItem(item2);
+      
+      item1.getScore();
+      double score1 = item1.getScore();
+      double score2 = item2.getScore();
       int direction = m_scorer.smallerScoresAreBetter() ? -1 : 1;
       
       return score1 == score2 ? 0 : direction * (score2 > score1 ? 1 : -1);
     }
     
     protected DictScorer m_scorer;
-  }  
-  
-  public static class EqOverlapComparator implements Comparator<ContextualItem>
-  {
-    public int compare(ContextualItem item1, ContextualItem item2)
-    {
-      return OVERLAP_COMPARATOR.compare(item1.m_contextEq, item2.m_contextEq);
-    }
   }
   
   public static class ContextualItem
   {
-    protected ContextualItem(Context context)
+    private ContextualItem(Context context)
     {
       m_context = context;
-      m_contextEq = null;
-      m_count = 0;
+      m_contCount = 0;
+      m_corpCount = 0;
+      m_score = 0;
     }
 
-    public ContextualItem(Context context, EquivalenceClass contextEq)
+    public ContextualItem(Context context, SimpleEquivalenceClass contextEq)
     {
-      this(context, contextEq, 1);
+      this(context, contextEq.getId(), ((Number)contextEq.getProperty(Number.class.getName())).getNumber(), 1);
     }
-    
-    public ContextualItem(Context context, EquivalenceClass contextEq, int count)
+
+    public ContextualItem(Context context, Long contEqId, long corpusCount, long contextCount)
     {
-      m_contextEq = contextEq;
+      m_contEqID = contEqId;
       m_context = context;
-      m_count = count;
+      m_corpCount = corpusCount;
+      m_contCount = contextCount;
+      m_score = 0;
     }
     
     public int hashCode()
     {
-      return m_contextEq.hashCode();
+      return m_contEqID.hashCode();
     }
     
-    public void incrementCount()
+    public void incContextCount()
     {
-      m_count++;
+      m_contCount++;
     }
     
-    public int getCount()
+    public long getContextCount()
     {
-      return m_count;
+      return m_contCount;
+    }
+
+    public long getCorpusCount()
+    {
+      return m_corpCount;
     }
     
     public Context getContext()
@@ -262,39 +273,46 @@ public class Context extends Property
       return m_score;
     }
     
-    public EquivalenceClass getContextEq()
+    public Long getContextEqId()
     {
-      return m_contextEq;
+      return m_contEqID;
     }
     
     public String toString()
     {
-      return m_contextEq.toString() + " (" + m_count + ")"; 
+      return persistToString(); 
     }
     
     protected String persistToString()
     {
       StringBuilder strBld = new StringBuilder();
       
-      strBld.append(m_contextEq.getId());
-      strBld.append("("); strBld.append(m_count); strBld.append(")");
+      strBld.append(m_contEqID);
+      strBld.append("(");
+      strBld.append(m_contCount);
+      strBld.append(" ");
+      strBld.append(m_corpCount); 
+      strBld.append(")");
       
       return strBld.toString();
     }
     
-    public void unpersistFromString(String str, Map<Integer, EquivalenceClass> map) throws Exception
+    public static ContextualItem unpersistFromString(Context context, String str) throws Exception
     {
-      m_score = 0;
+      ContextualItem ci = new ContextualItem(context);
       
-      String[] toks = str.split("[()]");
+      String[] toks = str.split("[( )]");
 
-      m_contextEq = map.get(Integer.parseInt(toks[0]));
-      m_count = Integer.parseInt(toks[1]); 
+      ci.m_contEqID = Long.parseLong(toks[0]);
+      ci.m_contCount = Long.parseLong(toks[1]); 
+      ci.m_corpCount = Long.parseLong(toks[2]);       
+      return ci;
     }
     
-    protected Context m_context;    
-    protected int m_count;
+    protected Context m_context;
+    protected long m_contCount;
+    protected long m_corpCount;
     protected double m_score;
-    protected EquivalenceClass m_contextEq;
+    protected Long m_contEqID;
   }
 }
