@@ -15,6 +15,7 @@
 package babel.prep.datedcorpus;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Iterator;
 
 import org.apache.hadoop.io.Text;
@@ -33,12 +34,18 @@ class DatedCorpusGenReducer extends MapReduceBase implements Reducer<Text, PageV
   public void reduce(Text key, Iterator<PageVersion> values, OutputCollector<Text, Text> output, Reporter reporter) throws IOException
   {
     StringBuilder strBld = new StringBuilder();
-    PageVersion ver;
+    HashSet<String> seenVers = new HashSet<String>();
+    String content;
     
     while(values.hasNext())
     {
-      ver = values.next();
-      strBld.append(ver.getContent() + "\n\n");
+      content = values.next().getContent().trim();
+      
+      if (!seenVers.contains(content))
+      {
+        seenVers.add(content);
+        strBld.append(content + "\n\n");
+      }
     }
 
     output.collect(key, new Text(strBld.toString()));

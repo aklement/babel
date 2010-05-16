@@ -14,7 +14,12 @@
 		<DateFrom>96-04-15</DateFrom>
 		<DateTo>06-10-13</DateTo>
 	</europarl>
-	<wiki><Path>/Users/aklement/Resources/d</Path><SrcRegExp>.*\\.en\\.small</SrcRegExp><TrgRegExp>.*\\.es\\.small</TrgRegExp></wiki></corpora>
+	<wiki>
+	 <Path>/Users/aklement/Resources/d</Path>
+	 <SrcRegExp>.*\\.en\\.small</SrcRegExp>
+	 <TrgRegExp>.*\\.es\\.small</TrgRegExp>
+	 </wiki>
+	 </corpora>
 <resources>
 	<stopwords>
 		<Path>/Users/aklement/Resources/d/</Path>
@@ -27,7 +32,11 @@
 	<Path>./preprocessing/</Path>
 	<SrcEqClass>babel.content.eqclasses.PrefixEquivalenceClass</SrcEqClass>
 	<TrgEqClass>babel.content.eqclasses.PrefixEquivalenceClass</TrgEqClass>
-	<FilterRomanTrg>false</FilterRomanTrg><input><Context>europarl</Context><Time>crawls</Time></input>
+	<FilterRomanTrg>false</FilterRomanTrg>
+	 <input>
+	   <Context>europarl</Context>
+	   <Time>europarl</Time>
+	 </input>
 	<context>
 		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
 		<PruneEqIfOccursFewerThan>5</PruneEqIfOccursFewerThan>
@@ -37,14 +46,15 @@
 		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
 		<PruneIfOccursFewerThan>5</PruneIfOccursFewerThan>
 	</candidates>
-	<time>
-		<SlidingWindow>false</SlidingWindow>
-		<Window>1</Window></time></preprocessing>
+	</preprocessing>
 <output>
 	<Path>./output/</Path>
 </output>
 <experiments>
-	
+	<time>
+		<SlidingWindow>false</SlidingWindow>
+		<WindowSize>1</WindowSize>
+	</time>
 	<RandomSource>false</RandomSource><NumSource>1000</NumSource>
 	<NumTranslationsToAddPerSource>500</NumTranslationsToAddPerSource>
 	<DictionaryPercentToUse>0.9</DictionaryPercentToUse>

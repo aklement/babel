@@ -1,6 +1,7 @@
 package babel.ranking.scorers.timedistribution;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.HashSet;
 
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.properties.TimeDistribution;
@@ -11,6 +12,13 @@ import babel.ranking.scorers.Scorer;
  */ 
 public class TimeDistributionCosineScorer extends Scorer
 {
+  
+  public TimeDistributionCosineScorer(int windowSize, boolean slidingWindow)
+  {
+    m_slidingWindow = slidingWindow;
+    m_windowSize = windowSize;
+  }
+  
   /**
    * Computes cosine similarity coefficient between two distribution vectors.
    * The larger the score - the closer the distributions. Side-effect: may 
@@ -26,9 +34,8 @@ public class TimeDistributionCosineScorer extends Scorer
 		TimeDistribution distroOne = (TimeDistribution)oneEq.getProperty(TimeDistribution.class.getName());
 		TimeDistribution distroTwo = (TimeDistribution)twoEq.getProperty(TimeDistribution.class.getName());		
 		
-		if ((distroOne == null) || (distroTwo == null) ||
-				(distroOne.getSize() != distroTwo.getSize()))
-		{ throw new IllegalArgumentException("At least one of the arguments doesn't have a distribution property, or they aren't the same size.");
+		if ((distroOne == null) || (distroTwo == null))
+		{ throw new IllegalArgumentException("At least one of the arguments doesn't have the distribution property.");
 		}
 		
 		if (!distroOne.isNormalized() || !distroTwo.isNormalized())
@@ -36,13 +43,17 @@ public class TimeDistributionCosineScorer extends Scorer
 		}
     
     double result = 0.0;
-    List<Double> oneBins = distroOne.getBins();
-    List<Double> twoBins = distroTwo.getBins();    
-    
+    HashMap<Integer, Double> oneBins = distroOne.getBins();
+    HashMap<Integer, Double> twoBins = distroTwo.getBins(); 
+ 
+    // Get the intersection of keys
+    HashSet<Integer> keys = new HashSet<Integer>(oneBins.keySet());
+    keys.retainAll(twoBins.keySet());
+
     // Compute enumerator
-    for (int i = 0; i < distroOne.getSize(); i++)
+    for (Integer key : keys)
     {
-      result += (oneBins.get(i)).doubleValue() * (twoBins.get(i)).doubleValue();
+      result += oneBins.get(key) * twoBins.get(key);
     }
     
     // Compute whole coefficient
@@ -69,8 +80,10 @@ public class TimeDistributionCosineScorer extends Scorer
     { throw new IllegalArgumentException("Class has no time distribution property.");
     }
     
-    if (!distro.isNormalized())
-    { distro.normalize();
-    }
+    distro.reBin(m_windowSize, m_slidingWindow);
+    distro.normalize();
   }
+  
+  protected boolean m_slidingWindow;
+  protected int m_windowSize;
 }

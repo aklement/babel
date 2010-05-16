@@ -46,6 +46,8 @@ public class NBestCollector
   
   protected void runTwoLanguages() throws Exception
   {
+    boolean slidingWindow = Configurator.CONFIG.getBoolean("experiments.time.SlidingWindow");
+    int windowSize = Configurator.CONFIG.getInt("experiments.time.WindowSize");
     int maxNumTrgPerSrc = Configurator.CONFIG.getInt("experiments.NumTranslationsToAddPerSource");
     String outDir = Configurator.CONFIG.getString("output.Path");
     int numThreads = Configurator.CONFIG.getInt("experiments.NumRankingThreads");
@@ -68,7 +70,7 @@ public class NBestCollector
     
     // Setup scorers
     DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
-    Scorer timeScorer = new TimeDistributionCosineScorer();
+    Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
     Scorer editScorer = new EditDistanceScorer();
 
     // Pre-process properties (i.e. project contexts, normalizes distributions)

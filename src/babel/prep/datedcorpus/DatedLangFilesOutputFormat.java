@@ -51,7 +51,18 @@ public class DatedLangFilesOutputFormat extends MultipleOutputFormat<Text, Text>
       Calendar cal = Calendar.getInstance();
       cal.setTimeInMillis(Long.parseLong(toks[1]));
       
-      return toks[0] + File.separator + cal.get(Calendar.YEAR) +  File.separator + cal.get(Calendar.YEAR) + "-" + cal.get(Calendar.MONTH) + "-" + cal.get(Calendar.DAY_OF_MONTH) + EXTENSION;//.key.toString();  
+      int year = cal.get(Calendar.YEAR);
+      int month = cal.get(Calendar.MONTH) + 1;
+      int day = cal.get(Calendar.DAY_OF_MONTH);
+      
+      if (year < 2000 || year > 2010)
+      {
+        return REJECTED_FILE;
+      }
+      else
+      {
+        return toks[0] + File.separator + year +  File.separator + year + "-" + month + "-" + day + EXTENSION;
+      }
     }    
   }
   

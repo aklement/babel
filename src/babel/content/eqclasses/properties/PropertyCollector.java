@@ -9,9 +9,9 @@ import babel.content.eqclasses.EquivalenceClass;
  * Collects property values.
  */
 public abstract class PropertyCollector
-{
-  public static final String SENT_DELIM_REGEX = "[\\.\\?¿!¡]+";    
-  public static final String WORD_DELIM_REGEX = "[\\s\"\'\\-+=,;:«»{}()<>\\[\\]\\.\\?¿!¡–“”‘’ ]+";
+{  
+  public static final String SENT_DELIM_REGEX = "[\\|\\.\\?¿!¡]+";    
+  public static final String WORD_DELIM_REGEX = "[\\|\\$\\*\\s\"\'\\-\\+=,;:«»{}()<>\\[\\]\\.\\?¿!¡–“”‘’ ]+";
 
   /**
    * @param corpusAccess Corpus from which to collect the property.

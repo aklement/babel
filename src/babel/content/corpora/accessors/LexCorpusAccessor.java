@@ -25,8 +25,7 @@ public class LexCorpusAccessor extends CorpusAccessor
     
     resetFiles();
     
-    m_fileNameFilter = new RegExFileNameFilter(fileNameRegEx);
-    m_files = new FileList(corpusDir, m_fileNameFilter);
+    m_files = new FileList(corpusDir, new RegExFileNameFilter(fileNameRegEx));
     m_encoding = charset;
   }
   
@@ -112,12 +111,6 @@ public class LexCorpusAccessor extends CorpusAccessor
   }
 
   protected int m_curFileNum;
-  
-  protected String m_encoding;
-  
+  protected String m_encoding;  
   protected FileList m_files;
-  protected RegExFileNameFilter m_fileNameFilter;
-  
-
-
 }

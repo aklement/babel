@@ -15,33 +15,20 @@ import babel.content.corpora.accessors.CorpusAccessor;
 public class TimeDistributionCollector extends PropertyCollector
 {
   protected static final Log LOG = LogFactory.getLog(TimeDistributionCollector.class);
-    
-  /**
-   * @param slidingWindow
-   * @param windowSize - number of days in each bin
-   * @throws Exception 
-   */
-  @SuppressWarnings("unchecked")
-  public TimeDistributionCollector(boolean caseSensitive, int windowSize, boolean slidingWindow) throws Exception
+
+  public TimeDistributionCollector(boolean caseSensitive) throws Exception
   {
     m_caseSensitive = caseSensitive;
-    m_slidingWindow = slidingWindow;
-    m_window = new HashMap[windowSize];    
-    m_binIdx = 0;
   }
   
-  /**
-   * @param corpusAccess Corpus from which to gather the property.
-   * @param eq for which to gather properties.
-   * @throws Exception 
-   * @throws Exception 
-   */
   public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> eqs) throws Exception
-  {
+  {    
     if (!(corpusAccess instanceof TemporalCorpusAccessor))
     { throw new IllegalArgumentException("Did not supply a TemporalCorpusAccessor");
     }
-    
+   
+    TemporalCorpusAccessor temporalAccess = (TemporalCorpusAccessor) corpusAccess;
+
     // TODO: Inefficient - think of something better
     HashMap<String, EquivalenceClass> eqsMap = new HashMap<String, EquivalenceClass>(eqs.size());
 
@@ -59,110 +46,46 @@ public class TimeDistributionCollector extends PropertyCollector
     { curEq.setProperty(new TimeDistribution());
     }
     
-    /** Start off by reading the entire window. */
-    boolean done = !readEntireWindow((TemporalCorpusAccessor)corpusAccess, eqsMap);
+    temporalAccess.resetDays();
+    int curDayIdx = 0;
     
-    while(!done)
+    while (temporalAccess.nextDay())
     {
-      // Advance one bin (of sliding window) or entire window at a time.
-      recordWindow(eqs);
-      done = !(m_slidingWindow ? readNextBin((TemporalCorpusAccessor)corpusAccess, eqsMap) : readEntireWindow((TemporalCorpusAccessor)corpusAccess, eqsMap));
-    }
-
-    m_binIdx = 0;
+      recordCurDayCounts(curDayIdx, getCurDayCounts(temporalAccess, eqsMap));
+      curDayIdx++;
+    } 
   }
   
   /**
-   * Records the aggregate count of the whole window it into EquivalenceClass' 
-   * time distributions (for each of them).
+   * Records collected counts for a given day.
    */
-  protected void recordWindow(Set<? extends EquivalenceClass> eqs)
+  protected void recordCurDayCounts(int curDayIdx, HashMap<EquivalenceClass, Integer> curDayCouns)
   {
-    int entCount;
-    Integer count;
- 
-    for (EquivalenceClass eq : eqs)
+    if (curDayCouns != null)
     {
-      entCount = 0;
-      
-      for (String word : eq.getAllWords())
-      {      
-        for (int curDay = 0; curDay < m_window.length; curDay++)
-        {
-          count = m_window[curDay].get(word);
-          entCount += (count == null) ? 0 : count;
-        }
+      for (EquivalenceClass eq : curDayCouns.keySet())
+      {
+        ((TimeDistribution)eq.getProperty(TimeDistribution.class.getName())).addBin(curDayIdx, curDayCouns.get(eq));
       }
-      
-      ((TimeDistribution)eq.getProperty(TimeDistribution.class.getName())).addBin(entCount);
     }
   }
   
   /**
-   * Reads an entire window worth of bins.
-   * @throws Exception 
+   * Get counts from current day files.
    */
-  protected boolean readEntireWindow(TemporalCorpusAccessor corpusAccess, HashMap<String, EquivalenceClass> eqsMap) throws Exception
+  protected HashMap<EquivalenceClass, Integer> getCurDayCounts(TemporalCorpusAccessor temporalAccess, HashMap<String, EquivalenceClass> eqsMap) throws Exception
   {
-    boolean entireWin = true;
-    int binIdx = m_binIdx;
-    
-    do 
-    {
-      if (!(entireWin = readIntoBin(m_binIdx, corpusAccess, eqsMap)))
-      { break;
-      }
-    } while (nextBinIndex() != binIdx);
-
-    
-    return entireWin;
-  }
-
-  /**
-   * Reads into current bin - if successful, advances to the next bin, 
-   * otheriwse moves on to the next day and tries again.
-   * @throws Exception 
-   */
-  protected boolean readNextBin(TemporalCorpusAccessor corpusAccess, HashMap<String, EquivalenceClass> eqsMap) throws Exception
-  {
-    boolean read = readIntoBin(m_binIdx, corpusAccess, eqsMap);
-    
-    if (read)
-    { nextBinIndex();
-    }
-    
-    return read;
-  }
-  
-  /**
-   * Reads current day counts into a window's bin.
-   * @throws Exception 
-   */
-  protected boolean readIntoBin(int binNumber, TemporalCorpusAccessor corpusAccess, HashMap<String, EquivalenceClass> eqsMap) throws Exception
-  {
-    m_window[binNumber] = null;
-    
-    // TODO: We are skipping over days with no counts, is that OK?
-    while (corpusAccess.nextDay() && (m_window[binNumber] = getCurDayCounts(corpusAccess, eqsMap)) == null);
-    
-    return (m_window[binNumber] != null);
-  }
-  
-  /**
-   * Get counts for eq from the current day files.
-   */
-  protected HashMap<String, Integer> getCurDayCounts(TemporalCorpusAccessor corpusAccess, HashMap<String, EquivalenceClass> eqsMap) throws Exception
-  {
-    HashMap<String, Integer> counts = null;
+    HashMap<EquivalenceClass, Integer> counts = null;
     String curLine;
     String[] curTokens;
     Integer count;
-    BufferedReader reader = new BufferedReader(corpusAccess.getCurDayReader());
+    BufferedReader reader = new BufferedReader(temporalAccess.getCurDayReader());
+    EquivalenceClass curEq;
     String word;
     
     if (reader != null && reader.ready())
     {
-      counts = new HashMap<String, Integer>();
+      counts = new HashMap<EquivalenceClass, Integer>();
         
       while ((curLine = reader.readLine()) != null)
       {
@@ -171,12 +94,12 @@ public class TimeDistributionCollector extends PropertyCollector
         for (int numToken = 0; numToken < curTokens.length; numToken++)
         {
           word = EquivalenceClass.getWordOfAppropriateForm(curTokens[numToken], m_caseSensitive);
+          curEq = eqsMap.get(word);
           
-          // Is that a word we care about?
-          if (eqsMap.containsKey(word))
+          if (curEq != null)
           {
-            count = counts.get(word);
-            counts.put(word, count == null ? 1 : count + 1);
+            count = counts.get(curEq);
+            counts.put(curEq, count == null ? 1 : count + 1);
           }
         }
       }
@@ -187,26 +110,5 @@ public class TimeDistributionCollector extends PropertyCollector
     return counts;
   }
   
-  /**
-   * Advances to the next bin index (circular array).
-   * @return
-   */
-  protected int nextBinIndex()
-  {
-    m_binIdx++;
-    
-    if (m_binIdx >= m_window.length)
-    { m_binIdx = 0;
-    }
-    
-    return m_binIdx;
-  }
-  
   protected boolean m_caseSensitive;
-  /** True iff sliding window. */
-  protected boolean m_slidingWindow;
-  /** Actual counts: index is a bin in the window. */
-  protected HashMap<String, Integer>[] m_window;
-  /** Indexes the next available bin. */
-  protected int m_binIdx;
 }
