@@ -27,26 +27,35 @@
 		<TrgStopWords>spanish.stop</TrgStopWords>
 	</stopwords>
 	<dictionary><Path>/Users/aklement/Resources/d/</Path>
-		<Dictionary>frozen_span_dict</Dictionary></dictionary></resources>
+		<Dictionary>frozen_span_dict</Dictionary>
+	</dictionary>
+</resources>
 <preprocessing>
 	<Path>./preprocessing/</Path>
-	<SrcEqClass>babel.content.eqclasses.PrefixEquivalenceClass</SrcEqClass>
-	<TrgEqClass>babel.content.eqclasses.PrefixEquivalenceClass</TrgEqClass>
 	<FilterRomanTrg>false</FilterRomanTrg>
 	 <input>
 	   <Context>europarl</Context>
 	   <Time>europarl</Time>
 	 </input>
 	<context>
+    <SrcEqClass>babel.content.eqclasses.PrefixEquivalenceClass</SrcEqClass>
+    <TrgEqClass>babel.content.eqclasses.PrefixEquivalenceClass</TrgEqClass>
 		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
 		<PruneEqIfOccursFewerThan>5</PruneEqIfOccursFewerThan>
 		<PruneContextToSize>-1</PruneContextToSize>
 		<Window>2</Window></context>
 	<candidates>
+    <SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
+    <TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
 		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
 		<PruneIfOccursFewerThan>5</PruneIfOccursFewerThan>
+		<PruneMostFrequentSrc>-1</PruneMostFrequentSrc>
+		<PruneMostFrequentTrg>200</PruneMostFrequentTrg>
 	</candidates>
-	</preprocessing>
+	<time>
+		<Align>true</Align>
+	</time>
+</preprocessing>
 <output>
 	<Path>./output/</Path>
 </output>
@@ -55,12 +64,15 @@
 		<SlidingWindow>false</SlidingWindow>
 		<WindowSize>1</WindowSize>
 	</time>
-	<RandomSource>false</RandomSource><NumSource>1000</NumSource>
+	<RandomSource>false</RandomSource>
+	<NumSource>200</NumSource>
 	<NumTranslationsToAddPerSource>500</NumTranslationsToAddPerSource>
 	<DictionaryPercentToUse>0.9</DictionaryPercentToUse>
-	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations><NumRankingThreads>1</NumRankingThreads>	
+	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
+	<NumRankingThreads>1</NumRankingThreads>	
 	<DoTime>true</DoTime>
 	<DoContext>true</DoContext>
 	<DoEditDistance>true</DoEditDistance>
-	<DoAggregate>true</DoAggregate></experiments>
+	<DoAggregate>true</DoAggregate>
+</experiments>
 </configuration>

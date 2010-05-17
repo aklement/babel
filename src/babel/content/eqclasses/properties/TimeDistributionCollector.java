@@ -2,6 +2,7 @@ package babel.content.eqclasses.properties;
 
 import java.io.BufferedReader;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
@@ -19,6 +20,7 @@ public class TimeDistributionCollector extends PropertyCollector
   public TimeDistributionCollector(boolean caseSensitive) throws Exception
   {
     m_caseSensitive = caseSensitive;
+    m_binIdxs = new HashSet<Integer>();
   }
   
   public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> eqs) throws Exception
@@ -46,28 +48,43 @@ public class TimeDistributionCollector extends PropertyCollector
     { curEq.setProperty(new TimeDistribution());
     }
     
+    m_binIdxs.clear();
     temporalAccess.resetDays();
     int curDayIdx = 0;
     
     while (temporalAccess.nextDay())
     {
-      recordCurDayCounts(curDayIdx, getCurDayCounts(temporalAccess, eqsMap));
+      if (recordCurDayCounts(curDayIdx, getCurDayCounts(temporalAccess, eqsMap)))
+      { m_binIdxs.add(curDayIdx);
+      }
+      
       curDayIdx++;
     } 
   }
   
   /**
+   * Bin indixes for which counts were collected when collectProperty() was 
+   * called the last time.
+   */
+  public Set<Integer> binsCollected()
+  {
+    return m_binIdxs;
+  }
+  
+  /**
    * Records collected counts for a given day.
    */
-  protected void recordCurDayCounts(int curDayIdx, HashMap<EquivalenceClass, Integer> curDayCouns)
-  {
-    if (curDayCouns != null)
+  protected boolean recordCurDayCounts(int curDayIdx, HashMap<EquivalenceClass, Integer> curDayCounts)
+  {    
+    if ((curDayCounts != null) && (curDayCounts.size() > 0))
     {
-      for (EquivalenceClass eq : curDayCouns.keySet())
+      for (EquivalenceClass eq : curDayCounts.keySet())
       {
-        ((TimeDistribution)eq.getProperty(TimeDistribution.class.getName())).addBin(curDayIdx, curDayCouns.get(eq));
+        ((TimeDistribution)eq.getProperty(TimeDistribution.class.getName())).addBin(curDayIdx, curDayCounts.get(eq));
       }
     }
+    
+    return (curDayCounts != null) && (curDayCounts.size() > 0);
   }
   
   /**
@@ -110,5 +127,6 @@ public class TimeDistributionCollector extends PropertyCollector
     return counts;
   }
   
+  protected HashSet<Integer> m_binIdxs;
   protected boolean m_caseSensitive;
 }

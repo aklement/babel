@@ -14,9 +14,11 @@
 
 package babel.prep.datedcorpus;
 
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.Calendar;
 
 import org.apache.commons.logging.Log;
@@ -35,6 +37,7 @@ public class DatedLangFilesOutputFormat extends MultipleOutputFormat<Text, Text>
 {
   static final Log LOG = LogFactory.getLog(DatedLangFilesOutputFormat.class);
 
+  static final String DEFAULT_CHARSET = "UTF-8";
   static final String REJECTED_FILE = "rejected.txt";
   static final String EXTENSION = ".txt";
   
@@ -84,7 +87,8 @@ public class DatedLangFilesOutputFormat extends MultipleOutputFormat<Text, Text>
       { 
         try
         {
-          FileWriter writer = new FileWriter(new File(dumpFile.toUri()), true);
+          BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(dumpFile.toUri()), true), DEFAULT_CHARSET));
+                    
           writer.write(versText.toString());
           writer.close();
         }

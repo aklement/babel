@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
 
@@ -40,6 +41,35 @@ public class TimeDistribution extends Property implements Cloneable
     m_count = 0;
     m_normalized = false;
     m_sumSquares = m_sum = 0;
+  }
+  
+  public void removeBin(int binIdx)
+  {
+    if (m_normalized)
+    { throw new IllegalStateException("TimeDistribution is normalized: cannot remove bins.");
+    }
+    
+    Double count = m_bins.remove(binIdx);
+    
+    if (count != null)
+    { m_count -= count;
+    }
+  }
+
+  public void removeBins(Set<Integer> binIdxs)
+  {
+    if (m_normalized)
+    { throw new IllegalStateException("TimeDistribution is normalized: cannot remove bins.");
+    }
+    
+    Double count;
+    
+    for (Integer binIdx : binIdxs)
+    {
+      if (null != (count = m_bins.remove(binIdx)))
+      { m_count -= count;
+      }
+    }
   }
   
   /**

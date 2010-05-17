@@ -10,7 +10,6 @@ import org.apache.commons.logging.LogFactory;
 
 import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.SimpleEquivalenceClass;
 
 /**
  * Collects contextual equivalence class.  Does not collect across sentence 
@@ -25,13 +24,15 @@ public class ContextCollector extends PropertyCollector
     m_caseSensitive = caseSensitive;
     m_leftSize = leftSize;
     m_rightSize = rightSize;
-    m_allContextEqsMap = new HashMap<String, SimpleEquivalenceClass>(contextEqs.size());
-    SimpleEquivalenceClass seq;
+    m_allContextEqsMap = new HashMap<String, EquivalenceClass>(contextEqs.size());
     
     for (EquivalenceClass eq : contextEqs)
     {
-      seq = (SimpleEquivalenceClass)eq; // TODO: not pretty
-      m_allContextEqsMap.put(seq.getWord(), seq);
+      for (String word : eq.getAllWords())
+      { 
+        assert m_allContextEqsMap.get(word) == null;
+        m_allContextEqsMap.put(word, eq);
+      }
     }
   }
   
@@ -113,7 +114,7 @@ public class ContextCollector extends PropertyCollector
   }
  
   /** All equivalence classes which from which to construct context. */
-  protected HashMap<String, SimpleEquivalenceClass> m_allContextEqsMap;
+  protected HashMap<String, EquivalenceClass> m_allContextEqsMap;
   protected boolean m_caseSensitive;
   protected int m_leftSize;
   protected int m_rightSize;

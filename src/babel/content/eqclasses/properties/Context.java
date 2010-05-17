@@ -8,7 +8,6 @@ import java.util.Collections;
 import java.util.Comparator;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.SimpleEquivalenceClass;
 import babel.ranking.scorers.context.DictScorer;
 
 /**
@@ -72,9 +71,9 @@ public class Context extends Property
     m_contItemsScored = true;
   }
    
-  void addContextWord(boolean caseSensitive, HashMap<String, SimpleEquivalenceClass> contextEqsMap, String contextWord)
+  void addContextWord(boolean caseSensitive, HashMap<String, EquivalenceClass> contextEqsMap, String contextWord)
   {
-    SimpleEquivalenceClass contextEq = null;
+    EquivalenceClass contextEq = null;
     ContextualItem contextItem = null;
     String word = EquivalenceClass.getWordOfAppropriateForm(contextWord, caseSensitive);
 
@@ -94,12 +93,15 @@ public class Context extends Property
         // Otherwise, if it is the contextual item from our large list - add it
         else if (null != (contextEq = contextEqsMap.get(word))) 
         {
-          m_collectedMap.put(word, contextItem = new ContextualItem(this, contextEq));
+          contextItem = new ContextualItem(this, contextEq);
+          
+          // Add a map entry for each of the words
+          for (String contWord : contextEq.getAllWords())
+          { 
+            m_collectedMap.put(contWord, contextItem);
+          }
+          
           m_neighborsMap.put(contextItem.getContextEqId(), contextItem);
-        }
-        else
-        {
-          contextEq = null;
         }
       }
       catch (Exception e)
@@ -224,7 +226,7 @@ public class Context extends Property
       m_score = 0;
     }
 
-    public ContextualItem(Context context, SimpleEquivalenceClass contextEq)
+    public ContextualItem(Context context, EquivalenceClass contextEq)
     {
       this(context, contextEq.getId(), ((Number)contextEq.getProperty(Number.class.getName())).getNumber(), 1);
     }
