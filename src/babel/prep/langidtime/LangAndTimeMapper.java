@@ -41,7 +41,9 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
    */
   public void configure(JobConf job)
   {
-    m_extractor = new URLAndContentsLangTimeExtractor();
+    String referrer = job.get(LangAndTimeExtractor.JOB_PROP_JOB_REFERRER);
+    
+    m_extractor = new URLAndContentsLangTimeExtractor(referrer);
   }
   
   @Override
@@ -68,7 +70,7 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
       { LOG.warn("Detected language " + newLang + " conflicts with old language " + oldLang + " for page " + page.pageURL() + ", not changing.");
       }
       pageLang = oldLang;
-      LangAndTimeExtractor.Stats.incLangPageCount(oldLang);
+      LangAndTimeExtractor.Stats.incLangPageCount(oldLang, page);
     }
     else if (newLang != null)
     {
@@ -77,12 +79,12 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
       pageProps.remove(Page.PROP_LANG_RELIABLE);
       pageProps.set(Page.PROP_LANG, newLang);
       pageLang = newLang;
-      LangAndTimeExtractor.Stats.incLangPageCount(newLang);
-      LangAndTimeExtractor.Stats.incNewLangPageCount(newLang);
+      LangAndTimeExtractor.Stats.incLangPageCount(newLang, page);
+      LangAndTimeExtractor.Stats.incNewLangPageCount(newLang, page);
     }
     else
     {
-      LangAndTimeExtractor.Stats.incFailedLangCount();
+      LangAndTimeExtractor.Stats.incFailedLangPageCount(page);
     }
     
     // Take care of the time (per pageversion)
@@ -108,7 +110,7 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
        
        if (pageLang != null)
        { 
-         LangAndTimeExtractor.Stats.incTimeCount(pageLang);
+         LangAndTimeExtractor.Stats.incTimeVerCount(pageLang);
        }
      }
      else if (newTime != null)
@@ -118,13 +120,13 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
        
        if (pageLang != null)
        { 
-         LangAndTimeExtractor.Stats.incTimeCount(pageLang);
-         LangAndTimeExtractor.Stats.incNewTimeCount(pageLang);
+         LangAndTimeExtractor.Stats.incTimeVerCount(pageLang);
+         LangAndTimeExtractor.Stats.incNewTimeVerCount(pageLang);
        }
      }
      else if (pageLang != null)
      {
-       LangAndTimeExtractor.Stats.incFailedTimeCount();
+       LangAndTimeExtractor.Stats.incFailedTimeVerCount();
      }
 
      LOG.info("PageVersion " + page.pageURL() + (pageLang != null ? " Language = " + pageLang : "") + (pageTime != null ? " Time = " + new Date(pageTime) : ""));

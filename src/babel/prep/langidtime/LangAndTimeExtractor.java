@@ -39,6 +39,7 @@ public class LangAndTimeExtractor extends PrepStep
   
   /** Subdirectory of a nutch crawl directory where extracted pages are stored. */
   protected static final String PAGES_SUBDIR = "pages";
+  protected static final String JOB_PROP_JOB_REFERRER = "langidentifier.referrer";
   
   public LangAndTimeExtractor() throws Exception 
   { super();
@@ -47,7 +48,7 @@ public class LangAndTimeExtractor extends PrepStep
   /**
    * Configures a map-only language id job.
    */
-  protected JobConf createJobConf(String crawlDir, String pagesSubDir) throws IOException 
+  protected JobConf createJobConf(String crawlDir, String pagesSubDir, String referrer) throws IOException 
   {    
     JobConf job = new JobConf(getConf());
     job.setJobName("identify languages and collect time for pages in " + pagesSubDir);
@@ -65,19 +66,21 @@ public class LangAndTimeExtractor extends PrepStep
 
     FileOutputFormat.setOutputPath(job, outDir);
     
+    job.set(JOB_PROP_JOB_REFERRER, referrer);
+    
     return job;
   }
   
   public static void main(String[] args) throws Exception 
   {    
-    if (args.length != 2)
+    if (args.length != 3)
     {
       usage();
       return;
     }
     
     LangAndTimeExtractor identifier = new LangAndTimeExtractor();
-    JobConf job = identifier.createJobConf(args[0], args[1]);
+    JobConf job = identifier.createJobConf(args[0], args[1], args[2]);
 
     if (LOG.isInfoEnabled())
     { LOG.info("LangAndTimeExtractor: " + job.getJobName());
@@ -95,7 +98,7 @@ public class LangAndTimeExtractor extends PrepStep
   
   protected static void usage()
   {
-    System.err.println("Usage: LangAndTimeExtractor crawl_dir pages_subdir\n");
+    System.err.println("Usage: LangAndTimeExtractor crawl_dir pages_subdir referrer_url\n");
   }
 
   /**
@@ -103,55 +106,72 @@ public class LangAndTimeExtractor extends PrepStep
    */
   static class Stats
   {
-    private static HashMap<String, Integer> langCounts; 
-    private static HashMap<String, Integer> newLangCounts;
-    private static int failedLangCount;
-    private static HashMap<String, Integer> timeCounts; 
-    private static HashMap<String, Integer> newTimeCounts;
-    private static int failedTimeCount;
+    private static HashMap<String, Integer> pageLangCounts; 
+    private static HashMap<String, Integer> pageNewLangCounts;
+    private static int pageFailedLangCount;
+
+    private static HashMap<String, Integer> verLangCounts; 
+    private static HashMap<String, Integer> verNewLangCounts;
+    private static int verFailedLangCount;
+    
+    private static HashMap<String, Integer> verTimeCounts; 
+    private static HashMap<String, Integer> verNewTimeCounts;
+    private static int verFailedTimeCount;
     
     static
     {
-      langCounts = new HashMap<String, Integer>();
-      newLangCounts = new HashMap<String, Integer>();
-      timeCounts = new HashMap<String, Integer>();
-      newTimeCounts = new HashMap<String, Integer>();
-      failedLangCount = 0;
-      failedTimeCount = 0;
+      pageLangCounts = new HashMap<String, Integer>();
+      pageNewLangCounts = new HashMap<String, Integer>();
+      pageFailedLangCount = 0;
+
+      verLangCounts = new HashMap<String, Integer>();
+      verNewLangCounts = new HashMap<String, Integer>();
+      verFailedLangCount = 0;
+      
+      verTimeCounts = new HashMap<String, Integer>();
+      verNewTimeCounts = new HashMap<String, Integer>();
+      verFailedTimeCount = 0;
     }
     
-    public synchronized static void incLangPageCount(String lang)
+    public synchronized static void incLangPageCount(String lang, Page page)
     {
-      int curCount = langCounts.containsKey(lang) ? langCounts.get(lang).intValue() + 1 : 1;
-      langCounts.put(lang, curCount);      
+      int curCount = pageLangCounts.containsKey(lang) ? pageLangCounts.get(lang).intValue() + 1 : 1;
+      pageLangCounts.put(lang, curCount);      
+
+      curCount = verLangCounts.containsKey(lang) ? verLangCounts.get(lang).intValue() + page.pageVersions().size() : page.pageVersions().size();
+      verLangCounts.put(lang, curCount); 
     }
     
-    public synchronized static void incNewLangPageCount(String lang)
+    public synchronized static void incNewLangPageCount(String lang, Page page)
     {
-      int curCount = newLangCounts.containsKey(lang) ? newLangCounts.get(lang).intValue() + 1 : 1;
-      newLangCounts.put(lang, curCount);      
+      int curCount = pageNewLangCounts.containsKey(lang) ? pageNewLangCounts.get(lang).intValue() + 1 : 1;
+      pageNewLangCounts.put(lang, curCount);      
+
+      curCount = verNewLangCounts.containsKey(lang) ? verNewLangCounts.get(lang).intValue() + page.pageVersions().size() : page.pageVersions().size();
+      verNewLangCounts.put(lang, curCount);  
     }
     
-    public synchronized static void incTimeCount(String lang)
+    public synchronized static void incFailedLangPageCount(Page page)
     {
-      int curCount = timeCounts.containsKey(lang) ? timeCounts.get(lang).intValue() + 1 : 1;
-      timeCounts.put(lang, curCount);      
+      pageFailedLangCount++;
+      verFailedLangCount += page.pageVersions().size();
+    }
+    
+    public synchronized static void incTimeVerCount(String lang)
+    {
+      int curCount = verTimeCounts.containsKey(lang) ? verTimeCounts.get(lang).intValue() + 1 : 1;
+      verTimeCounts.put(lang, curCount);      
     }
 
-    public synchronized static void incNewTimeCount(String lang)
+    public synchronized static void incNewTimeVerCount(String lang)
     {
-      int curCount = newTimeCounts.containsKey(lang) ? newTimeCounts.get(lang).intValue() + 1 : 1;
-      newTimeCounts.put(lang, curCount);      
-    }
-    
-    public synchronized static void incFailedLangCount()
-    {
-      failedLangCount++;
+      int curCount = verNewTimeCounts.containsKey(lang) ? verNewTimeCounts.get(lang).intValue() + 1 : 1;
+      verNewTimeCounts.put(lang, curCount);      
     }
 
-    public synchronized static void incFailedTimeCount()
+    public synchronized static void incFailedTimeVerCount()
     {
-      failedTimeCount++;
+      verFailedTimeCount++;
     }
     
     public static String dumpStats()
@@ -160,20 +180,20 @@ public class LangAndTimeExtractor extends PrepStep
       
       strBld.append("Existing counts:\n");
       
-      for (String lang : langCounts.keySet())
-      { strBld.append(lang + " : " + langCounts.get(lang) + "pages, of which " + timeCounts.get(lang) + " are time stamped.\n");
+      for (String lang : pageLangCounts.keySet())
+      { strBld.append(lang + " : " + pageLangCounts.get(lang) + " pages containing " + verLangCounts.get(lang) + " versions of which " + verTimeCounts.get(lang) + " are time stamped.\n");
       }
 
       strBld.append("\nOf those these were just extracted:\n");
       
-      for (String lang : newLangCounts.keySet())
-      { strBld.append(lang + " : " + newLangCounts.get(lang) + "pages, of which " + newTimeCounts.get(lang) + " are time stamped.\n");
+      for (String lang : pageNewLangCounts.keySet())
+      { strBld.append(lang + " : " + pageNewLangCounts.get(lang) + " pages containing " + verNewLangCounts.get(lang) + " versions of which " + verNewTimeCounts.get(lang) + " are time stamped.\n");
       }
 
       strBld.append("\nOther stats:\n");
       
-      strBld.append(failedLangCount + " pages with no languages detected.\n");     
-      strBld.append(failedTimeCount + " pages with detected language but no timestamp.\n");     
+      strBld.append(pageFailedLangCount + " pages (" + verFailedLangCount + " versions) with no languages detected.\n");     
+      strBld.append(verFailedTimeCount + " page versions with detected language but no timestamp.\n");     
 
       return strBld.toString();
     }

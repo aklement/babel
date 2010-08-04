@@ -1,6 +1,7 @@
 package babel.prep.langidtime;
 
-import java.text.ParseException;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
@@ -9,7 +10,9 @@ import java.util.regex.Pattern;
 
 import babel.content.pages.Page;
 import babel.content.pages.PageVersion;
+import babel.util.language.GoogleLangDetector;
 import babel.util.language.LangDetectionResult;
+import babel.util.language.LangDetector;
 import babel.util.language.Language;
 
 import com.ibm.icu.text.DateFormat;
@@ -17,6 +20,9 @@ import com.ibm.icu.text.SimpleDateFormat;
 
 public class URLAndContentsLangTimeExtractor
 {
+  protected static Pattern DW_CONT_DATE_1 = Pattern.compile("Deutsche Welle \\| (\\d?\\d.\\d?\\d.\\d{4})"); //Deutsche Welle | 12.07.2010
+  protected static DateFormat DW_CONT_DATEFORMAT_1 = new SimpleDateFormat("d.M.y");
+
   protected static DateFormat BBC_URL_DATEFORMAT = new SimpleDateFormat("yyMMdd");
   
   protected static Pattern BBC_EN_CONT_DATE_1 = Pattern.compile("\\d\\d:\\d\\d\\s[^\\s\\d]{3},\\s[^\\s\\d]+,\\s\\d?\\d\\s[^\\s\\d]+\\s\\d\\d\\d\\d"); // 09:30 GMT, Thursday, 19 November 2009
@@ -49,6 +55,9 @@ public class URLAndContentsLangTimeExtractor
   protected static Pattern BBC_ZH_CONT_DATE_1 = Pattern.compile("(\\d{4})年\\s*(\\d?\\d)月\\s*(\\d?\\d)日"); //2009年03月21日 | 2010年 5月 09日
   protected static DateFormat BBC_ZH_CONT_DATEFORMAT_1 = new SimpleDateFormat("y M d");
   
+  //protected static Pattern BBC_UR_CONT_DATE_1 = Pattern.compile("(\\d{2})\\s*([^\\s\\d]+)\\s*(\\d{4})\\s*,‭\\s*(\\d?\\d:\\d\\d\\s[^\\s\\d]{3})");
+  //protected static DateFormat BBC_UR_CONT_DATEFORMAT_1 = new SimpleDateFormat("d m y HH:mm zzz", new Locale("ur"));
+
   protected static Pattern VOA_URL_DATE_ONE = Pattern.compile("\\d\\d\\d\\d_\\d?\\d_\\d?\\d");
   protected static DateFormat VOA_URL_DATEFORMAT_ONE = new SimpleDateFormat("yyyy_M_d");
 
@@ -132,7 +141,7 @@ public class URLAndContentsLangTimeExtractor
   // Slovak: dnes.atlas.sk - from page version content using a date pattern
   // English: bbc.
   
-  public URLAndContentsLangTimeExtractor()
+  public URLAndContentsLangTimeExtractor(String referrer)
   {
     m_bbcURLLangs = new HashMap<String, LangDetectionResult>();
             
@@ -187,9 +196,11 @@ public class URLAndContentsLangTimeExtractor
     m_voaURLLangs.put("^voanews.com/urdu/.*", new LangDetectionResult(Language.URDU));
     m_voaURLLangs.put("^voanews.com/uzbek/.*", new LangDetectionResult(Language.UZBEK)); 
     m_voaURLLangs.put("^voanews.com/chinese/.*", new LangDetectionResult(Language.CHINESE)); //
+    
+    m_detector = new GoogleLangDetector(referrer);
   }
   
-  public static void main(String[] str) throws ParseException
+  public static void main(String[] str) throws Exception
   {
     /*
     String[] arr = 
@@ -202,10 +213,14 @@ public class URLAndContentsLangTimeExtractor
      "http://www.bbc.co.uk/azeri/news/story/2010/04/100428_eynulla.shtml",
      "http://www.bbc.co.uk/russian/international/2010/04/100428_greece_default_denial.shtml",
      "http://lenta.ru/news/2010/04/28/tim/"};
-
-    URLAndContentsLangTimeExtractor d = new URLAndContentsLangTimeExtractor();
-    Date date;
+     */
     
+    URLAndContentsLangTimeExtractor d = new URLAndContentsLangTimeExtractor("http://www.clsp.jhu.edu");
+    Date date = d.detectDWDateFromContent(readFileAsString("test/0,,5787445,00.html"));
+    
+    System.out.println(date);
+    
+    /*
     date = d.detectBBCDateFromEnContent(";Wednesday, 7 May 2003, 15:56 GMT 16:56 UKjk ");
     date = d.detectBBCDateFromEnContent(" fgjh>Thursday, 1 November, 2004, 00:28 GMT< dhdish ");
     date = d.detectBBCDateFromEnContent("lkj12:05 GMT, Friday, 6 February 2009 jhkjh");
@@ -223,7 +238,24 @@ public class URLAndContentsLangTimeExtractor
     date = d.detectVoADateFromSoContent("jhs 06 May 2010");
     */
   }
-
+  
+  private static String readFileAsString(String path) throws Exception
+  {
+    StringBuilder fileData = new StringBuilder();
+    BufferedReader reader = new BufferedReader(new FileReader(path));
+    char[] buf = new char[1024];
+    int numRead = 0;
+    
+    while((numRead = reader.read(buf)) != -1)
+    {
+      String readData = String.valueOf(buf, 0, numRead);
+      fileData.append(readData);
+    }
+    
+    reader.close();
+    return fileData.toString();
+  }
+  
   public DetectionResult detect(Page page)
   {
     DetectionResult result = null;
@@ -234,11 +266,13 @@ public class URLAndContentsLangTimeExtractor
       {
         if (null != (result = detectBBC(page)));
         else if (null != (result = detectVoA(page)));
+        else if (null != (result = detectDW(page)));
         else if (null != (result = detectLenta(page)));
         else if (null != (result = detectAtlas(page)));        
         else if (null != (result = detectInformKaz(page)));
         else if (null != (result = detectDienaLv(page)));
         else if (null != (result = detectAzatliqKy(page)));
+        else if (null != (result = detectOther(page)));
       }
       catch(Exception e)
       { result = null;
@@ -246,6 +280,87 @@ public class URLAndContentsLangTimeExtractor
     }
     
     return result;
+  }
+  
+  protected DetectionResult detectOther(Page page)
+  {
+    // A catchall: runs google lang ID on all other pages  
+    DetectionResult result = null;
+
+    try
+    {
+      // Get or detect language
+      LangDetectionResult langResult = getOrGoogDetectLang(page);
+        
+      if (langResult != null)
+      { result = new DetectionResult(langResult);
+      }
+    }
+    catch (Exception e)
+    {}
+    
+    return result;
+  }
+  
+  protected DetectionResult detectDW(Page page)
+  {
+    // Example URLs: http://www.dw-world.de/dw/article/0,,5862718,00.html  
+    
+    DetectionResult result = null;
+    String url = removeProtocol(page.pageURL());
+    
+    if (url.matches("^(www.)?dw-world.de.*"))
+    { 
+      try
+      {
+        // Get or detect language
+        LangDetectionResult langResult = getOrGoogDetectLang(page);
+        
+        if (langResult != null)
+        {
+          result = new DetectionResult(langResult);
+          Date modTime = null;
+          
+          // Detect date from contents of each pageversion
+          for (PageVersion ver : page.pageVersions())
+          {
+            if (null != (modTime = detectDWDateFromContent(ver.getContent())))
+            { result.addModTime(ver, modTime);            
+            }
+          }
+        }
+      }
+      catch (Exception e)
+      {}
+    }
+    
+    return result;
+  }
+  
+  protected LangDetectionResult getOrGoogDetectLang(Page page) throws Exception
+  {
+    Language lang = Language.fromString(page.pageProperties().getFirst(Page.PROP_LANG));    
+    return (lang == null) ? m_detector.detect(page.pageVersions().get(0).getContent()) : new LangDetectionResult(lang);
+  }
+  
+  protected Date detectDWDateFromContent(String content)
+  {
+    Date modTime = null;
+    Matcher m = null;
+    
+    try
+    {        
+      m = DW_CONT_DATE_1.matcher(content);
+        
+      if (m.find())
+      {
+        modTime = DW_CONT_DATEFORMAT_1.parse(content.substring(m.start(1), m.end(1)));
+      }
+    }
+    catch (Exception e)
+    {}
+    
+    return modTime;
   }
   
   protected DetectionResult detectBBC(Page page)
@@ -270,7 +385,7 @@ public class URLAndContentsLangTimeExtractor
     {
       result = new DetectionResult(langResult);
 
-      // Tru detecting from URL
+      // Try detecting from URL
       if (null == (modTime = detectBBCDateFromURL(url)))
       {
         // If failed, detect from contents of each pageversion
@@ -531,10 +646,9 @@ public class URLAndContentsLangTimeExtractor
     
     return modTime;
   }
-  
+ 
   protected DetectionResult detectVoA(Page page)
-  {
-    
+  { 
     DetectionResult result = null;
     String url = removeProtocolAndPrefix(page.pageURL());
     LangDetectionResult langResult = null;
@@ -696,7 +810,6 @@ public class URLAndContentsLangTimeExtractor
     return result;
   }
   
-
   protected DetectionResult detectAtlas(Page page)
   {
     DetectionResult result = null;
@@ -845,7 +958,7 @@ public class URLAndContentsLangTimeExtractor
   
   protected HashMap<String, LangDetectionResult> m_bbcURLLangs;
   protected HashMap<String, LangDetectionResult> m_voaURLLangs;
-  protected HashMap<String, String> m_skMonths;
+  private LangDetector m_detector;
 
   public class DetectionResult
   {
@@ -896,7 +1009,6 @@ public class URLAndContentsLangTimeExtractor
     
     HashMap<PageVersion, Date> m_modTimes;
     LangDetectionResult m_langDet;
-    
   }
 }
 

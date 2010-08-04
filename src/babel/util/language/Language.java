@@ -130,12 +130,16 @@ public enum Language
   
   public static Language fromString(final String language)
   {
-    for (Language l : values())
+    if (language != null)
     {
-      if (language.equals(l.toString()))
-      { return l;
+      for (Language l : values())
+      {
+        if (language.equals(l.toString()))
+        { return l;
+        }
       }
     }
+    
     return null;
   }
   
