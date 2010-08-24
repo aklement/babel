@@ -16,35 +16,93 @@ public class Dictionary
 {
   public Dictionary(Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs, SimpleDictionary simpleDict, String name)
   {
+    m_name = name;
     m_rand = new Random(1);
     m_map = new HashMap<EquivalenceClass, HashSet<EquivalenceClass>>();
-    m_name = name;
     m_srcMap = new HashMap<Long, EquivalenceClass>();
-    m_trgMap = new HashMap<Long, EquivalenceClass>(); 
+    m_trgMap = new HashMap<Long, EquivalenceClass>();
     
     costruct(srcEqs, trgEqs, simpleDict);
   }
+
+  public void retainAllSrc(Set<EquivalenceClass> srcEqs)
+  {
+    HashMap<EquivalenceClass, HashSet<EquivalenceClass>> oldMap = m_map;
+    HashMap<Long, EquivalenceClass> oldSrcMap = m_srcMap;
+    
+    m_map = new HashMap<EquivalenceClass, HashSet<EquivalenceClass>>();
+    m_srcMap = new HashMap<Long, EquivalenceClass>();
+    m_trgMap.clear();
+    
+    EquivalenceClass otherSrcEq;
+
+    for (EquivalenceClass sEq : srcEqs)
+    {
+      if (null != (otherSrcEq = oldSrcMap.get(sEq.getId())))
+      { addTranslation(otherSrcEq, oldMap.get(otherSrcEq));
+      }
+    } 
+  }
+
+  public void removeAllSrc(Set<EquivalenceClass> srcEqs)
+  {    
+    HashMap<EquivalenceClass, HashSet<EquivalenceClass>> oldMap = m_map;
+    
+    m_map = new HashMap<EquivalenceClass, HashSet<EquivalenceClass>>();
+    m_srcMap.clear();
+    m_trgMap.clear(); 
+    
+    HashSet<Long> srcIds = new HashSet<Long>();
+      
+    for (EquivalenceClass sEq : srcEqs)
+    { srcIds.add(sEq.getId());
+    }
+      
+    for (EquivalenceClass otherSrcEq : oldMap.keySet())
+    {
+      if (!srcIds.contains(otherSrcEq.getId()))
+      { addTranslation(otherSrcEq, oldMap.get(otherSrcEq));          
+      }
+    }
+  }
   
+  protected void addTranslation(EquivalenceClass srcEq, Set<EquivalenceClass> trgEqSet)
+  {
+    HashSet<EquivalenceClass> ourTrgEqSet;
+    
+    m_srcMap.put(srcEq.getId(), srcEq);
+        
+    if (null == (ourTrgEqSet = m_map.get(srcEq)))
+    { m_map.put(srcEq, ourTrgEqSet = new HashSet<EquivalenceClass>());
+    }
+    
+    for (EquivalenceClass tEq : trgEqSet)
+    {
+      ourTrgEqSet.add(tEq);        
+      m_trgMap.put(tEq.getId(), tEq);
+    }
+  }
+
   protected void costruct(Set<EquivalenceClass> srcEq, Set<EquivalenceClass> trgEq, SimpleDictionary simpleDict)
   {
     HashMap<String, EquivalenceClass> srcMap = new HashMap<String, EquivalenceClass>();
     HashMap<String, EquivalenceClass> trgMap = new HashMap<String, EquivalenceClass>();
 
-    for (EquivalenceClass EquivalenceClass : srcEq)
+    for (EquivalenceClass eq : srcEq)
     {
-      for (String sWord : EquivalenceClass.getAllWords())
+      for (String sWord : eq.getAllWords())
       { 
         assert !srcMap.containsKey(sWord);
-        srcMap.put(sWord, EquivalenceClass);
+        srcMap.put(sWord, eq);
       }
     }
 
-    for (EquivalenceClass EquivalenceClass : trgEq)
+    for (EquivalenceClass eq : trgEq)
     {
-      for (String tWord : EquivalenceClass.getAllWords())
+      for (String tWord : eq.getAllWords())
       { 
         assert !trgMap.containsKey(tWord);
-        trgMap.put(tWord, EquivalenceClass);
+        trgMap.put(tWord, eq);
       }
     }
   
