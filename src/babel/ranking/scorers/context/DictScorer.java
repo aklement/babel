@@ -2,6 +2,9 @@ package babel.ranking.scorers.context;
 
 import java.util.Collection;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.properties.Context;
 import babel.content.eqclasses.properties.Type;
@@ -12,6 +15,8 @@ import babel.util.dict.Dictionary;
 
 public abstract class DictScorer extends Scorer
 {
+  protected static final Log LOG = LogFactory.getLog(DictScorer.class);
+
   public DictScorer(Dictionary dict)
   {
     m_dict = dict;
@@ -62,7 +67,13 @@ public abstract class DictScorer extends Scorer
     Context context = ((Context)eq.getProperty(Context.class.getName()));
 
     if (context == null)
-    { throw new IllegalArgumentException("Class has no context property.");
+    { 
+      if (LOG.isWarnEnabled())
+      { LOG.warn("Equivalence Class " + eq.toString() + " has no context property, adding one.");
+      }
+      
+      eq.setProperty(context = new Context(eq));
+      //throw new IllegalArgumentException("Class has no context property.");
     }
     else if (type == null || EqType.NONE.equals(type))
     { throw new IllegalArgumentException("Class is of unknown type, cannot compute scores.");
