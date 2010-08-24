@@ -73,7 +73,9 @@ public class PageVersion implements XMLPersistable, Writable
    * Should only be used by NutchPageExtractor.
    */
   public PageVersion(String segmentId, List<NutchChunk> chunks)
-  {    
+  {
+    this();
+    
     Writable curVal;
     CrawlDatum curCD;
     //Content curCT;
