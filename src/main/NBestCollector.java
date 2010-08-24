@@ -51,7 +51,6 @@ public class NBestCollector
     int maxNumTrgPerSrc = Configurator.CONFIG.getInt("experiments.NumTranslationsToAddPerSource");
     String outDir = Configurator.CONFIG.getString("output.Path");
     int numThreads = Configurator.CONFIG.getInt("experiments.NumRankingThreads");
-    boolean randomSrc = Configurator.CONFIG.getBoolean("experiments.RandomSource");
     boolean doContext = Configurator.CONFIG.getBoolean("experiments.DoContext");
     boolean doTime = Configurator.CONFIG.getBoolean("experiments.DoTime");
     boolean doEditDist = Configurator.CONFIG.getBoolean("experiments.DoEditDistance");
@@ -60,12 +59,10 @@ public class NBestCollector
     DataPreparer preparer = new DataPreparer();
     
     // Prepare equivalence classes
-    preparer.prepareEqs();
+    preparer.prepare();
   
     // Select a subset of src classes to actually induct (i.e. most frequent, or random)
-    Set<EquivalenceClass> srcSubset = randomSrc ? 
-        preparer.selectRandSrcTokens(preparer.getTestDict(), preparer.getSrcEqs()) :
-        preparer.selectMostFrequentSrcTokens(preparer.getTestDict(), preparer.getSrcEqs());    
+    Set<EquivalenceClass> srcSubset = preparer.getSrcEqsToInduct();   
     Set<EquivalenceClass> trgSet = preparer.getTrgEqs();
     
     // Setup scorers
