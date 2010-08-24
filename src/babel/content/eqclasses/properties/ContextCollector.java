@@ -63,7 +63,7 @@ public class ContextCollector extends PropertyCollector
     while ((curLine = reader.readLine()) != null)
     {
       // Split into likely sentences
-      curSents = curLine.split(SENT_DELIM_REGEX);
+      curSents = sentSplit(curLine, corpusAccess.isOneSentencePerLine());
         
       // Within each sentence, split into words
       for (int numSent = 0; numSent < curSents.length; numSent++ )
@@ -111,6 +111,23 @@ public class ContextCollector extends PropertyCollector
     }
 
     reader.close();
+  }
+  
+  protected String[] sentSplit(String line, boolean oneSentPerLine)
+  {
+    String[] sents;
+    
+    if (oneSentPerLine)
+    { 
+      sents = new String[1];
+      sents[0] = line;
+    }
+    else
+    { 
+      sents = line.split(SENT_DELIM_REGEX);
+    }
+    
+    return sents;
   }
  
   /** All equivalence classes which from which to construct context. */
