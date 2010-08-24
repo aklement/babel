@@ -8,6 +8,10 @@ import java.util.Date;
  */
 public abstract class TemporalCorpusAccessor extends CorpusAccessor
 {
+  protected TemporalCorpusAccessor(boolean oneSentPerLine)
+  { super(oneSentPerLine);
+  }
+
   /**
    * Resets the per day view. Note that nextDay() must be called before getting
    * the first per-day stream. 
