@@ -29,9 +29,9 @@ public class EuroParlCorpusAccessor extends TemporalCorpusAccessor
    * @param from start date (incluive)
    * @param to end date (exclusive)
    */
-  public EuroParlCorpusAccessor(String corpusDir, String charset, Date from, Date to)
+  public EuroParlCorpusAccessor(String corpusDir, String charset, Date from, Date to, boolean oneSentPerLine)
   {
-    super();
+    super(oneSentPerLine);
     
     if (from == null || to == null || from.after(to))
     { throw new IllegalArgumentException("Dates missing / bad");
@@ -49,9 +49,9 @@ public class EuroParlCorpusAccessor extends TemporalCorpusAccessor
     m_files = new FileList(corpusDir, m_fileNameFilter);    
   }
 
-  public EuroParlCorpusAccessor(String corpusDir, Date from, Date to)
+  public EuroParlCorpusAccessor(String corpusDir, Date from, Date to, boolean oneSentPerLine)
   { 
-    this(corpusDir, DEFAULT_CHARSET, from, to);
+    this(corpusDir, DEFAULT_CHARSET, from, to, oneSentPerLine);
   }
   
   /**

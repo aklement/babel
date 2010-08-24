@@ -14,14 +14,14 @@ public class LexCorpusAccessor extends CorpusAccessor
 {
   protected static final String DEFAULT_CHARSET = "UTF-8";
 
-  public LexCorpusAccessor(String fileNameRegEx, String corpusDir)
+  public LexCorpusAccessor(String fileNameRegEx, String corpusDir, boolean oneSentPerLine)
   {
-    this(fileNameRegEx, corpusDir, DEFAULT_CHARSET);
+    this(fileNameRegEx, corpusDir, DEFAULT_CHARSET, oneSentPerLine);
   }
   
-  public LexCorpusAccessor(String fileNameRegEx, String corpusDir, String charset)
+  public LexCorpusAccessor(String fileNameRegEx, String corpusDir, String charset, boolean oneSentPerLine)
   {
-    super();
+    super(oneSentPerLine);
     
     resetFiles();
     

@@ -29,9 +29,9 @@ public class CrawlCorpusAccessor extends TemporalCorpusAccessor
    * @param from start date (incluive)
    * @param to end date (exclusive)
    */
-  public CrawlCorpusAccessor(String corpusDir, String charset, Date from, Date to)
+  public CrawlCorpusAccessor(String corpusDir, String charset, Date from, Date to, boolean oneSentPerLine)
   {
-    super();
+    super(oneSentPerLine);
     
     if (from == null || to == null || from.after(to))
     { throw new IllegalArgumentException("Dates missing / bad");
@@ -47,9 +47,9 @@ public class CrawlCorpusAccessor extends TemporalCorpusAccessor
     m_files = new FileList(corpusDir);
   }
 
-  public CrawlCorpusAccessor(String corpusDir, Date from, Date to)
+  public CrawlCorpusAccessor(String corpusDir, Date from, Date to, boolean oneSentPerLine)
   { 
-    this(corpusDir, DEFAULT_CHARSET, from, to);
+    this(corpusDir, DEFAULT_CHARSET, from, to, oneSentPerLine);
   }
   
   /**

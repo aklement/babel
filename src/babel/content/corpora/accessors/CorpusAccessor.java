@@ -7,11 +7,19 @@ import java.io.InputStreamReader;
  */
 public abstract class CorpusAccessor
 {
+  protected CorpusAccessor(boolean oneSentPerLine)
+  { m_oneSentPerLine = oneSentPerLine;
+  }
+  
   /**
    * @return an InputStream reader for a entire view of the corpus.
    */
   public abstract InputStreamReader getCorpusReader();
 
+  public boolean isOneSentencePerLine()
+  { return m_oneSentPerLine;
+  }
+  
   /**
    * Resets the per file view. Note that nextFile() must be called before getting
    * the first per-file stream. 
@@ -29,6 +37,8 @@ public abstract class CorpusAccessor
    */
   public abstract NamedInputStreamReader getCurFileReader();
 
+  protected boolean m_oneSentPerLine;
+  
   public class NamedInputStreamReader
   {
     public NamedInputStreamReader(String streamName, InputStreamReader reader)
