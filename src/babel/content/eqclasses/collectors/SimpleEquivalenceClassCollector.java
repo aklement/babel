@@ -2,7 +2,6 @@ package babel.content.eqclasses.collectors;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -10,15 +9,12 @@ import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.SimpleEquivalenceClass;
-import babel.content.eqclasses.comparators.OverlapComparator;
 import babel.content.eqclasses.filters.EquivalenceClassFilter;
 import babel.content.eqclasses.properties.PropertyCollector;
 
 public class SimpleEquivalenceClassCollector extends EquivalenceClassCollector
 {
   protected static final String WORD_DELIM_REGEX = PropertyCollector.WORD_DELIM_REGEX;
-
-  protected static final Comparator<EquivalenceClass> OVERLAP_COMPARATOR = new OverlapComparator();
 
   public SimpleEquivalenceClassCollector(List<EquivalenceClassFilter> filters, boolean caseSensitive)
   {
