@@ -45,7 +45,7 @@ public class Configurator
     catch (Exception e)
     {
       if (LOG.isErrorEnabled())
-      { LOG.error("Error reading configuration from file" + cfgFileName + ".");
+      { LOG.error("Error reading configuration from file " + cfgFileName + ".");
       }
       
       CONFIG = null;      
