@@ -1,5 +1,6 @@
 package main;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -12,6 +13,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
@@ -36,20 +38,25 @@ import babel.content.eqclasses.filters.NoTimeDistributionFilter;
 import babel.content.eqclasses.filters.NumOccurencesFilter;
 import babel.content.eqclasses.filters.RomanizationFilter;
 import babel.content.eqclasses.filters.StopWordsFilter;
+import babel.content.eqclasses.phrases.Phrase;
+import babel.content.eqclasses.phrases.PhraseTable;
 import babel.content.eqclasses.properties.Context;
 import babel.content.eqclasses.properties.ContextCollector;
 import babel.content.eqclasses.properties.Number;
 import babel.content.eqclasses.properties.NumberCollector;
+import babel.content.eqclasses.properties.PhraseContextCollector;
+import babel.content.eqclasses.properties.PhrasePropertyCollector;
+import babel.content.eqclasses.properties.PhraseTimeDistributionCollector;
 import babel.content.eqclasses.properties.TimeDistribution;
 import babel.content.eqclasses.properties.TimeDistributionCollector;
 import babel.content.eqclasses.properties.Type;
+import babel.content.eqclasses.properties.PhrasePropertyCollector.IdxPair;
 import babel.content.eqclasses.properties.Type.EqType;
 
 import babel.ranking.scorers.Scorer;
 import babel.util.config.Configurator;
 import babel.util.dict.Dictionary;
 import babel.util.dict.SimpleDictionary;
-import babel.util.dict.SimpleDictionary.DictPair;
 import babel.util.persistence.EqClassPersister;
 
 public class DataPreparer
@@ -71,7 +78,7 @@ public class DataPreparer
   protected static final String SRC_TO_INDUCT = "srcinduct.list";
   
   @SuppressWarnings("unchecked")
-  public void prepareEqs() throws Exception
+  public void prepare() throws Exception
   {
     boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
     String srcEqClassName = Configurator.CONFIG.getString("preprocessing.candidates.SrcEqClass");
@@ -102,7 +109,7 @@ public class DataPreparer
       LOG.info(" - Candidate source classes: " + m_srcEqs.size());
       LOG.info(" - Candidate target classes: " + m_trgEqs.size());
       
-      prepareDictionariesFromSingleFile(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
+      prepareDictsAndSrcEqsToInduct(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
       
       LOG.info(" - Reading source and target properties...");
       readProps(true, m_srcEqs, SRC_PROP_EXT);
@@ -139,7 +146,7 @@ public class DataPreparer
       LOG.info(" - Pruned candidate source classes: " + m_srcEqs.size());
       LOG.info(" - Pruned candidate target classes: " + m_trgEqs.size());
       
-      prepareDictionariesFromSingleFile(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
+      prepareDictsAndSrcEqsToInduct(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
       
       LOG.info(" - Collecting candidate properties...");
       Set<Integer> srcBins = collectProps(true, m_srcEqs, m_contextSrcEqs, m_seedDict);
@@ -171,6 +178,141 @@ public class DataPreparer
     collectTokenCounts(m_contextSrcEqs, m_contextTrgEqs); 
   }
   
+  @SuppressWarnings({ "unchecked", "rawtypes" })
+  public void preparePhrases() throws Exception {
+
+    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
+    String srcContEqClassName = Configurator.CONFIG.getString("preprocessing.context.SrcEqClass");
+    String trgContEqClassName = Configurator.CONFIG.getString("preprocessing.context.TrgEqClass");
+    boolean alignDistros = Configurator.CONFIG.getBoolean("preprocessing.time.Align");
+    String phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
+    
+    Class<EquivalenceClass> srcContClassClass = (Class<EquivalenceClass>)Class.forName(srcContEqClassName);
+    Class<EquivalenceClass> trgContClassClass = (Class<EquivalenceClass>)Class.forName(trgContEqClassName);
+    
+    LOG.info(" - Collecting from scratch ...");
+    
+    Set<EquivalenceClass> allSrcEqs = collectInitEqClasses(true, false);
+    Set<EquivalenceClass> allTrgEqs = collectInitEqClasses(false, filterRomanTrg);
+    LOG.info(" - All source types: " + allSrcEqs.size());
+    LOG.info(" - All target types: " + allTrgEqs.size() + (filterRomanTrg ? " (without romanization) " : ""));
+    
+    LOG.info(" - Constructing context classes...");
+    m_contextSrcEqs = constructEqClasses(true, allSrcEqs, srcContClassClass);
+    m_contextTrgEqs = constructEqClasses(false, allTrgEqs, trgContClassClass);     
+    LOG.info(" - Context source classes: " + m_contextSrcEqs.size());
+    LOG.info(" - Context target classes: " + m_contextTrgEqs.size());
+    
+    //LOG.info(" - Writing context classes...");
+    //writeEqs(m_contextSrcEqs, true, CONTEXT_SRC_MAP_FILE, CONTEXT_SRC_PROP_EXT);
+    //writeEqs(m_contextTrgEqs, false, CONTEXT_TRG_MAP_FILE, CONTEXT_TRG_PROP_EXT);
+    
+    LOG.info(" - Reading candidate phrases...");
+    m_phraseTable = new PhraseTable(phraseTableFile);
+    //LOG.info(" - Removing pharses (from " + m_phraseTable.numSrcPhrases() + ") which do not appead in the dev or test sets...");
+    //keepDevAndTestPhrases();
+    
+    m_srcEqs = (Set)m_phraseTable.getAllSrcPhrases();
+    m_trgEqs = (Set)m_phraseTable.getAllTrgPhrases();
+     
+    LOG.info(" - Source phrases: " + m_srcEqs.size());
+    LOG.info(" - Target phrases: " + m_trgEqs.size());
+    
+    prepareOnlySeedDictionary(m_contextSrcEqs, m_contextTrgEqs);
+
+    LOG.info(" - Collecting candidate properties...");
+    Set<Integer> srcBins = collectPhraseProps(true, m_srcEqs, m_contextSrcEqs, m_seedDict);
+    Set<Integer> trgBins = collectPhraseProps(false, m_trgEqs, m_contextTrgEqs, m_seedDict);
+
+    if (alignDistros)
+    {
+      LOG.info(" - Aligning temporal distributions...");
+      alignDistributions(srcBins, trgBins, m_srcEqs, m_trgEqs);
+    }
+    
+    //LOG.info(" - Writing candidate classes and properties...");
+    //writeEqs(m_srcEqs, true, SRC_MAP_FILE, SRC_PROP_EXT);
+    //writeProps(m_srcEqs, true, SRC_PROP_EXT);
+    //writeEqs(m_trgEqs, false, TRG_MAP_FILE, TRG_PROP_EXT);
+    //writeProps(m_trgEqs, false, TRG_PROP_EXT);
+    
+    collectTokenCounts(m_contextSrcEqs, m_contextTrgEqs);
+  }
+  
+  protected void keepDevAndTestPhrases() throws Exception {
+    
+    int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
+
+    Set<Phrase> toRemove = new HashSet<Phrase>(m_phraseTable.getAllSrcPhrases());
+    
+    keepIfNotFound(toRemove, getAccessor("dev", true), maxPhraseLength, false);
+    keepIfNotFound(toRemove, getAccessor("test", true), maxPhraseLength, false);
+
+    m_phraseTable.removePairsWithSrc(toRemove);
+  }
+
+  protected void keepIfNotFound(Set<Phrase> notFound, CorpusAccessor accessor, int maxPhraseLength, boolean caseSensitive) throws IOException {
+        
+    String curLine;
+    BufferedReader reader = new BufferedReader(accessor.getCorpusReader());
+    List<String> curSents;
+    List<IdxPair> sentPhraseIdxs;
+    Phrase tmpPhrase;
+            
+    while ((curLine = reader.readLine()) != null) {
+      curLine = curLine.trim();
+        
+      // Split into likely sentences
+      curSents = PhrasePropertyCollector.getSentences(curLine, accessor.isOneSentencePerLine());
+        
+      // Within each sentence, look for phrases
+      for (String sent : curSents) {
+   
+        // Get all phrases up to length m_maxPhraseLength
+        sentPhraseIdxs = PhrasePropertyCollector.getAllPhraseIdxs(sent, maxPhraseLength);
+          
+        for (IdxPair phraseIdx : sentPhraseIdxs) {
+          (tmpPhrase = new Phrase()).init(sent.substring(phraseIdx.from, phraseIdx.to), caseSensitive);
+          notFound.remove(tmpPhrase);
+        }
+      }
+    }
+        
+    reader.close();
+  }
+  
+  protected Set<Integer> collectPhraseProps(boolean src, Set<EquivalenceClass> eqClasses, Set<EquivalenceClass> contextEqs, Dictionary contextDict) throws Exception
+  {
+    int pruneContEqIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.context.PruneEqIfOccursFewerThan");
+    int pruneContEqIfOccursMoreThan = Configurator.CONFIG.getInt("preprocessing.context.PruneEqIfOccursMoreThan");
+    int contextWindowSize = Configurator.CONFIG.getInt("preprocessing.context.Window");
+    int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
+    
+    Set<EquivalenceClass> filtContextEqs = new HashSet<EquivalenceClass>(contextEqs);
+
+    LOG.info("Preparing contextual words for " + (src ? "source" : "target") + ": keeping those in dict [" + contextDict.toString() + "] and occuring (" + pruneContEqIfOccursFewerThan + "," + pruneContEqIfOccursMoreThan + ") times...");
+    LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
+    filters.add(new DictionaryFilter(contextDict, true, src)); 
+    filters.add(new NumOccurencesFilter(pruneContEqIfOccursFewerThan, true));
+    filters.add(new NumOccurencesFilter(pruneContEqIfOccursMoreThan, false));
+    filtContextEqs = EquivalenceClassCollector.filter(filtContextEqs, filters);
+    LOG.info("Context " + (src ? "source" : "target") + " classes: " + filtContextEqs.size());
+    
+    // Collect properties
+    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
+    (new PhraseContextCollector(maxPhraseLength, false, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, eqClasses);
+
+    accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), src);
+    PhraseTimeDistributionCollector distCollector = new PhraseTimeDistributionCollector(maxPhraseLength, false);
+    distCollector.collectProperty(accessor, eqClasses);
+    
+    // Assign type property
+    assignTypeProp(eqClasses, src ? EqType.SOURCE : EqType.TARGET);
+    
+    // Returns time bins for which counts were collected
+    return distCollector.binsCollected();
+  }
+
   public void prepareProperties(boolean src, Set<? extends EquivalenceClass> eqs, Scorer contextScorer, Scorer timeScorer)
   {
     LOG.info("Projecting and scoring " + (src ? "source" : "target") + " contextual items with " + contextScorer.toString() + " and time distributions with " + timeScorer.toString() + "...");
@@ -192,6 +334,14 @@ public class DataPreparer
   
   public Set<EquivalenceClass> getSrcEqs()
   { return m_srcEqs;
+  }
+
+  public Set<EquivalenceClass> getSrcEqsToInduct()
+  { return m_srcEqsToInduct;
+  }
+
+  public PhraseTable getPhraseTable()
+  { return m_phraseTable;
   }
   
   public Set<EquivalenceClass> getTrgEqs()
@@ -386,7 +536,7 @@ public class DataPreparer
     {
       SimpleEquivalenceClassCollector collector = new SimpleEquivalenceClassCollector(filters, false);
       Set<? extends EquivalenceClass> stopEqs = ((new File(stopWordsDir + stopWordsFileName)).exists()) ?
-          collector.collect((new LexCorpusAccessor(stopWordsFileName, stopWordsDir)).getCorpusReader(), -1) :
+          collector.collect((new LexCorpusAccessor(stopWordsFileName, stopWordsDir, true)).getCorpusReader(), -1) :
           new HashSet<EquivalenceClass>();
           
       filters.add(new StopWordsFilter(stopEqs));    
@@ -508,7 +658,7 @@ public class DataPreparer
   protected CorpusAccessor getAccessor(String kind, boolean src) throws Exception
   {
     CorpusAccessor accessor = null;
-    
+
     if ("europarl".equals(kind))
     { accessor = getEuroParlAccessor(src);
     }
@@ -518,46 +668,91 @@ public class DataPreparer
     else if ("crawls".equals(kind))
     { accessor = getCrawlsAccessor(src);
     }
+    else if ("dev".equals(kind))
+    { accessor = getDevAccessor(src);
+    }
+    else if ("test".equals(kind))
+    { accessor = getTestAccessor(src);
+    }
     else
     { LOG.error("Could not find corpus accessor for " + kind);
     }
     
     return accessor;
   }
+
+  protected LexCorpusAccessor getDevAccessor(boolean src) throws Exception
+  {    
+    String path = Configurator.CONFIG.getString("corpora.dev.Path");
+    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.dev.OneSentPerLine");
+    String name = src ? Configurator.CONFIG.getString("corpora.dev.SrcName") : Configurator.CONFIG.getString("corpora.dev.TrgName");
+        
+    return new LexCorpusAccessor(name, appendSep(path), oneSentPerLine);    
+  }
+  
+  protected LexCorpusAccessor getTestAccessor(boolean src) throws Exception
+  {    
+    String path = Configurator.CONFIG.getString("corpora.test.Path");
+    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.test.OneSentPerLine");
+    String name = src ? Configurator.CONFIG.getString("corpora.test.SrcName") : Configurator.CONFIG.getString("corpora.test.TrgName");
+        
+    return new LexCorpusAccessor(name, appendSep(path), oneSentPerLine);    
+  }
   
   protected EuroParlCorpusAccessor getEuroParlAccessor(boolean src) throws Exception
   {    
-    String path = Configurator.CONFIG.getString("corpora.europarl.Path"); 
+    String path = Configurator.CONFIG.getString("corpora.europarl.Path");
+    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.europarl.OneSentPerLine");
     String subDir = src ? Configurator.CONFIG.getString("corpora.europarl.SrcSubDir") : Configurator.CONFIG.getString("corpora.europarl.TrgSubDir");
 
     SimpleDateFormat sdf = new SimpleDateFormat( "yy-MM-dd" );
     Date fromDate = sdf.parse(Configurator.CONFIG.getString("corpora.europarl.DateFrom"));
     Date toDate = sdf.parse(Configurator.CONFIG.getString("corpora.europarl.DateTo"));
     
-    return new EuroParlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate);
+    return new EuroParlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate, oneSentPerLine);
   }
   
   protected CrawlCorpusAccessor getCrawlsAccessor(boolean src) throws Exception
   {    
-    String path = Configurator.CONFIG.getString("corpora.crawls.Path"); 
+    String path = Configurator.CONFIG.getString("corpora.crawls.Path");
+    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.crawls.OneSentPerLine");
     String subDir = src ? Configurator.CONFIG.getString("corpora.crawls.SrcSubDir") : Configurator.CONFIG.getString("corpora.crawls.TrgSubDir");
 
     SimpleDateFormat sdf = new SimpleDateFormat( "yy-MM-dd" );
     Date fromDate = sdf.parse(Configurator.CONFIG.getString("corpora.crawls.DateFrom"));
     Date toDate = sdf.parse(Configurator.CONFIG.getString("corpora.crawls.DateTo"));
     
-    return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate);
+    return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate, oneSentPerLine);
   }
   
   protected LexCorpusAccessor getWikiAccessor(boolean src)
   {
     String path = Configurator.CONFIG.getString("corpora.wiki.Path");
+    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.wiki.OneSentPerLine");
     String fileRegExp = src ? Configurator.CONFIG.getString("corpora.wiki.SrcRegExp") : Configurator.CONFIG.getString("corpora.wiki.TrgRegExp");
   
-    return new LexCorpusAccessor(fileRegExp, appendSep(path));
+    return new LexCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
+  }
+
+  protected void prepareOnlySeedDictionary(Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs) throws Exception
+  {
+    String dictDir = Configurator.CONFIG.getString("resources.dictionary.Path");
+    String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
+    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
+    int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
+
+    LOG.info("Reading/preparing only seed dictionary ...");
+    
+    SimpleDictionary entireDict = new SimpleDictionary(dictDir + dictFileName, "Entire", filterRomanTrg);
+    entireDict.pruneCounts(ridDictNumTrans);
+    
+    m_seedDict =  new Dictionary(srcContEqs, trgContEqs, entireDict, "Seed dictionary");
+    m_testDict = null;
+    
+    LOG.info("Dictionary: " + m_seedDict.toString()); 
   }
   
-  protected void prepareDictionariesFromSingleFile(
+  protected void prepareDictsAndSrcEqsToInduct(
       Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs,
       Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs) throws Exception
   {
@@ -568,35 +763,39 @@ public class DataPreparer
 
     LOG.info("Reading/preparing dictionaries ...");
     
-    m_entireDict = new SimpleDictionary(dictDir + dictFileName, "Entire", filterRomanTrg);
-    m_entireDict.pruneCounts(ridDictNumTrans);
+    SimpleDictionary entireDict = new SimpleDictionary(dictDir + dictFileName, "Entire", filterRomanTrg);
+    entireDict.pruneCounts(ridDictNumTrans);
     
-    // Split into seed and test dictionaries
-    DictPair pair;
+    m_seedDict = new Dictionary(srcContEqs, trgContEqs, entireDict, "Seed dictionary");
+    m_testDict = new Dictionary(srcEqs, trgEqs, entireDict, "Test dictionary");
     
-    if (Configurator.CONFIG.containsKey("experiments.DictionaryPercentToUse") && Configurator.CONFIG.containsKey("experiments.DictionaryNumberToUse"))
-    { throw new IllegalArgumentException("Both percentage and number defined");
-    }
-    else if (Configurator.CONFIG.containsKey("experiments.DictionaryPercentToUse"))
+    LOG.info("Initial seed dictionary: " + m_seedDict.toString());
+    LOG.info("Initial test dictionary: " + m_testDict.toString());
+    
+    m_srcEqsToInduct = selectSrcTokensToInduct(m_testDict, srcEqs); 
+
+    m_seedDict.removeAllSrc(map1To2(m_seedDict.getAllSrc(), m_srcEqsToInduct));
+    m_testDict.retainAllSrc(m_srcEqsToInduct);
+    
+    LOG.info("Seed dictionary: " + m_seedDict.toString());
+    LOG.info("Test dictionary: " + m_testDict.toString());     
+  }
+  
+  protected Set<EquivalenceClass> map1To2(Set<EquivalenceClass> all2, Set<EquivalenceClass> some1)
+  {
+    Set<EquivalenceClass> some2 = new HashSet<EquivalenceClass>();
+    
+    for (EquivalenceClass two : all2)
     {
-      double percentSeedDict = Configurator.CONFIG.getDouble("experiments.DictionaryPercentToUse");
-      pair = m_entireDict.splitPercent(percentSeedDict * 100 + "%-of-Usable", (1.0 - percentSeedDict) * 100 + "%-of-Usable", percentSeedDict);
+      for (EquivalenceClass one : some1)
+      {
+        if (two.sameEqClass(one))
+        { some2.add(two);
+        }
+      }
     }
-    else if (Configurator.CONFIG.containsKey("experiments.DictionaryNumberToUse"))
-    {
-      int numberSeedDict = Configurator.CONFIG.getInt("experiments.DictionaryNumberToUse");
-      pair = m_entireDict.splitPart(numberSeedDict + "-entries-from-Usable", (m_entireDict.size() - numberSeedDict) + "-entries-from-Usable", numberSeedDict);
-    }
-    else
-    { throw new IllegalArgumentException();
-    }
-       
-    m_seedDict = new Dictionary(srcContEqs, trgContEqs, pair.dict, pair.dict.getName());
-    m_testDict = new Dictionary(srcEqs, trgEqs, pair.rest, pair.rest.getName());
     
-    LOG.info("Entire Dictionary: " + m_entireDict.toString());    
-    LOG.info("Seed Dictionary: " + m_seedDict.toString());
-    LOG.info("Test Dictionary: " + m_testDict.toString());
+    return some2;
   }
 
   /*
@@ -625,69 +824,53 @@ public class DataPreparer
     }
   }
 
-  /** Selects most frequent test dictionary tokens for induction. */
-  protected Set<EquivalenceClass> selectMostFrequentSrcTokens(Dictionary testDict, Set<EquivalenceClass> srcEqs) throws IOException
+  /** Selects tokens for induction. */
+  protected Set<EquivalenceClass> selectSrcTokensToInduct(Dictionary dict, Set<EquivalenceClass> srcEqs) throws IOException 
   {
+    boolean randomSrc = Configurator.CONFIG.getBoolean("experiments.RandomSource");
     int numToKeep = Configurator.CONFIG.containsKey("experiments.NumSource") ? Configurator.CONFIG.getInt("experiments.NumSource") : -1;
     String outDir = Configurator.CONFIG.getString("output.Path");
     Set<EquivalenceClass> srcSubset = new HashSet<EquivalenceClass>(srcEqs);
     
-    srcSubset.retainAll(testDict.getAllSrc());
+    srcSubset.retainAll(dict.getAllSrc());
+
+    LinkedList<EquivalenceClass> valList = new LinkedList<EquivalenceClass>(srcSubset);
     
     if ((numToKeep >= 0) && (srcSubset.size() > numToKeep))
-    {
-      LinkedList<EquivalenceClass> valList = new LinkedList<EquivalenceClass>(srcSubset);
-      Collections.sort(valList, new NumberComparator(false));
-      
-      for (int i = numToKeep; i < valList.size(); i++)
+    {      
+      if (randomSrc)
       {
-        srcSubset.remove(valList.get(i));
+        srcSubset.clear();
+
+        for (int i = 0; i < numToKeep; i++)
+        { srcSubset.add(valList.remove(m_rand.nextInt(valList.size())));
+        }
+      }
+      else
+      {
+        Collections.sort(valList, new NumberComparator(false));
+      
+        for (int i = numToKeep; i < valList.size(); i++)
+        { srcSubset.remove(valList.get(i));
+        }
       }
     }
     
     BufferedWriter writer = new BufferedWriter(new FileWriter(outDir + SRC_TO_INDUCT));
+   
+    valList.clear();
+    valList.addAll(srcSubset);
+    Collections.sort(valList, new NumberComparator(false));
     
-    for (EquivalenceClass eq : srcSubset)
+    for (EquivalenceClass eq : valList)
     { writer.write(((Number)eq.getProperty(Number.class.getName())).getNumber() + "\t" + eq.toString() + "\n");
     }
     
     writer.close();
     
-    LOG.info("Selected " + srcSubset.size() + " most frequent test dictionary source classes (see " + outDir + SRC_TO_INDUCT + ").");
+    LOG.info("Selected " + srcSubset.size() + (randomSrc ? " random " : " most frequent ") +  "test dictionary source classes (see " + outDir + SRC_TO_INDUCT + ").");
 
-    return srcSubset;
-  }
-
-  /** Selects random test dictionary tokens for induction. */
-  protected Set<EquivalenceClass> selectRandSrcTokens(Dictionary testDict, Set<EquivalenceClass> srcEqs) throws Exception
-  {
-    int numToKeep = Configurator.CONFIG.containsKey("experiments.NumSource") ? Configurator.CONFIG.getInt("experiments.NumSource") : -1;
-    String outDir = Configurator.CONFIG.getString("output.Path");
-    Set<EquivalenceClass> srcSubset = new HashSet<EquivalenceClass>(srcEqs);
-    
-    srcSubset.retainAll(testDict.getAllSrc());
-    
-    if ((numToKeep >= 0) && (srcSubset.size() > numToKeep))
-    {
-      LinkedList<EquivalenceClass> valList = new LinkedList<EquivalenceClass>(srcSubset);
-      srcSubset.clear();
-
-      for (int i = 0; i < numToKeep; i++)
-      { srcSubset.add(valList.remove(m_rand.nextInt(valList.size())));
-      }
-    }
-        
-    BufferedWriter writer = new BufferedWriter(new FileWriter(outDir + SRC_TO_INDUCT));
-    
-    for (EquivalenceClass eq : srcSubset)
-    { writer.write(((Number)eq.getProperty(Number.class.getName())).getNumber()  + "\t" + eq.toString() + "\n");
-    }
-    
-    writer.close();
-    
-    LOG.info("Selected " + srcSubset.size() + " random test dictionary source classes (see " + outDir + SRC_TO_INDUCT + ").");
-
-    return srcSubset;
+    return srcSubset;   
   }
   
   protected String appendSep(String str)
@@ -701,17 +884,18 @@ public class DataPreparer
     return ret;
   }
 
-  protected SimpleDictionary m_entireDict;
   protected Dictionary m_seedDict;
   protected Dictionary m_testDict;
   protected Set<EquivalenceClass> m_contextSrcEqs;
   protected Set<EquivalenceClass> m_contextTrgEqs;
   protected Set<EquivalenceClass> m_srcEqs;
   protected Set<EquivalenceClass> m_trgEqs;
+  protected Set<EquivalenceClass> m_srcEqsToInduct;
   protected double m_numToksInSrc;
   protected double m_numToksInTrg;
   protected double m_maxTokCountInSrc;
   protected double m_maxTokCountInTrg;  
+  protected PhraseTable m_phraseTable;
   protected Random m_rand = new Random(1);
 
 }
