@@ -36,6 +36,7 @@ import org.apache.hadoop.io.WritableUtils;
 
 import babel.prep.extract.NutchChunk;
 
+import babel.util.language.Language;
 import babel.util.persistence.XMLPersistable;
 
 public class Page implements XMLPersistable, Writable
@@ -45,9 +46,7 @@ public class Page implements XMLPersistable, Writable
   private static final String XML_TAG_PAGE = "Page";
   private static final String XML_ATTRIB_URL = "URL";
 
-  public static final String PROP_LANG = "Language";
-  public static final String PROP_LANG_CONFIDENCE = "LanguageConfidence";
-  public static final String PROP_LANG_RELIABLE = "LanguageReliable";
+  private static final String PROP_LANG = "Language";
   
   public Page()
   {
@@ -73,7 +72,7 @@ public class Page implements XMLPersistable, Writable
     
     for (String segId : verChunks.keySet())
     {
-      curVer = new PageVersion(segId, verChunks.get(segId));
+      curVer = new PageVersion(segId, verChunks.get(segId), this);
       
       if (curVer.isNutchComplete())
       { addVersion(curVer);
@@ -113,6 +112,27 @@ public class Page implements XMLPersistable, Writable
   public MetaData pageProperties()
   {
     return m_pageProps;
+  }
+  
+  public Language getLanguage()
+  {
+    return Language.fromString(m_pageProps.getFirst(PROP_LANG));
+  }
+
+  public void setLanguage(Language lang)
+  {
+    String oldLang = m_pageProps.getFirst(PROP_LANG);
+    String newLang = (lang != null) ? lang.toString() : null;
+    
+    m_pageProps.remove(PROP_LANG);
+    
+    if (newLang != null)
+    { m_pageProps.set(PROP_LANG, newLang);
+    }
+    
+    if (LOG.isWarnEnabled() && (oldLang != null) && !oldLang.equals(newLang))
+    { LOG.warn("Changing language of " + m_pageURL + " from " + oldLang + " to " + (newLang == null ? " nothing." : newLang + "."));
+    }
   }
   
   /**

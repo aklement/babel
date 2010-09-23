@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
@@ -34,6 +36,7 @@ import org.apache.nutch.parse.ParseText;
 import org.apache.nutch.protocol.Content;
 
 import babel.prep.extract.NutchChunk;
+import babel.util.language.Language;
 import babel.util.persistence.XMLPersistable;
 
 import javax.xml.stream.XMLStreamConstants;
@@ -48,6 +51,8 @@ public class PageVersion implements XMLPersistable, Writable
 {
   public static final Log LOG = LogFactory.getLog(PageVersion.class);
   
+  private static final String DEFAULT_CHARSET = "utf-8";
+  
   private static final String XML_TAG_PAGEVERSION = "PageVersion";  
   private static final String XML_TAG_OUT_LINKS = "OutgoingLinks";
   private static final String XML_TAG_LINK = "Link";
@@ -58,7 +63,7 @@ public class PageVersion implements XMLPersistable, Writable
   private static final String PROP_FETCH_TIME = "Fetched";
   private static final String PROP_MODIFIED_TIME = "Modified";
   private static final String PROP_SEGMENT_ID = "NutchSegment";
-
+  
   public PageVersion()
   {
     m_verProps = new MetaData("VersionProperties");
@@ -72,13 +77,13 @@ public class PageVersion implements XMLPersistable, Writable
    * Used to construct a page version from a set of nutch page related objects.
    * Should only be used by NutchPageExtractor.
    */
-  public PageVersion(String segmentId, List<NutchChunk> chunks)
+  public PageVersion(String segmentId, List<NutchChunk> chunks, Page page)
   {
     this();
     
     Writable curVal;
     CrawlDatum curCD;
-    //Content curCT;
+    Content curCT;
     ParseData curPD;
     ParseText curPT;
 
@@ -103,10 +108,30 @@ public class PageVersion implements XMLPersistable, Writable
       } 
       else if (curVal instanceof Content)
       {
-        // Get the original unparsed content; nothing that we need - ignoring
-        // We shouldn't get it anyway, since PageExtractor desn't ask for it
+        // Get the original unparsed content
+        curCT = (Content)curVal;
         
-        // curCT = (Content)curVal;
+        try 
+        {
+          String str = new String(curCT.getContent(), DEFAULT_CHARSET);
+          Matcher m = Pattern.compile("<html[^>]*>", Pattern.CASE_INSENSITIVE).matcher(str);
+          
+          if (m.find())
+          {
+            str = str.substring(m.start(), m.end());
+            m = Pattern.compile("\\slang\\s*=\\s*\"*([^\\s=\"]+)\"*", Pattern.CASE_INSENSITIVE).matcher(str);
+            
+            if (m.find()) 
+            { 
+              str = str.substring(m.start(1), m.end(1)).trim().toLowerCase();
+              if (str.length() > 0)
+              { page.setLanguage(Language.fromString(str));
+              }
+            }
+          }
+        }
+        catch (Exception e)
+        {}      
       } 
       else if (curVal instanceof ParseData)
       {
@@ -152,7 +177,7 @@ public class PageVersion implements XMLPersistable, Writable
     String prop = m_verProps.getFirst(PROP_FETCH_TIME);
     return (prop != null ? Long.parseLong(prop) : null);
   }
-  
+
   public Long getModificationTime()
   {
     String prop = m_verProps.getFirst(PROP_MODIFIED_TIME);
