@@ -1,6 +1,6 @@
 package babel.content.eqclasses;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Collection;
 
 import babel.content.eqclasses.properties.Property;
@@ -19,7 +19,7 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
     m_id = NO_ID;
     m_initialized = false;
     m_caseSensitive = DEF_CASE_SENSITIVE;
-    m_properties = new ArrayList<Property>();
+    m_properties = new HashMap<String, Property>();
   }
   
   /**
@@ -118,49 +118,18 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
    */
   public Property getProperty(String propId)
   {
-    Property foundProp = null;
-    
-    // A simple linear search will do [there won't be many properties]
-    if (propId != null)
-    {
-      for (Property curProp: m_properties)
-      {
-        if (propId.equals(curProp.getPropertyId()))
-        {
-          foundProp = curProp;
-          break;
-        }
-      }
-    }
-    
-    return foundProp;
+    return (propId != null) ? m_properties.get(propId) : null;
   }
   
   /**
    * Adds a  property to the propery list. If propery with the same ID already
-   * present - it is removed first.
+   * present - it is replaced.
    * @param prop
    */
   public void setProperty(Property prop)
   {
     if (prop != null)
-    {
-      String propId = prop.getPropertyId();
-      boolean removed = false;
-      int numProps = m_properties.size();
-      
-      // First, remove an old property with the same id, if it is already there
-      for (int curPropIdx = 0; (!removed) && (curPropIdx < numProps); curPropIdx++)
-      {
-        if (propId.equals(m_properties.get(curPropIdx).getPropertyId()))
-        {
-          m_properties.remove(curPropIdx);
-          removed = true;
-        }
-      }
-      
-      // Add new property
-      m_properties.add(prop);
+    { m_properties.put(prop.getPropertyId(), prop);
     }
   }
   
@@ -171,17 +140,13 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
    */
   public boolean removeProperty(String propId)
   {
-    boolean found = true;
+    boolean removed = m_properties.containsKey(propId);
     
-    for (int propIdx = 0; (propId != null) && (!found) && (propIdx < m_properties.size()); propIdx++)
-    {
-      if (found = propId.equals(m_properties.get(propIdx).getPropertyId()))
-      {
-        m_properties.remove(propIdx);
-      }
+    if (removed)
+    { m_properties.remove(propId);
     }
     
-    return found;
+    return removed;
   }
   
   /**
@@ -216,5 +181,5 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
   /** True iff EquivalenceClass is case sensitive. */
   protected boolean m_caseSensitive;
   /** List of properties. */
-  protected ArrayList<Property> m_properties;
+  protected HashMap<String, Property> m_properties;
 }
