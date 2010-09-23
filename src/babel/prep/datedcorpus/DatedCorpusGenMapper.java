@@ -24,6 +24,7 @@ import org.apache.hadoop.mapred.Reporter;
 
 import babel.content.pages.Page;
 import babel.content.pages.PageVersion;
+import babel.util.language.Language;
 
 public class DatedCorpusGenMapper extends MapReduceBase implements Mapper<Text, Page, Text, PageVersion>
 {
@@ -33,12 +34,10 @@ public class DatedCorpusGenMapper extends MapReduceBase implements Mapper<Text, 
   public void map(Text url, Page page, OutputCollector<Text, PageVersion> output, Reporter reporter) throws IOException
   {
     // Map to language and date
-    String lang = page.pageProperties().getFirst(Page.PROP_LANG);
+    Language lang = page.getLanguage();
     String content;
-    
-    // For Testing: lang = page.pageURL().contains("lenta") ? "ru" : "en";
-    
-    if ((lang != null && lang.length() > 0))
+        
+    if (lang != null)
     {
       Long modTime;
       
@@ -51,11 +50,11 @@ public class DatedCorpusGenMapper extends MapReduceBase implements Mapper<Text, 
         
         if (modTime != null && modTime != 0 && content != null && content.length() > 0)
         {
-          output.collect(new Text(new String(lang + DATE_LANG_SEP + modTime.toString())), ver);
+          output.collect(new Text(new String(lang.toString() + DATE_LANG_SEP + modTime.toString())), ver);
           content = ver.getContent();
           
-          DatedCorpusGenerator.Stats.incLangPageVerCount(lang);
-          DatedCorpusGenerator.Stats.incLangWordCount(lang, ver.getContent().split("\\s").length);
+          DatedCorpusGenerator.Stats.incLangPageVerCount(lang.toString());
+          DatedCorpusGenerator.Stats.incLangWordCount(lang.toString(), ver.getContent().split("\\s").length);
         }
       }
     } 
