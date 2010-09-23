@@ -24,6 +24,7 @@ import java.util.Map.Entry;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 
@@ -64,6 +65,12 @@ public abstract class PrepStep extends Configured
   protected String getCurTimeStamp()
   {
     return (new SimpleDateFormat("yyMMdd-HHmmss")).format(Calendar.getInstance().getTime());
+  }
+  
+  protected void setUniqueTempDir(JobConf job)
+  {
+    Path tempDir = new Path(getConf().get("hadoop.tmp.dir", ".") + "/"+ java.util.UUID.randomUUID().toString());
+    job.set("hadoop.tmp.dir", tempDir.toString());
   }
   
   /**
