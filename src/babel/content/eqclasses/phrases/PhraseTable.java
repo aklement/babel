@@ -24,6 +24,21 @@ public class PhraseTable {
 
   protected static final String DEFAULT_CHARSET = "UTF-8";
   public static final String FIELD_DELIM = " ||| ";
+
+  public enum PairFeat {
+    
+    FE(0), 
+    LEX_FE(1), 
+    EF(2), 
+    LEX_EF(3), 
+    PHPENALTY(4);   
+  
+    private PairFeat(final int idx) {
+      this.idx = idx;
+    }
+    
+    public final int idx;
+  };
   
   public PhraseTable (String phraseTableFile, String encoding) throws IOException {
     m_encoding = encoding;
@@ -90,7 +105,30 @@ public class PhraseTable {
       Collections.sort(trgPhraseList, new LexComparator(true));
       
       for (Phrase trgPhrase : trgPhraseList) {
-        writer.write(srcPhrase.getStem() + FIELD_DELIM + trgPhrase.getStem() + FIELD_DELIM + trgMap.get(trgPhrase).getPropStr() + "\n");
+        writer.write(srcPhrase.getStem() + FIELD_DELIM + trgPhrase.getStem() + FIELD_DELIM + trgMap.get(trgPhrase).getPairFeatStr() + "\n");
+      }
+    }
+
+    writer.close();
+  }
+
+  public void saveReorderingTable(String reorderingTableFile) throws IOException {
+    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(reorderingTableFile), m_encoding));    
+
+    List<Phrase> srcPhraseList = new ArrayList<Phrase>(m_phraseMap.keySet());
+    Collections.sort(srcPhraseList, new LexComparator(true));
+    
+    Map<Phrase, PairProps> trgMap;
+    List<Phrase> trgPhraseList;
+    
+    for (Phrase srcPhrase : srcPhraseList) {
+      
+      trgMap = m_phraseMap.get(srcPhrase);    
+      trgPhraseList = new ArrayList<Phrase>(trgMap.keySet());
+      Collections.sort(trgPhraseList, new LexComparator(true));
+      
+      for (Phrase trgPhrase : trgPhraseList) {
+        writer.write(srcPhrase.getStem() + FIELD_DELIM + trgPhrase.getStem() + FIELD_DELIM + trgMap.get(trgPhrase).getOrderFeatStr() + "\n");
       }
     }
 
@@ -156,25 +194,56 @@ public class PhraseTable {
   protected String m_encoding;
   
   public class PairProps {    
-    public PairProps(String props) {
-      m_props = new StringBuilder(props);
+    public PairProps(String pairFeatStr) {
+      m_pairFeatStr = new StringBuilder(pairFeatStr);
     }
     
-    public void addFeatureVal(double val) {
-      m_props.append(" " + val);
+    public void addPairFeatVal(double val) {
+      m_pairFeatStr.append(" " + val);
     }
 
-    public String getPropStr() {
-      return m_props.toString();
+    public double getPairFeatVal(PairFeat feat) {
+      String[] strFeats = m_pairFeatStr.substring(m_pairFeatStr.lastIndexOf(FIELD_DELIM)).split("\\s");
+      return Double.parseDouble(strFeats[feat.idx]);
+    }
+    
+    public String getPairFeatStr() {
+      return m_pairFeatStr.toString();
+    }
+
+    public void setBeforeOrderFeatVals(double beforeMono, double beforeSwap, double beforeOutOfOrder) {
+      assert beforeMono >= 0 && beforeSwap >= 0 && beforeOutOfOrder >= 0;
+      
+      m_beforeOrderFeatStr = new StringBuilder();
+      m_beforeOrderFeatStr.append(beforeMono + " ");
+      m_beforeOrderFeatStr.append(beforeSwap + " ");
+      m_beforeOrderFeatStr.append(beforeOutOfOrder + " ");
+
+    }
+    
+    public void setAfterOrderFeatVals(double afterMono, double afterSwap, double afterOutOfOrder) {
+      assert afterMono >= 0 && afterSwap >= 0 && afterOutOfOrder >= 0;
+      
+      m_afterOrderFeatStr = new StringBuilder();
+      m_afterOrderFeatStr.append(afterMono + " ");
+      m_afterOrderFeatStr.append(afterSwap + " ");
+      m_afterOrderFeatStr.append(afterOutOfOrder);
+    }
+    
+    public String getOrderFeatStr() {
+      
+      String orderFeatStr = m_beforeOrderFeatStr != null ? m_beforeOrderFeatStr.toString() : "0.333333 0.333333 0.333333 ";
+      orderFeatStr += m_afterOrderFeatStr != null ? m_afterOrderFeatStr.toString() : "0.333333 0.333333 0.333333";
+      return orderFeatStr;
     }
     
     public int[][] getForwardAligns() {
-      String line = m_props.toString();
+      String line = m_pairFeatStr.toString();
       return getAlignment(line.substring(0, line.indexOf(FIELD_DELIM)).trim());
     }
 
     public int[][] getBackwardAligns() {
-      String line = m_props.toString();
+      String line = m_pairFeatStr.toString();
       return getAlignment(line.substring(line.indexOf(FIELD_DELIM) + FIELD_DELIM.length(), line.lastIndexOf(FIELD_DELIM)).trim());
     }
     
@@ -199,6 +268,8 @@ public class PhraseTable {
       return aligns;
     }
 
-    protected StringBuilder m_props;
+    protected StringBuilder m_pairFeatStr;
+    protected StringBuilder m_beforeOrderFeatStr;
+    protected StringBuilder m_afterOrderFeatStr;
   }
 }
