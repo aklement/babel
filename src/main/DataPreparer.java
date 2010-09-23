@@ -45,6 +45,7 @@ import babel.content.eqclasses.properties.ContextCollector;
 import babel.content.eqclasses.properties.Number;
 import babel.content.eqclasses.properties.NumberCollector;
 import babel.content.eqclasses.properties.PhraseContextCollector;
+import babel.content.eqclasses.properties.PhraseOrderCollector;
 import babel.content.eqclasses.properties.PhrasePropertyCollector;
 import babel.content.eqclasses.properties.PhraseTimeDistributionCollector;
 import babel.content.eqclasses.properties.TimeDistribution;
@@ -178,6 +179,41 @@ public class DataPreparer
     collectTokenCounts(m_contextSrcEqs, m_contextTrgEqs); 
   }
   
+  
+  
+  
+  // TODO: Faster Used preparePhrasesForOrderingOnly() instead of preparePhrases() in PhraseScorer
+  @SuppressWarnings({ "unchecked", "rawtypes" })
+  public void preparePhrasesForOrderingOnly() throws Exception {
+    String phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
+    int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
+
+    LOG.info(" - Reading candidate phrases...");
+    m_phraseTable = new PhraseTable(phraseTableFile);
+    //LOG.info(" - Removing pharses (from " + m_phraseTable.numSrcPhrases() + ") which do not appead in the dev or test sets...");
+    //keepDevAndTestPhrases();
+    
+    m_srcEqs = (Set)m_phraseTable.getAllSrcPhrases();
+    m_trgEqs = (Set)m_phraseTable.getAllTrgPhrases();
+     
+    LOG.info(" - Source phrases: " + m_srcEqs.size());
+    LOG.info(" - Target phrases: " + m_trgEqs.size());
+    LOG.info(" - Collecting phrase ordering information ...");
+    
+    // Collect phrase context (for reordering tables)
+    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), true);    
+    (new PhraseOrderCollector(maxPhraseLength, false)).collectProperty(accessor, m_srcEqs);    
+    assignTypeProp(m_srcEqs, EqType.SOURCE);
+    
+    accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), false);    
+    (new PhraseOrderCollector(maxPhraseLength, false)).collectProperty(accessor, m_trgEqs);    
+    assignTypeProp(m_trgEqs, EqType.TARGET);    
+  }
+  
+  
+  
+  
+  
   @SuppressWarnings({ "unchecked", "rawtypes" })
   public void preparePhrases() throws Exception {
 
@@ -220,7 +256,7 @@ public class DataPreparer
     
     prepareOnlySeedDictionary(m_contextSrcEqs, m_contextTrgEqs);
 
-    LOG.info(" - Collecting candidate properties...");
+    LOG.info(" - Collecting phrase properties...");
     Set<Integer> srcBins = collectPhraseProps(true, m_srcEqs, m_contextSrcEqs, m_seedDict);
     Set<Integer> trgBins = collectPhraseProps(false, m_trgEqs, m_contextTrgEqs, m_seedDict);
 
@@ -298,13 +334,18 @@ public class DataPreparer
     filtContextEqs = EquivalenceClassCollector.filter(filtContextEqs, filters);
     LOG.info("Context " + (src ? "source" : "target") + " classes: " + filtContextEqs.size());
     
-    // Collect properties
+    // Collect context properties
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
     (new PhraseContextCollector(maxPhraseLength, false, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, eqClasses);
 
+    // Collect time properties
     accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), src);
     PhraseTimeDistributionCollector distCollector = new PhraseTimeDistributionCollector(maxPhraseLength, false);
     distCollector.collectProperty(accessor, eqClasses);
+    
+    // Collect phrase context (for reordering tables)
+    accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
+    (new PhraseOrderCollector(maxPhraseLength, false)).collectProperty(accessor, eqClasses);
     
     // Assign type property
     assignTypeProp(eqClasses, src ? EqType.SOURCE : EqType.TARGET);
