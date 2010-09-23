@@ -67,6 +67,8 @@ public class CorpusGenerator extends PrepStep
 
     FileOutputFormat.setOutputPath(job, outDir);
 
+    setUniqueTempDir(job);
+    
     return job;
   }
   
