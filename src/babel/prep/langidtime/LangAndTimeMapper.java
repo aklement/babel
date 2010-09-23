@@ -26,11 +26,11 @@ import org.apache.hadoop.mapred.Mapper;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
 
-import babel.content.pages.MetaData;
 import babel.content.pages.Page;
 import babel.content.pages.PageVersion;
 
 import babel.prep.langidtime.URLAndContentsLangTimeExtractor.DetectionResult;
+import babel.util.language.Language;
 
 public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Page, Text, Page>
 {
@@ -55,13 +55,12 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
   
   public void detectAndSetLangTime(Page page)
   {
-    MetaData pageProps = page.pageProperties();
     DetectionResult result = m_extractor.detect(page);
 
     // Take care of the language
-    String pageLang = null;
-    String newLang = (result == null) ? null : result.m_langDet.language().toString();
-    String oldLang = pageProps.getFirst(Page.PROP_LANG);
+    Language pageLang = null;
+    Language newLang = (result == null) ? null : result.m_langDet.language();
+    Language oldLang = page.getLanguage();
     
     if (oldLang != null)
     {
@@ -70,17 +69,15 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
       { LOG.warn("Detected language " + newLang + " conflicts with old language " + oldLang + " for page " + page.pageURL() + ", not changing.");
       }
       pageLang = oldLang;
-      LangAndTimeExtractor.Stats.incLangPageCount(oldLang, page);
+      LangAndTimeExtractor.Stats.incLangPageCount(oldLang.toString(), page);
     }
     else if (newLang != null)
     {
       // Set the new language
-      pageProps.remove(Page.PROP_LANG_CONFIDENCE);
-      pageProps.remove(Page.PROP_LANG_RELIABLE);
-      pageProps.set(Page.PROP_LANG, newLang);
+      page.setLanguage(newLang);
       pageLang = newLang;
-      LangAndTimeExtractor.Stats.incLangPageCount(newLang, page);
-      LangAndTimeExtractor.Stats.incNewLangPageCount(newLang, page);
+      LangAndTimeExtractor.Stats.incLangPageCount(newLang.toString(), page);
+      LangAndTimeExtractor.Stats.incNewLangPageCount(newLang.toString(), page);
     }
     else
     {
@@ -110,7 +107,7 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
        
        if (pageLang != null)
        { 
-         LangAndTimeExtractor.Stats.incTimeVerCount(pageLang);
+         LangAndTimeExtractor.Stats.incTimeVerCount(pageLang.toString());
        }
      }
      else if (newTime != null)
@@ -120,8 +117,8 @@ public class LangAndTimeMapper extends MapReduceBase implements Mapper<Text, Pag
        
        if (pageLang != null)
        { 
-         LangAndTimeExtractor.Stats.incTimeVerCount(pageLang);
-         LangAndTimeExtractor.Stats.incNewTimeVerCount(pageLang);
+         LangAndTimeExtractor.Stats.incTimeVerCount(pageLang.toString());
+         LangAndTimeExtractor.Stats.incNewTimeVerCount(pageLang.toString());
        }
      }
      else if (pageLang != null)

@@ -339,7 +339,7 @@ public class URLAndContentsLangTimeExtractor
   
   protected LangDetectionResult getOrGoogDetectLang(Page page) throws Exception
   {
-    Language lang = Language.fromString(page.pageProperties().getFirst(Page.PROP_LANG));    
+    Language lang = page.getLanguage();      
     return (lang == null) ? m_detector.detect(page.pageVersions().get(0).getContent()) : new LangDetectionResult(lang);
   }
   
