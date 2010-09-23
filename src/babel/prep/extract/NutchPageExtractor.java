@@ -64,7 +64,7 @@ public class NutchPageExtractor extends PrepStep
     super(NutchConfiguration.create());
     
     // Page details to extract (see descriptions of the corresponding fields) 
-    m_co = false;
+    m_co = true;
     m_fe = true; 
     m_ge = true; 
     m_pa = true; 
@@ -165,6 +165,8 @@ public class NutchPageExtractor extends PrepStep
     m_fs.delete(outDir, true);
     
     FileOutputFormat.setOutputPath(job, outDir);
+
+    setUniqueTempDir(job);
 
     return job;
   }
