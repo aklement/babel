@@ -860,8 +860,10 @@ public class DataPreparer
 
   protected void assignTypeProp(Set<? extends EquivalenceClass> eqClasses, EqType type)
   {
+    Type commonType = new Type(type);
+    
     for (EquivalenceClass eq : eqClasses)
-    { eq.setProperty(new Type(type));
+    { eq.setProperty(commonType);
     }
   }
 
