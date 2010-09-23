@@ -66,6 +66,8 @@ public class LangAndTimeExtractor extends PrepStep
 
     FileOutputFormat.setOutputPath(job, outDir);
     
+    setUniqueTempDir(job);
+    
     job.set(JOB_PROP_JOB_REFERRER, referrer);
     
     return job;
@@ -181,13 +183,13 @@ public class LangAndTimeExtractor extends PrepStep
       strBld.append("Existing counts:\n");
       
       for (String lang : pageLangCounts.keySet())
-      { strBld.append(lang + " : " + pageLangCounts.get(lang) + " pages containing " + verLangCounts.get(lang) + " versions of which " + verTimeCounts.get(lang) + " are time stamped.\n");
+      { strBld.append(lang + " : " + pageLangCounts.get(lang) + " pages containing " + verLangCounts.get(lang) + " versions of which " + (verTimeCounts.containsKey(lang) ? verTimeCounts.get(lang) : "0") + " are time stamped.\n");
       }
 
       strBld.append("\nOf those these were just extracted:\n");
       
       for (String lang : pageNewLangCounts.keySet())
-      { strBld.append(lang + " : " + pageNewLangCounts.get(lang) + " pages containing " + verNewLangCounts.get(lang) + " versions of which " + verNewTimeCounts.get(lang) + " are time stamped.\n");
+      { strBld.append(lang + " : " + pageNewLangCounts.get(lang) + " pages containing " + verNewLangCounts.get(lang) + " versions of which " + (verNewTimeCounts.containsKey(lang) ? verNewTimeCounts.get(lang) : "0") + " are time stamped.\n");
       }
 
       strBld.append("\nOther stats:\n");
