@@ -25,13 +25,13 @@ import org.apache.hadoop.mapred.Mapper;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
 
-import babel.content.pages.MetaData;
 import babel.content.pages.Page;
 import babel.content.pages.PageVersion;
 
 import babel.util.language.GoogleLangDetector;
 import babel.util.language.LangDetectionResult;
 import babel.util.language.LangDetector;
+import babel.util.language.Language;
 
 public class LangIdMapper extends MapReduceBase implements Mapper<Text, Page, Text, Page>
 {
@@ -50,12 +50,11 @@ public class LangIdMapper extends MapReduceBase implements Mapper<Text, Page, Te
   
   @Override
   public void map(Text url, Page page, OutputCollector<Text, Page> output, Reporter reporter) throws IOException
-  {
-    String lang = page.pageProperties().getFirst(Page.PROP_LANG);
-    
-    if (lang == null)
+  {    
+    if (page.getLanguage() == null)
     {
-      if (null != (lang = detectLang(page)))
+      String lang = detectLang(page);
+      if (lang != null)
       { LangIdentifier.Stats.incLangPageCount(lang);
       }
       else
@@ -71,12 +70,8 @@ public class LangIdMapper extends MapReduceBase implements Mapper<Text, Page, Te
   
   public String detectLang(Page page)
   {
-    String lang = null;
-    MetaData pageProps = page.pageProperties();
+    Language lang = null;
     LangDetectionResult langResult;
-    
-    pageProps.remove(Page.PROP_LANG_CONFIDENCE);
-    pageProps.remove(Page.PROP_LANG_RELIABLE);
     
     // TODO: May help to be more sophisticated, but for now - grab content of 
     // the first available version and run it through the language identifier    
@@ -94,17 +89,8 @@ public class LangIdMapper extends MapReduceBase implements Mapper<Text, Page, Te
           { LOG.info("Language " + langResult.language().toString() + " for page " + page.pageURL());
           }
           
-          if (langResult.language() != null)
-          {
-            pageProps.set(Page.PROP_LANG, lang = langResult.language().toString());
-       
-            if (langResult.confidence() != null)
-            { pageProps.set(Page.PROP_LANG_CONFIDENCE, langResult.confidence().toString());
-            }
-            
-            if (langResult.isReliable() != null)
-            { pageProps.set(Page.PROP_LANG_RELIABLE, langResult.isReliable().toString());              
-            }            
+          if (langResult.language() != null && langResult.isReliable())
+          { page.setLanguage(lang = langResult.language());
           }
           
           break;
@@ -118,7 +104,7 @@ public class LangIdMapper extends MapReduceBase implements Mapper<Text, Page, Te
       }
     }
     
-    return lang;
+    return lang == null ? null : lang.toString();
   }
   
   private LangDetector m_detector;
