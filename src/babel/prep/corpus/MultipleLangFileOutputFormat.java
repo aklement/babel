@@ -20,6 +20,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.lib.MultipleSequenceFileOutputFormat;
 
 import babel.content.pages.Page;
+import babel.util.language.Language;
 
 public class MultipleLangFileOutputFormat extends MultipleSequenceFileOutputFormat<Text, Page>
 {
@@ -27,15 +28,15 @@ public class MultipleLangFileOutputFormat extends MultipleSequenceFileOutputForm
   
   protected String generateFileNameForKeyValue(Text key, Page page, String name)
   {
-    String lang = page.pageProperties().getFirst(Page.PROP_LANG);
-    lang = (lang == null || lang.length() == 0) ? "none" : lang;
+    Language lang = page.getLanguage();
+    String langStr = (lang == null) ? "none" : lang.toString();
 
     if (LOG.isInfoEnabled())
-    { LOG.info("Language " + lang + " for page " + page.pageURL());
+    { LOG.info("Language " + langStr + " for page " + page.pageURL());
     }
     
-    CorpusGenerator.Stats.incLangPageCount(lang);
+    CorpusGenerator.Stats.incLangPageCount(langStr);
     
-    return lang + "." + super.generateFileNameForKeyValue(key, page, name);
+    return langStr + "." + super.generateFileNameForKeyValue(key, page, name);
   }
 }

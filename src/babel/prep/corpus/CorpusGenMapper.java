@@ -23,6 +23,7 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
 
 import babel.content.pages.Page;
+import babel.util.language.Language;
 
 public class CorpusGenMapper extends MapReduceBase implements Mapper<Text, Page, Text, Page>
 {
@@ -31,7 +32,7 @@ public class CorpusGenMapper extends MapReduceBase implements Mapper<Text, Page,
   @Override
   public void map(Text url, Page page, OutputCollector<Text, Page> output, Reporter reporter) throws IOException
   {
-    String lang = page.pageProperties().getFirst(Page.PROP_LANG);
-    output.collect(new Text((lang == null || lang.length() == 0) ? NO_LANG : lang), page);
+    Language lang = page.getLanguage();
+    output.collect(new Text((lang == null) ? NO_LANG : lang.toString()), page);
   }
 }
