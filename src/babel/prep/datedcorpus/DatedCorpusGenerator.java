@@ -68,6 +68,8 @@ public class DatedCorpusGenerator extends PrepStep
 
     FileOutputFormat.setOutputPath(job, outDir);
 
+    setUniqueTempDir(job);
+    
     return job;
   }
   
