@@ -2,62 +2,88 @@
 <configuration>
 <corpora>
 	<crawls>
-		<Path>/Users/aklement/Resources/TestCrawls/dated</Path>
-		<SrcSubDir>en/</SrcSubDir>
-		<TrgSubDir>es/</TrgSubDir>
+		<Path>/Users/aklement/Resources/babel/Crawls</Path>
+		<SrcSubDir>es/</SrcSubDir>
+		<TrgSubDir>en/</TrgSubDir>
 		<DateFrom>08-12-29</DateFrom>
-		<DateTo>09-01-05</DateTo></crawls>
-	<europarl>
-		<Path>/Users/aklement/Resources/Corpora/parallel/es-en.small</Path>
-		<SrcSubDir>en/</SrcSubDir>
-		<TrgSubDir>es/</TrgSubDir>
-		<DateFrom>96-04-15</DateFrom>
-		<DateTo>06-10-13</DateTo>
-	</europarl>
+		<DateTo>09-01-05</DateTo>
+		<OneSentPerLine>false</OneSentPerLine>
+	</crawls>
 	<wiki>
-	 <Path>/Users/aklement/Resources/d</Path>
-	 <SrcRegExp>.*\\.en\\.small</SrcRegExp>
-	 <TrgRegExp>.*\\.es\\.small</TrgRegExp>
-	 </wiki>
-	 </corpora>
+		<Path>/Users/aklement/Resources/babel/wiki</Path>
+		<SrcRegExp>.*\\.es\\.small</SrcRegExp>
+		<TrgRegExp>.*\\.en\\.small</TrgRegExp>
+		<OneSentPerLine>false</OneSentPerLine>
+	</wiki>
+	<europarl>
+		<Path>/Users/aklement/Resources/babel/EuroParl/ver.5/es-en/train</Path>
+		<SrcSubDir>es/</SrcSubDir>
+		<TrgSubDir>en/</TrgSubDir>
+		<DateFrom>96-04-15</DateFrom>
+		<DateTo>09-10-23</DateTo>
+		<OneSentPerLine>true</OneSentPerLine>
+	</europarl>
+	<dev>
+		<Path>/Users/aklement/Resources/babel/EuroParl/ver.5/es-en/dev</Path>
+		<SrcName>dev.es</SrcName>
+		<TrgName>dev.en</TrgName>
+		<OneSentPerLine>true</OneSentPerLine>
+	</dev>
+	<test>
+		<Path>/Users/aklement/Resources/babel/EuroParl/ver.5/es-en/test</Path>
+		<SrcName>test.es</SrcName>
+		<TrgName>test.en</TrgName>
+		<OneSentPerLine>true</OneSentPerLine>
+	</test>
+</corpora>
 <resources>
 	<stopwords>
-		<Path>/Users/aklement/Resources/d/</Path>
-		<SrcStopWords>english.stop</SrcStopWords>
-		<TrgStopWords>spanish.stop</TrgStopWords>
+		<Path>/Users/aklement/Resources/babel/StopWordLists/</Path>
+		<SrcStopWords>es.stop</SrcStopWords>
+		<TrgStopWords>en.stop</TrgStopWords>
 	</stopwords>
-	<dictionary><Path>/Users/aklement/Resources/d/</Path>
-		<Dictionary>frozen_span_dict</Dictionary>
+	<dictionary>
+		<Path>/Users/aklement/Resources/babel/Dictionaries/</Path>
+		<Dictionary>es-en.dict</Dictionary>
 	</dictionary>
+	<phrases>
+   		<PhraseTable>/Users/aklement/Projects/Java/babel/phrase-table-small.gz</PhraseTable>
+	</phrases>
 </resources>
 <preprocessing>
 	<Path>./preprocessing/</Path>
 	<FilterRomanTrg>false</FilterRomanTrg>
-	 <input>
-	   <Context>europarl</Context>
-	   <Time>europarl</Time>
-	 </input>
+	<input>
+		<Context>europarl</Context>
+		<Time>europarl</Time>
+	</input>
 	<context>
-    <SrcEqClass>babel.content.eqclasses.PrefixEquivalenceClass</SrcEqClass>
-    <TrgEqClass>babel.content.eqclasses.PrefixEquivalenceClass</TrgEqClass>
+		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
+		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
 		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
 		<PruneEqIfOccursFewerThan>5</PruneEqIfOccursFewerThan>
 		<PruneContextToSize>-1</PruneContextToSize>
-		<Window>2</Window></context>
+		<Window>2</Window>
+	</context>
 	<candidates>
-    <SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
-    <TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
+		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
+		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
 		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
 		<PruneIfOccursFewerThan>5</PruneIfOccursFewerThan>
 		<PruneMostFrequentSrc>-1</PruneMostFrequentSrc>
-		<PruneMostFrequentTrg>200</PruneMostFrequentTrg>
+		<PruneMostFrequentTrg>-1</PruneMostFrequentTrg>
 	</candidates>
+	<phrases>
+		<MaxPhraseLength>7</MaxPhraseLength>
+	</phrases>
 	<time>
-		<Align>true</Align>
+		<Align>false</Align>
 	</time>
 </preprocessing>
 <output>
 	<Path>./output/</Path>
+  <PhraseTable>phrase-table-mono</PhraseTable> 
+  <ReorderingTable>reordering-table-mono</ReorderingTable> 
 </output>
 <experiments>
 	<time>
@@ -67,7 +93,6 @@
 	<RandomSource>false</RandomSource>
 	<NumSource>200</NumSource>
 	<NumTranslationsToAddPerSource>500</NumTranslationsToAddPerSource>
-	<DictionaryPercentToUse>0.9</DictionaryPercentToUse>
 	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
 	<NumRankingThreads>1</NumRankingThreads>	
 	<DoTime>true</DoTime>
