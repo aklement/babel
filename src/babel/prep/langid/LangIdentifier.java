@@ -66,6 +66,8 @@ public class LangIdentifier extends PrepStep
 
     FileOutputFormat.setOutputPath(job, outDir);
 
+    setUniqueTempDir(job);
+    
     job.set(JOB_PROP_JOB_REFERRER, referrer);
     
     return job;
