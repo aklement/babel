@@ -1,10 +1,10 @@
 package babel.content.eqclasses.properties;
 
 import java.io.BufferedReader;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -13,13 +13,14 @@ import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.phrases.Phrase;
 import babel.util.misc.GettableHashSet;
+import babel.util.misc.InvertibleHashMap;
 
 public class PhraseOrderCollector extends PhrasePropertyCollector {
 
   public static final Log LOG = LogFactory.getLog(PhrasePropertyCollector.class);
   
   public PhraseOrderCollector(int maxPhraseLength, boolean caseSensitive) {    
-    super(maxPhraseLength);
+    super(maxPhraseLength, caseSensitive);    
   }
 
   public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> phrases) throws Exception {
@@ -88,30 +89,46 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
   
   protected List<IndexedPhrase> getAllIndexedPhrases(String sent, GettableHashSet<EquivalenceClass> allPhrases) {
     
-    // Get all phrases up to length m_maxPhraseLength
-    List<IdxPair> sentPhraseIdxs = getAllPhraseIdxs(sent, m_maxPhraseLength);
+    // Get all sentence delimiters
+    InvertibleHashMap<IdxPair, Integer> delimIdxs = getAllDelims(sent);    
+    // Get all phrases up to length m_maxPhraseLength 
+    List<IdxPair> sentPhraseIdxs = getAllPhraseIdxs(delimIdxs, m_maxPhraseLength);
+    // Phrases containing index info along with indices of the preceding and following delimiters
     List<IndexedPhrase> idxPhrases = new LinkedList<IndexedPhrase>();
+
+    HashMap<Integer, IdxPair> firstCharDelim = new HashMap<Integer, IdxPair>();
+    HashMap<Integer, IdxPair> lastCharDelim = new HashMap<Integer, IdxPair>();
+    IdxPair delimIdx;
+    
+    for (int j = 0; j < delimIdxs.size(); j++) {
+      delimIdx = delimIdxs.getKey(j);
+      firstCharDelim.put(delimIdx.from, delimIdx);
+      lastCharDelim.put(delimIdx.to, delimIdx);
+    }
+
     Phrase phrase;
+    IdxPair phraseIdx;
     
-    for (IdxPair phraseIdx : sentPhraseIdxs) {
-    
+    for (int i = 0; i < sentPhraseIdxs.size(); i++) {
+     
+      phraseIdx = sentPhraseIdxs.get(i);
       (phrase = new Phrase()).init(sent.substring(phraseIdx.from, phraseIdx.to), m_caseSensitive);
-      
+            
       // Only keep it if it is a phrase in our big list
       if (null != (phrase = (Phrase)allPhrases.get(phrase))) {
-        idxPhrases.add(new IndexedPhrase(phrase, phraseIdx));
+        idxPhrases.add(new IndexedPhrase(phrase, phraseIdx, delimIdxs.getValue(lastCharDelim.get(phraseIdx.from)), delimIdxs.getValue(firstCharDelim.get(phraseIdx.to))));
       }
     }
     
     return idxPhrases;
   }
-
-  protected boolean m_caseSensitive;
   
   class IndexedPhrase {
-    public IndexedPhrase(Phrase phrase, IdxPair idxPair) {
+    public IndexedPhrase(Phrase phrase, IdxPair idxPair, int ordDelimBefore, int ordDelimAfter) {
       this.idxPair = idxPair;
       this.phrase = phrase;
+      this.ordDelimBefore = ordDelimBefore;
+      this.ordDelimAfter = ordDelimAfter;
     }
     
     public boolean isBefore(IndexedPhrase other) {
@@ -127,34 +144,27 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
       return (other.idxPair.to + 1) < idxPair.from || (idxPair.to + 1) < other.idxPair.from;
     }
     
-    // true iff  iff the two phrases aren't next to each other and do not overlap and there are at most toksBetween tokens between them  
+    // true iff the two phrases aren't next to each other and do not overlap and there are at most toksBetween tokens between them  
     public boolean isOutOfOrderButCloseEnough(IndexedPhrase other, String sent, int toksBetween) {
       
-      String between = null;
-      int numSpaces = 0;
+      int numToks = -1;
 
-      if ((other.idxPair.to + 1) < idxPair.from) {
-        between = sent.substring(other.idxPair.to, idxPair.from);
-      } else if ((idxPair.to + 1) < other.idxPair.from) {
-        between = sent.substring(idxPair.to, other.idxPair.from);        
+      if (other.ordDelimAfter <= ordDelimBefore) {
+        numToks = ordDelimBefore - other.ordDelimAfter;
+      } else if (ordDelimAfter <= other.ordDelimBefore) {
+        numToks = other.ordDelimBefore - ordDelimAfter;
       }
       
-      if (between != null) {
-        Matcher m = PHRASE_DELIMS.matcher(between);
-
-        while (m.find()) {
-          numSpaces++;
-        }
-      }
-      
-      return numSpaces > 1 && (numSpaces - 1) <= toksBetween;
+      return numToks >= 0 && numToks <= toksBetween;
     }
     
     public String toString() {
       return "[" + phrase.toString() + "|" + idxPair.toString() + "]";
     }
     
-    public Phrase phrase;
-    public IdxPair idxPair;
+    public Phrase phrase; // Phrase
+    public IdxPair idxPair; // From/to indices in the sentence 
+    public int ordDelimBefore; // ordinal number (in the sentence) of the preceding delimiter
+    public int ordDelimAfter; // ordinal number (in the sentence) of the following delimiter
   }
 }

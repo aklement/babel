@@ -5,12 +5,16 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import babel.util.misc.InvertibleHashMap;
+
 public abstract class PhrasePropertyCollector extends PropertyCollector {
   
   protected static final Pattern SENT_DELIMS = Pattern.compile("[\\.\\?¿!¡]+");
   protected static final Pattern PHRASE_DELIMS = Pattern.compile("\\s+");
   
-  protected PhrasePropertyCollector(int maxPhraseLength) {
+  protected PhrasePropertyCollector(int maxPhraseLength, boolean caseSensitive) {
+    super(caseSensitive);
+    
     m_maxPhraseLength = maxPhraseLength;
   }
 
@@ -38,43 +42,67 @@ public abstract class PhrasePropertyCollector extends PropertyCollector {
     return sents;
   }
   
-  public static List<IdxPair> getAllPhraseIdxs(String sent, int maxPhraseLength) {
+  // Returns a map of delimiter index pairs mapped to the ordinal number of the delimiter in the sentence
+  public static InvertibleHashMap<IdxPair, Integer> getAllDelims(String sent) {
     
-    List<IdxPair> spaces = new LinkedList<IdxPair>();
+    InvertibleHashMap<IdxPair, Integer> spaces = new InvertibleHashMap<IdxPair, Integer>();    
     Matcher m = PHRASE_DELIMS.matcher(sent);
+    int idx = 1;
     
     while (m.find()) {
-      spaces.add(new IdxPair(m.start(), m.end()));
+      spaces.put(new IdxPair(m.start(), m.end()), idx++);
     }
     
     if (sent.length() > 0) {
-      spaces.add(0, new IdxPair(0, 0));
-      spaces.add(new IdxPair(sent.length(), sent.length()));
+      spaces.put(new IdxPair(0, 0), 0);
+      spaces.put(new IdxPair(sent.length(), sent.length()), idx);
     }
+
+    return spaces;
+  }
+
+  public static List<IdxPair> getAllPhraseIdxs(InvertibleHashMap<IdxPair, Integer> delims, int maxPhraseLength) {
     
     List<IdxPair> phrases = new LinkedList<IdxPair>();
          
-    for (int i = 0; i < spaces.size() - 1; i++) {
-      for (int j = i+1; (maxPhraseLength < 0 || maxPhraseLength >= j-i) && j < spaces.size(); j++) {              
-        phrases.add(new IdxPair(spaces.get(i).to, spaces.get(j).from));
+    for (int i = 0; i < delims.size() - 1; i++) {
+      for (int j = i+1; (maxPhraseLength < 0 || maxPhraseLength >= j-i) && j < delims.size(); j++) {              
+        phrases.add(new IdxPair(delims.getKey(i).to, delims.getKey(j).from));
       }
     }
     
     return phrases;
   }
   
+  public static List<IdxPair> getAllPhraseIdxs(String sent, int maxPhraseLength) {
+    
+    return getAllPhraseIdxs(getAllDelims(sent), maxPhraseLength);
+  }
+  
   protected int m_maxPhraseLength;
   
   public static class IdxPair {
+ 
     public IdxPair(int from, int to) {
       this.from = from;
       this.to = to;
     }
     
+    @Override
+    public int hashCode() {
+      return toString().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return (obj instanceof IdxPair) && (((IdxPair)obj).from == from) && (((IdxPair)obj).to == to);
+    }
+
     public String toString() {
-      return from + "->" + to;
+      return strRep == null ? strRep = (from + "->" + to) : strRep;
     }
     
-    public int from, to;
+    public final int from, to;
+    private String strRep = null;
   }
 }

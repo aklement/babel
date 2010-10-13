@@ -2,7 +2,7 @@
 <configuration>
 <corpora>
 	<crawls>
-		<Path>/Users/aklement/Resources/babel/Crawls</Path>
+		<Path>/mnt/data/babel/Resources/babel/Crawls</Path>
 		<SrcSubDir>es/</SrcSubDir>
 		<TrgSubDir>en/</TrgSubDir>
 		<DateFrom>08-12-29</DateFrom>
@@ -10,13 +10,13 @@
 		<OneSentPerLine>false</OneSentPerLine>
 	</crawls>
 	<wiki>
-		<Path>/Users/aklement/Resources/babel/wiki</Path>
+		<Path>/mnt/data/babel/Resources/babel/wiki</Path>
 		<SrcRegExp>.*\\.es\\.small</SrcRegExp>
 		<TrgRegExp>.*\\.en\\.small</TrgRegExp>
 		<OneSentPerLine>false</OneSentPerLine>
 	</wiki>
 	<europarl>
-		<Path>/Users/aklement/Resources/babel/EuroParl/ver.5/es-en/train</Path>
+		<Path>/mnt/data/babel/Resources/EuroParl/ver.5/es-en/train.small</Path>
 		<SrcSubDir>es/</SrcSubDir>
 		<TrgSubDir>en/</TrgSubDir>
 		<DateFrom>96-04-15</DateFrom>
@@ -24,13 +24,13 @@
 		<OneSentPerLine>true</OneSentPerLine>
 	</europarl>
 	<dev>
-		<Path>/Users/aklement/Resources/babel/EuroParl/ver.5/es-en/dev</Path>
+		<Path>/mnt/data/babel/Resources/babel/EuroParl/ver.5/es-en/dev</Path>
 		<SrcName>dev.es</SrcName>
 		<TrgName>dev.en</TrgName>
 		<OneSentPerLine>true</OneSentPerLine>
 	</dev>
 	<test>
-		<Path>/Users/aklement/Resources/babel/EuroParl/ver.5/es-en/test</Path>
+		<Path>/mnt/data/babel/Resources/babel/EuroParl/ver.5/es-en/test</Path>
 		<SrcName>test.es</SrcName>
 		<TrgName>test.en</TrgName>
 		<OneSentPerLine>true</OneSentPerLine>
@@ -38,16 +38,16 @@
 </corpora>
 <resources>
 	<stopwords>
-		<Path>/Users/aklement/Resources/babel/StopWordLists/</Path>
+		<Path>/mnt/data/babel/Resources/babel/StopWordLists/</Path>
 		<SrcStopWords>es.stop</SrcStopWords>
 		<TrgStopWords>en.stop</TrgStopWords>
 	</stopwords>
 	<dictionary>
-		<Path>/Users/aklement/Resources/babel/Dictionaries/</Path>
+		<Path>/mnt/data/babel/Resources/babel/Dictionaries/</Path>
 		<Dictionary>es-en.dict</Dictionary>
 	</dictionary>
 	<phrases>
-   		<PhraseTable>/Users/aklement/Projects/Java/babel/phrase-table-small.gz</PhraseTable>
+   		<PhraseTable>/Users/aklement/Projects/Java/babel/phrase-table.med</PhraseTable>
 	</phrases>
 </resources>
 <preprocessing>
@@ -75,6 +75,7 @@
 	</candidates>
 	<phrases>
 		<MaxPhraseLength>7</MaxPhraseLength>
+    <CaseSensitive>true</CaseSensitive>
 	</phrases>
 	<time>
 		<Align>false</Align>

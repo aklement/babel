@@ -18,9 +18,8 @@ public class PhraseTimeDistributionCollector extends PhrasePropertyCollector {
   protected static final Log LOG = LogFactory.getLog(PhraseTimeDistributionCollector.class);
 
   public PhraseTimeDistributionCollector(int maxPhraseLength, boolean caseSensitive) throws Exception {
-    super(maxPhraseLength);
+    super(maxPhraseLength, caseSensitive);
     
-    m_caseSensitive = caseSensitive;
     m_binIdxs = new HashSet<Integer>();
   }
   
@@ -131,5 +130,4 @@ public class PhraseTimeDistributionCollector extends PhrasePropertyCollector {
   }
   
   protected HashSet<Integer> m_binIdxs;
-  protected boolean m_caseSensitive;
 }

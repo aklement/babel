@@ -19,7 +19,8 @@ public class TimeDistributionCollector extends PropertyCollector
 
   public TimeDistributionCollector(boolean caseSensitive) throws Exception
   {
-    m_caseSensitive = caseSensitive;
+    super(caseSensitive);
+
     m_binIdxs = new HashSet<Integer>();
   }
   
@@ -128,5 +129,4 @@ public class TimeDistributionCollector extends PropertyCollector
   }
   
   protected HashSet<Integer> m_binIdxs;
-  protected boolean m_caseSensitive;
 }

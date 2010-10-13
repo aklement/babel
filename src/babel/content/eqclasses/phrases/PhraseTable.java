@@ -40,15 +40,16 @@ public class PhraseTable {
     public final int idx;
   };
   
-  public PhraseTable (String phraseTableFile, String encoding) throws IOException {
+  public PhraseTable (String phraseTableFile, String encoding, boolean caseSensitive) throws IOException {
     m_encoding = encoding;
     m_phraseMap = new HashMap<Phrase, Map<Phrase, PairProps>>();
+    m_caseSensitive = caseSensitive;
     
     processPhraseTableFile(phraseTableFile);
   }
 
-  public PhraseTable (String phraseTableFile) throws IOException {
-    this(phraseTableFile, DEFAULT_CHARSET); 
+  public PhraseTable (String phraseTableFile, boolean caseSensitive) throws IOException {
+    this(phraseTableFile, DEFAULT_CHARSET, caseSensitive);
   }
   
   public Set<Phrase> getAllSrcPhrases() {
@@ -166,14 +167,14 @@ public class PhraseTable {
         from = to + FIELD_DELIM.length();
         pairProps = line.substring(from);
         
-        (srcPhrase = new Phrase()).init(srcStr, false);
+        (srcPhrase = new Phrase()).init(srcStr, m_caseSensitive);
         
         if (null == (trgMap = m_phraseMap.get(srcPhrase))) {
           srcPhrase.assignId();
           m_phraseMap.put(srcPhrase, trgMap = new HashMap<Phrase, PairProps>());
         }
         
-        (trgPhrase = new Phrase()).init(trgStr, false);
+        (trgPhrase = new Phrase()).init(trgStr, m_caseSensitive);
         
         if (!allTrgPhrases.contains(trgPhrase)) {
           trgPhrase.assignId();
@@ -192,6 +193,7 @@ public class PhraseTable {
        
   protected Map<Phrase, Map<Phrase, PairProps>> m_phraseMap;
   protected String m_encoding;
+  protected boolean m_caseSensitive;
   
   public class PairProps {    
     public PairProps(String pairFeatStr) {

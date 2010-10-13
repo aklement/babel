@@ -187,9 +187,10 @@ public class DataPreparer
   public void preparePhrasesForOrderingOnly() throws Exception {
     String phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
     int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
-
+    boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
+    
     LOG.info(" - Reading candidate phrases...");
-    m_phraseTable = new PhraseTable(phraseTableFile);
+    m_phraseTable = new PhraseTable(phraseTableFile, caseSensitive);
     //LOG.info(" - Removing pharses (from " + m_phraseTable.numSrcPhrases() + ") which do not appead in the dev or test sets...");
     //keepDevAndTestPhrases();
     
@@ -202,11 +203,11 @@ public class DataPreparer
     
     // Collect phrase context (for reordering tables)
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), true);    
-    (new PhraseOrderCollector(maxPhraseLength, false)).collectProperty(accessor, m_srcEqs);    
+    (new PhraseOrderCollector(maxPhraseLength, caseSensitive)).collectProperty(accessor, m_srcEqs);    
     assignTypeProp(m_srcEqs, EqType.SOURCE);
     
     accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), false);    
-    (new PhraseOrderCollector(maxPhraseLength, false)).collectProperty(accessor, m_trgEqs);    
+    (new PhraseOrderCollector(maxPhraseLength, caseSensitive)).collectProperty(accessor, m_trgEqs);    
     assignTypeProp(m_trgEqs, EqType.TARGET);    
   }
   
@@ -222,6 +223,7 @@ public class DataPreparer
     String trgContEqClassName = Configurator.CONFIG.getString("preprocessing.context.TrgEqClass");
     boolean alignDistros = Configurator.CONFIG.getBoolean("preprocessing.time.Align");
     String phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
+    boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
     
     Class<EquivalenceClass> srcContClassClass = (Class<EquivalenceClass>)Class.forName(srcContEqClassName);
     Class<EquivalenceClass> trgContClassClass = (Class<EquivalenceClass>)Class.forName(trgContEqClassName);
@@ -244,7 +246,7 @@ public class DataPreparer
     //writeEqs(m_contextTrgEqs, false, CONTEXT_TRG_MAP_FILE, CONTEXT_TRG_PROP_EXT);
     
     LOG.info(" - Reading candidate phrases...");
-    m_phraseTable = new PhraseTable(phraseTableFile);
+    m_phraseTable = new PhraseTable(phraseTableFile, caseSensitive);
     //LOG.info(" - Removing pharses (from " + m_phraseTable.numSrcPhrases() + ") which do not appead in the dev or test sets...");
     //keepDevAndTestPhrases();
     
@@ -278,11 +280,12 @@ public class DataPreparer
   protected void keepDevAndTestPhrases() throws Exception {
     
     int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
+    boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
 
     Set<Phrase> toRemove = new HashSet<Phrase>(m_phraseTable.getAllSrcPhrases());
     
-    keepIfNotFound(toRemove, getAccessor("dev", true), maxPhraseLength, false);
-    keepIfNotFound(toRemove, getAccessor("test", true), maxPhraseLength, false);
+    keepIfNotFound(toRemove, getAccessor("dev", true), maxPhraseLength, caseSensitive);
+    keepIfNotFound(toRemove, getAccessor("test", true), maxPhraseLength, caseSensitive);
 
     m_phraseTable.removePairsWithSrc(toRemove);
   }
@@ -323,6 +326,7 @@ public class DataPreparer
     int pruneContEqIfOccursMoreThan = Configurator.CONFIG.getInt("preprocessing.context.PruneEqIfOccursMoreThan");
     int contextWindowSize = Configurator.CONFIG.getInt("preprocessing.context.Window");
     int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
+    boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
     
     Set<EquivalenceClass> filtContextEqs = new HashSet<EquivalenceClass>(contextEqs);
 
@@ -345,7 +349,7 @@ public class DataPreparer
     
     // Collect phrase context (for reordering tables)
     accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
-    (new PhraseOrderCollector(maxPhraseLength, false)).collectProperty(accessor, eqClasses);
+    (new PhraseOrderCollector(maxPhraseLength, caseSensitive)).collectProperty(accessor, eqClasses);
     
     // Assign type property
     assignTypeProp(eqClasses, src ? EqType.SOURCE : EqType.TARGET);

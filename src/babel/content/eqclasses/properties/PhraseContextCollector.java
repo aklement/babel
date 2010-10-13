@@ -18,9 +18,8 @@ public class PhraseContextCollector extends PhrasePropertyCollector {
   
   public PhraseContextCollector(int maxPhraseLength, boolean caseSensitive, int leftSize, int rightSize, Set<EquivalenceClass> contextEqs) throws Exception {
     
-    super(maxPhraseLength);
+    super(maxPhraseLength, caseSensitive);
     
-    m_caseSensitive = caseSensitive;
     m_leftSize = leftSize;
     m_rightSize = rightSize;
     m_allContextEqsMap = new HashMap<String, EquivalenceClass>(contextEqs.size());
@@ -99,7 +98,6 @@ public class PhraseContextCollector extends PhrasePropertyCollector {
  
   /** All equivalence classes which from which to construct context. */
   protected HashMap<String, EquivalenceClass> m_allContextEqsMap;
-  protected boolean m_caseSensitive;
   protected int m_leftSize;
   protected int m_rightSize;
 }

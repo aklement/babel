@@ -16,7 +16,7 @@ public class NumberCollector extends PropertyCollector
   
   public NumberCollector(boolean caseSensitive) throws Exception
   {
-    m_caseSensitive = caseSensitive;
+    super(caseSensitive);
   }
   
   public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> eqs) throws Exception
@@ -59,7 +59,5 @@ public class NumberCollector extends PropertyCollector
     }
 
     reader.close();
-  }
- 
-  protected boolean m_caseSensitive;
+  } 
 }
