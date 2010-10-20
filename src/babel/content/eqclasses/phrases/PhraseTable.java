@@ -198,6 +198,7 @@ public class PhraseTable {
   public class PairProps {    
     public PairProps(String pairFeatStr) {
       m_pairFeatStr = new StringBuilder(pairFeatStr);
+      m_featVals = null;
     }
     
     public void addPairFeatVal(double val) {
@@ -205,8 +206,18 @@ public class PhraseTable {
     }
 
     public double getPairFeatVal(PairFeat feat) {
-      String[] strFeats = m_pairFeatStr.substring(m_pairFeatStr.lastIndexOf(FIELD_DELIM)).split("\\s");
-      return Double.parseDouble(strFeats[feat.idx]);
+      
+      if (m_featVals == null) {
+
+        String[] strFeats = m_pairFeatStr.substring(m_pairFeatStr.lastIndexOf(FIELD_DELIM) + FIELD_DELIM.length()).split("\\s");
+        m_featVals = new double[strFeats.length];
+        
+        for (int i = 0; i < strFeats.length; i++) {
+          m_featVals[i] = Double.parseDouble(strFeats[i]);
+        }
+      }
+
+      return m_featVals[feat.idx];
     }
     
     public String getPairFeatStr() {
@@ -270,6 +281,7 @@ public class PhraseTable {
       return aligns;
     }
 
+    protected double[] m_featVals;
     protected StringBuilder m_pairFeatStr;
     protected StringBuilder m_beforeOrderFeatStr;
     protected StringBuilder m_afterOrderFeatStr;
