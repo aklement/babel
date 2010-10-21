@@ -9,11 +9,18 @@ import java.util.Random;
 import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.SimpleEquivalenceClass;
 import babel.content.eqclasses.properties.Context;
 import babel.content.eqclasses.properties.Context.ContextualItem;
 
 public class Dictionary
 {
+  /**
+   * Create a Dictionary object from a SimpleDictionary.  Will keep only 
+   * equivalence classes in srcEqs, and trgEqs. If either of the two sets is
+   * null, will create a SimpleEquivalenceClass for (src or trg, respectively)
+   * entry in SimpleDictionary.
+   */
   public Dictionary(Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs, SimpleDictionary simpleDict, String name)
   {
     m_name = name;
@@ -25,6 +32,15 @@ public class Dictionary
     costruct(srcEqs, trgEqs, simpleDict);
   }
 
+  /**
+   * Create a Dictionary object from a SimpleDictionary.  Will keep only 
+   * equivalence classes in srcEqs, and create a SimpleEquivalenceClass for
+   * each target word.
+   */
+  public Dictionary(Set<EquivalenceClass> srcEqs, SimpleDictionary simpleDict, String name) {
+    this(srcEqs, null, simpleDict, name);
+  }
+  
   public void retainAllSrc(Set<EquivalenceClass> srcEqs)
   {
     HashMap<EquivalenceClass, HashSet<EquivalenceClass>> oldMap = m_map;
@@ -85,24 +101,28 @@ public class Dictionary
 
   protected void costruct(Set<EquivalenceClass> srcEq, Set<EquivalenceClass> trgEq, SimpleDictionary simpleDict)
   {
-    HashMap<String, EquivalenceClass> srcMap = new HashMap<String, EquivalenceClass>();
-    HashMap<String, EquivalenceClass> trgMap = new HashMap<String, EquivalenceClass>();
-
-    for (EquivalenceClass eq : srcEq)
-    {
-      for (String sWord : eq.getAllWords())
-      { 
-        assert !srcMap.containsKey(sWord);
-        srcMap.put(sWord, eq);
+    HashMap<String, EquivalenceClass> srcMap = null;
+    HashMap<String, EquivalenceClass> trgMap = null;
+    
+    if (srcEq != null) { 
+      srcMap = new HashMap<String, EquivalenceClass>();
+    
+      for (EquivalenceClass eq : srcEq) {
+        for (String sWord : eq.getAllWords()) { 
+          assert !srcMap.containsKey(sWord);
+          srcMap.put(sWord, eq);
+        }
       }
     }
 
-    for (EquivalenceClass eq : trgEq)
-    {
-      for (String tWord : eq.getAllWords())
-      { 
-        assert !trgMap.containsKey(tWord);
-        trgMap.put(tWord, eq);
+    if (trgEq != null) {
+      trgMap = new HashMap<String, EquivalenceClass>();
+    
+      for (EquivalenceClass eq : trgEq) {
+        for (String tWord : eq.getAllWords()) { 
+          assert !trgMap.containsKey(tWord);
+          trgMap.put(tWord, eq);
+        }
       }
     }
   
@@ -112,11 +132,24 @@ public class Dictionary
     
     for (String sDictWord : simpleDict.getAllSrc())
     {
-      if (null != (sEq = srcMap.get(sDictWord)))
+      if (srcMap == null) {
+        (sEq = new SimpleEquivalenceClass()).init(sDictWord, false);
+      } else {
+        sEq = srcMap.get(sDictWord); 
+      }
+           
+      if (sEq != null)
       {
         for (String tDictWord : simpleDict.getTrg(sDictWord))
         {
-          if (null != (tEq = trgMap.get(tDictWord)))
+          
+          if (trgMap == null) {
+            (tEq = new SimpleEquivalenceClass()).init(tDictWord, false);
+          } else {
+            tEq = trgMap.get(tDictWord);
+          }
+          
+          if (tEq != null)
           {
             if (null == (tEqSet = m_map.get(sEq)))
             { m_map.put(sEq, tEqSet = new HashSet<EquivalenceClass>());
