@@ -2,12 +2,12 @@
 <configuration>
 <corpora>
 	<crawls>
-		<Path>/mnt/data/babel/Resources/babel/Crawls</Path>
-		<SrcSubDir>es/</SrcSubDir>
+		<Path>/mnt/data/babel/Resources/Crawls/Crawls.ur-en.tiny</Path>
+		<SrcSubDir>ur/</SrcSubDir>
 		<TrgSubDir>en/</TrgSubDir>
-		<DateFrom>08-12-29</DateFrom>
-		<DateTo>09-01-05</DateTo>
-		<OneSentPerLine>false</OneSentPerLine>
+		<DateFrom>01-01-01</DateFrom>
+		<DateTo>01-01-30</DateTo>
+		<OneSentPerLine>true</OneSentPerLine>
 	</crawls>
 	<wiki>
 		<Path>/mnt/data/babel/Resources/babel/wiki</Path>
@@ -38,24 +38,30 @@
 </corpora>
 <resources>
 	<stopwords>
-		<Path>/mnt/data/babel/Resources/babel/StopWordLists/</Path>
-		<SrcStopWords>es.stop</SrcStopWords>
+		<Path>/mnt/data/babel/Resources/StopWordLists/</Path>
 		<TrgStopWords>en.stop</TrgStopWords>
 	</stopwords>
 	<dictionary>
-		<Path>/mnt/data/babel/Resources/babel/Dictionaries/</Path>
-		<Dictionary>es-en.dict</Dictionary>
+		<Path>/mnt/data/babel/Resources/Dictionaries/ur-en/</Path>
+		<SrcName>ur.tok.norm.dict</SrcName>
+		<TrgName>en.tok.norm.dict</TrgName>
 	</dictionary>
+	<translit>
+		<Path>/mnt/data/babel/Resources/Transliterations/ur-en/</Path>
+		<SrcName>ur.translit</SrcName>
+		<TrgName>en.translit</TrgName>
+	</translit>
 	<phrases>
-   		<PhraseTable>/Users/aklement/Projects/Java/babel/phrase-table.med</PhraseTable>
+   		<PhraseTable>/Users/aklement/Projects/Java/babel/phrase-table.ur-en.work.3</PhraseTable>
 	</phrases>
 </resources>
 <preprocessing>
 	<Path>./preprocessing/</Path>
+	<FilterRomanSrc>false</FilterRomanSrc>
 	<FilterRomanTrg>false</FilterRomanTrg>
 	<input>
-		<Context>europarl</Context>
-		<Time>europarl</Time>
+		<Context>crawls</Context>
+		<Time>crawls</Time>
 	</input>
 	<context>
 		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
@@ -75,7 +81,7 @@
 	</candidates>
 	<phrases>
 		<MaxPhraseLength>7</MaxPhraseLength>
-    <CaseSensitive>true</CaseSensitive>
+		<CaseSensitive>true</CaseSensitive>
 	</phrases>
 	<time>
 		<Align>false</Align>
@@ -83,8 +89,8 @@
 </preprocessing>
 <output>
 	<Path>./output/</Path>
-  <PhraseTable>phrase-table-mono</PhraseTable> 
-  <ReorderingTable>reordering-table-mono</ReorderingTable> 
+    <PhraseTable>phrase-table-mono</PhraseTable> 
+    <ReorderingTable>reordering-table-mono</ReorderingTable> 
 </output>
 <experiments>
 	<time>
