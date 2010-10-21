@@ -39,15 +39,11 @@ import babel.content.eqclasses.filters.NumOccurencesFilter;
 import babel.content.eqclasses.filters.RomanizationFilter;
 import babel.content.eqclasses.filters.StopWordsFilter;
 import babel.content.eqclasses.phrases.Phrase;
-import babel.content.eqclasses.phrases.PhraseTable;
 import babel.content.eqclasses.properties.Context;
 import babel.content.eqclasses.properties.ContextCollector;
 import babel.content.eqclasses.properties.Number;
 import babel.content.eqclasses.properties.NumberCollector;
-import babel.content.eqclasses.properties.PhraseContextCollector;
-import babel.content.eqclasses.properties.PhraseOrderCollector;
 import babel.content.eqclasses.properties.PhrasePropertyCollector;
-import babel.content.eqclasses.properties.PhraseTimeDistributionCollector;
 import babel.content.eqclasses.properties.TimeDistribution;
 import babel.content.eqclasses.properties.TimeDistributionCollector;
 import babel.content.eqclasses.properties.Type;
@@ -81,6 +77,7 @@ public class DataPreparer
   @SuppressWarnings("unchecked")
   public void prepare() throws Exception
   {
+    boolean filterRomanSrc = Configurator.CONFIG.containsKey("preprocessing.FilterRomanSrc") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanSrc");
     boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
     String srcEqClassName = Configurator.CONFIG.getString("preprocessing.candidates.SrcEqClass");
     String trgEqClassName = Configurator.CONFIG.getString("preprocessing.candidates.TrgEqClass");
@@ -120,9 +117,9 @@ public class DataPreparer
     { 
       LOG.info(" - Failed to read previously collected stuff (" + e.toString() + "), collecting from scratch ...");
       
-      Set<EquivalenceClass> allSrcEqs = collectInitEqClasses(true, false);
+      Set<EquivalenceClass> allSrcEqs = collectInitEqClasses(true, filterRomanSrc);
       Set<EquivalenceClass> allTrgEqs = collectInitEqClasses(false, filterRomanTrg);
-      LOG.info(" - All source types: " + allSrcEqs.size());
+      LOG.info(" - All source types: " + allSrcEqs.size() + (filterRomanSrc ? " (without romanization) " : ""));
       LOG.info(" - All target types: " + allTrgEqs.size() + (filterRomanTrg ? " (without romanization) " : ""));
       
       LOG.info(" - Constructing context classes...");
@@ -142,7 +139,7 @@ public class DataPreparer
       LOG.info(" - Candidate target classes: " + m_trgEqs.size());
 
       LOG.info(" - Pruning candidate classes...");
-      m_srcEqs = pruneEqClasses(m_srcEqs, true, srcStopFileName, false);
+      m_srcEqs = pruneEqClasses(m_srcEqs, true, srcStopFileName, filterRomanSrc);
       m_trgEqs = pruneEqClasses(m_trgEqs, false, trgStopFileName, filterRomanTrg);
       LOG.info(" - Pruned candidate source classes: " + m_srcEqs.size());
       LOG.info(" - Pruned candidate target classes: " + m_trgEqs.size());
@@ -178,117 +175,6 @@ public class DataPreparer
    
     collectTokenCounts(m_contextSrcEqs, m_contextTrgEqs); 
   }
-  
-  
-  
-  
-  // TODO: Faster Used preparePhrasesForOrderingOnly() instead of preparePhrases() in PhraseScorer
-  @SuppressWarnings({ "unchecked", "rawtypes" })
-  public void preparePhrasesForOrderingOnly() throws Exception {
-    String phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
-    int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
-    boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
-    
-    LOG.info(" - Reading candidate phrases...");
-    m_phraseTable = new PhraseTable(phraseTableFile, caseSensitive);
-    //LOG.info(" - Removing pharses (from " + m_phraseTable.numSrcPhrases() + ") which do not appead in the dev or test sets...");
-    //keepDevAndTestPhrases();
-    
-    m_srcEqs = (Set)m_phraseTable.getAllSrcPhrases();
-    m_trgEqs = (Set)m_phraseTable.getAllTrgPhrases();
-     
-    LOG.info(" - Source phrases: " + m_srcEqs.size());
-    LOG.info(" - Target phrases: " + m_trgEqs.size());
-    LOG.info(" - Collecting phrase ordering information ...");
-    
-    // Collect phrase context (for reordering tables)
-    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), true);    
-    (new PhraseOrderCollector(maxPhraseLength, caseSensitive)).collectProperty(accessor, m_srcEqs);    
-    assignTypeProp(m_srcEqs, EqType.SOURCE);
-    
-    accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), false);    
-    (new PhraseOrderCollector(maxPhraseLength, caseSensitive)).collectProperty(accessor, m_trgEqs);    
-    assignTypeProp(m_trgEqs, EqType.TARGET);    
-  }
-  
-  
-  
-  
-  
-  @SuppressWarnings({ "unchecked", "rawtypes" })
-  public void preparePhrases() throws Exception {
-
-    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
-    String srcContEqClassName = Configurator.CONFIG.getString("preprocessing.context.SrcEqClass");
-    String trgContEqClassName = Configurator.CONFIG.getString("preprocessing.context.TrgEqClass");
-    boolean alignDistros = Configurator.CONFIG.getBoolean("preprocessing.time.Align");
-    String phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
-    boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
-    
-    Class<EquivalenceClass> srcContClassClass = (Class<EquivalenceClass>)Class.forName(srcContEqClassName);
-    Class<EquivalenceClass> trgContClassClass = (Class<EquivalenceClass>)Class.forName(trgContEqClassName);
-    
-    LOG.info(" - Collecting from scratch ...");
-    
-    Set<EquivalenceClass> allSrcEqs = collectInitEqClasses(true, false);
-    Set<EquivalenceClass> allTrgEqs = collectInitEqClasses(false, filterRomanTrg);
-    LOG.info(" - All source types: " + allSrcEqs.size());
-    LOG.info(" - All target types: " + allTrgEqs.size() + (filterRomanTrg ? " (without romanization) " : ""));
-    
-    LOG.info(" - Constructing context classes...");
-    m_contextSrcEqs = constructEqClasses(true, allSrcEqs, srcContClassClass);
-    m_contextTrgEqs = constructEqClasses(false, allTrgEqs, trgContClassClass);     
-    LOG.info(" - Context source classes: " + m_contextSrcEqs.size());
-    LOG.info(" - Context target classes: " + m_contextTrgEqs.size());
-    
-    //LOG.info(" - Writing context classes...");
-    //writeEqs(m_contextSrcEqs, true, CONTEXT_SRC_MAP_FILE, CONTEXT_SRC_PROP_EXT);
-    //writeEqs(m_contextTrgEqs, false, CONTEXT_TRG_MAP_FILE, CONTEXT_TRG_PROP_EXT);
-    
-    LOG.info(" - Reading candidate phrases...");
-    m_phraseTable = new PhraseTable(phraseTableFile, caseSensitive);
-    //LOG.info(" - Removing pharses (from " + m_phraseTable.numSrcPhrases() + ") which do not appead in the dev or test sets...");
-    //keepDevAndTestPhrases();
-    
-    m_srcEqs = (Set)m_phraseTable.getAllSrcPhrases();
-    m_trgEqs = (Set)m_phraseTable.getAllTrgPhrases();
-     
-    LOG.info(" - Source phrases: " + m_srcEqs.size());
-    LOG.info(" - Target phrases: " + m_trgEqs.size());
-    
-    prepareOnlySeedDictionary(m_contextSrcEqs, m_contextTrgEqs);
-
-    LOG.info(" - Collecting phrase properties...");
-    Set<Integer> srcBins = collectPhraseProps(true, m_srcEqs, m_contextSrcEqs, m_seedDict);
-    Set<Integer> trgBins = collectPhraseProps(false, m_trgEqs, m_contextTrgEqs, m_seedDict);
-
-    if (alignDistros)
-    {
-      LOG.info(" - Aligning temporal distributions...");
-      alignDistributions(srcBins, trgBins, m_srcEqs, m_trgEqs);
-    }
-    
-    //LOG.info(" - Writing candidate classes and properties...");
-    //writeEqs(m_srcEqs, true, SRC_MAP_FILE, SRC_PROP_EXT);
-    //writeProps(m_srcEqs, true, SRC_PROP_EXT);
-    //writeEqs(m_trgEqs, false, TRG_MAP_FILE, TRG_PROP_EXT);
-    //writeProps(m_trgEqs, false, TRG_PROP_EXT);
-    
-    collectTokenCounts(m_contextSrcEqs, m_contextTrgEqs);
-  }
-  
-  protected void keepDevAndTestPhrases() throws Exception {
-    
-    int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
-    boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
-
-    Set<Phrase> toRemove = new HashSet<Phrase>(m_phraseTable.getAllSrcPhrases());
-    
-    keepIfNotFound(toRemove, getAccessor("dev", true), maxPhraseLength, caseSensitive);
-    keepIfNotFound(toRemove, getAccessor("test", true), maxPhraseLength, caseSensitive);
-
-    m_phraseTable.removePairsWithSrc(toRemove);
-  }
 
   protected void keepIfNotFound(Set<Phrase> notFound, CorpusAccessor accessor, int maxPhraseLength, boolean caseSensitive) throws IOException {
         
@@ -319,44 +205,6 @@ public class DataPreparer
         
     reader.close();
   }
-  
-  protected Set<Integer> collectPhraseProps(boolean src, Set<EquivalenceClass> eqClasses, Set<EquivalenceClass> contextEqs, Dictionary contextDict) throws Exception
-  {
-    int pruneContEqIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.context.PruneEqIfOccursFewerThan");
-    int pruneContEqIfOccursMoreThan = Configurator.CONFIG.getInt("preprocessing.context.PruneEqIfOccursMoreThan");
-    int contextWindowSize = Configurator.CONFIG.getInt("preprocessing.context.Window");
-    int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
-    boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
-    
-    Set<EquivalenceClass> filtContextEqs = new HashSet<EquivalenceClass>(contextEqs);
-
-    LOG.info("Preparing contextual words for " + (src ? "source" : "target") + ": keeping those in dict [" + contextDict.toString() + "] and occuring (" + pruneContEqIfOccursFewerThan + "," + pruneContEqIfOccursMoreThan + ") times...");
-    LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
-    filters.add(new DictionaryFilter(contextDict, true, src)); 
-    filters.add(new NumOccurencesFilter(pruneContEqIfOccursFewerThan, true));
-    filters.add(new NumOccurencesFilter(pruneContEqIfOccursMoreThan, false));
-    filtContextEqs = EquivalenceClassCollector.filter(filtContextEqs, filters);
-    LOG.info("Context " + (src ? "source" : "target") + " classes: " + filtContextEqs.size());
-    
-    // Collect context properties
-    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
-    (new PhraseContextCollector(maxPhraseLength, false, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, eqClasses);
-
-    // Collect time properties
-    accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), src);
-    PhraseTimeDistributionCollector distCollector = new PhraseTimeDistributionCollector(maxPhraseLength, false);
-    distCollector.collectProperty(accessor, eqClasses);
-    
-    // Collect phrase context (for reordering tables)
-    accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
-    (new PhraseOrderCollector(maxPhraseLength, caseSensitive)).collectProperty(accessor, eqClasses);
-    
-    // Assign type property
-    assignTypeProp(eqClasses, src ? EqType.SOURCE : EqType.TARGET);
-    
-    // Returns time bins for which counts were collected
-    return distCollector.binsCollected();
-  }
 
   public void prepareProperties(boolean src, Set<? extends EquivalenceClass> eqs, Scorer contextScorer, Scorer timeScorer)
   {
@@ -383,10 +231,6 @@ public class DataPreparer
 
   public Set<EquivalenceClass> getSrcEqsToInduct()
   { return m_srcEqsToInduct;
-  }
-
-  public PhraseTable getPhraseTable()
-  { return m_phraseTable;
   }
   
   public Set<EquivalenceClass> getTrgEqs()
@@ -424,14 +268,14 @@ public class DataPreparer
     return eqClasses;
   }
   
-  protected Set<EquivalenceClass> collectInitEqClasses(boolean src, boolean filterRomanTrg) throws Exception
+  protected Set<EquivalenceClass> collectInitEqClasses(boolean src, boolean filterRoman) throws Exception
   {
     Set<EquivalenceClass> eqClasses;
   
     ArrayList<EquivalenceClassFilter> filters = new ArrayList<EquivalenceClassFilter>(3);
     filters.add(new GarbageFilter());
     filters.add(new LengthFilter(2));
-    if (filterRomanTrg)
+    if (filterRoman)
     { filters.add(new RomanizationFilter());
     }
     
@@ -562,7 +406,7 @@ public class DataPreparer
     LOG.info("There are " + toRemove.size() + " common days between src and trg distributions.");    
   }
 
-  protected Set<EquivalenceClass> pruneEqClasses(Set<EquivalenceClass> eqClasses, boolean src, String stopWordsFileName, boolean filterRomanTrg) throws Exception
+  protected Set<EquivalenceClass> pruneEqClasses(Set<EquivalenceClass> eqClasses, boolean src, String stopWordsFileName, boolean filterRoman) throws Exception
   {
     String stopWordsDir = Configurator.CONFIG.getString("resources.stopwords.Path");
     int pruneCandIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.candidates.PruneIfOccursFewerThan");
@@ -573,7 +417,7 @@ public class DataPreparer
     
     LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
     filters.add(new GarbageFilter());
-    if (filterRomanTrg)
+    if (filterRoman)
     { filters.add(new RomanizationFilter());
     }
     
@@ -778,24 +622,6 @@ public class DataPreparer
   
     return new LexCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
   }
-
-  protected void prepareOnlySeedDictionary(Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs) throws Exception
-  {
-    String dictDir = Configurator.CONFIG.getString("resources.dictionary.Path");
-    String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
-    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
-    int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
-
-    LOG.info("Reading/preparing only seed dictionary ...");
-    
-    SimpleDictionary entireDict = new SimpleDictionary(dictDir + dictFileName, "Entire", filterRomanTrg);
-    entireDict.pruneCounts(ridDictNumTrans);
-    
-    m_seedDict =  new Dictionary(srcContEqs, trgContEqs, entireDict, "Seed dictionary");
-    m_testDict = null;
-    
-    LOG.info("Dictionary: " + m_seedDict.toString()); 
-  }
   
   protected void prepareDictsAndSrcEqsToInduct(
       Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs,
@@ -803,12 +629,11 @@ public class DataPreparer
   {
     String dictDir = Configurator.CONFIG.getString("resources.dictionary.Path");
     String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
-    boolean filterRomanTrg = Configurator.CONFIG.containsKey("preprocessing.FilterRomanTrg") && Configurator.CONFIG.getBoolean("preprocessing.FilterRomanTrg");
     int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
 
     LOG.info("Reading/preparing dictionaries ...");
     
-    SimpleDictionary entireDict = new SimpleDictionary(dictDir + dictFileName, "Entire", filterRomanTrg);
+    SimpleDictionary entireDict = new SimpleDictionary(dictDir + dictFileName, "Entire");
     entireDict.pruneCounts(ridDictNumTrans);
     
     m_seedDict = new Dictionary(srcContEqs, trgContEqs, entireDict, "Seed dictionary");
@@ -942,7 +767,6 @@ public class DataPreparer
   protected double m_numToksInTrg;
   protected double m_maxTokCountInSrc;
   protected double m_maxTokCountInTrg;  
-  protected PhraseTable m_phraseTable;
   protected Random m_rand = new Random(1);
 
 }
