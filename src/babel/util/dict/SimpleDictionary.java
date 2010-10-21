@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import babel.util.misc.RegExFileNameFilter;
 import babel.util.misc.FileList;
@@ -27,22 +26,29 @@ public class SimpleDictionary
     m_map = new HashMap<String, HashSet<String>>();
     m_name = name;
   }
-  
-  public SimpleDictionary(String dictFile, String name, boolean filterRomanizedTrg) throws Exception
+
+  public SimpleDictionary(DictHalves dictFiles, String name) throws Exception
   {
     this(name);
     
-    read(m_map, new InputStreamReader(new FileInputStream(dictFile), DEFAULT_ENCODING), filterRomanizedTrg);
+    read(m_map, new InputStreamReader(new FileInputStream(dictFiles.srcDictFile), DEFAULT_ENCODING), new InputStreamReader(new FileInputStream(dictFiles.trgDictFile), DEFAULT_ENCODING));
   }
   
-  public SimpleDictionary(String dictPath, String fileNameRegEx, String name, boolean filterRomanizedTrg) throws Exception
+  public SimpleDictionary(String dictFile, String name) throws Exception
+  {
+    this(name);
+    
+    read(m_map, new InputStreamReader(new FileInputStream(dictFile), DEFAULT_ENCODING));
+  }
+  
+  public SimpleDictionary(String dictPath, String fileNameRegEx, String name) throws Exception
   {
     this(name);
 
     FileList list = new FileList(dictPath, new RegExFileNameFilter(fileNameRegEx));
     list.gather();
 
-    read(m_map, new InputStreamReader(new SequenceInputStream(list), DEFAULT_ENCODING), filterRomanizedTrg);
+    read(m_map, new InputStreamReader(new SequenceInputStream(list), DEFAULT_ENCODING));
   }
   
   public String getName()
@@ -138,12 +144,11 @@ public class SimpleDictionary
     writer.close();
   }
   
-  protected void read(HashMap<String, HashSet<String>> hash, InputStreamReader dictReader, boolean filterRomanizedTrg) throws Exception
+  protected void read(HashMap<String, HashSet<String>> hash, InputStreamReader dictReader) throws Exception
   { 
     BufferedReader reader = new BufferedReader(dictReader);
     String line;
     String[] toks;
-    Pattern romanChars = Pattern.compile("[a-zA-Z]");
     HashSet<String> transSet;
     String srcTok, trgTok;
     
@@ -153,7 +158,7 @@ public class SimpleDictionary
       srcTok = toks[0].toLowerCase();
       trgTok = toks[1].toLowerCase();
       
-      if (toks != null && toks.length > 1 && isToken(srcTok) && isToken(trgTok) && !(filterRomanizedTrg && romanChars.matcher(trgTok).find()))
+      if (isToken(srcTok) && isToken(trgTok))
       {
         if (null == (transSet = hash.get(srcTok)))
         { hash.put(srcTok, transSet = new HashSet<String>());
@@ -164,6 +169,33 @@ public class SimpleDictionary
     }
     
     reader.close();
+  }
+  
+  protected void read(HashMap<String, HashSet<String>> hash, InputStreamReader srcDictReader, InputStreamReader trgDictReader) throws Exception { 
+    
+    BufferedReader srcReader = new BufferedReader(srcDictReader);
+    BufferedReader trgReader = new BufferedReader(trgDictReader);
+
+    String srcTok, trgTok;
+    HashSet<String> transSet;
+    
+    while (null != (srcTok = srcReader.readLine()) && null != (trgTok = trgReader.readLine()))
+    {
+      srcTok = srcTok.trim().toLowerCase();
+      trgTok = trgTok.trim().toLowerCase();
+       
+      if (isToken(srcTok) && isToken(trgTok))
+      {
+        if (null == (transSet = hash.get(srcTok)))
+        { hash.put(srcTok, transSet = new HashSet<String>());
+        }
+
+        transSet.add(trgTok);
+      }
+    }
+    
+    srcReader.close();
+    trgReader.close();
   }
   
   public void pruneCounts(int numTrans)
@@ -201,6 +233,18 @@ public class SimpleDictionary
   protected HashMap<String, HashSet<String>> m_map;
   protected Random m_rand;
   protected String m_name;
+  
+  public static class DictHalves {
+    public DictHalves(String srcDictFile, String trgDictFile) {
+      
+      assert srcDictFile != null && trgDictFile != null && !srcDictFile.equals(trgDictFile);
+      
+      this.srcDictFile = srcDictFile;
+      this.trgDictFile = trgDictFile;
+    }
+    
+    public String srcDictFile, trgDictFile;
+  }
   
   public class DictPair
   {    
