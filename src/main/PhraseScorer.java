@@ -11,11 +11,14 @@ import babel.content.eqclasses.phrases.PhraseTable;
 import babel.content.eqclasses.phrases.PhraseTable.PairFeat;
 import babel.content.eqclasses.phrases.PhraseTable.PairProps;
 import babel.content.eqclasses.properties.PhraseContext;
+
 import babel.ranking.scorers.Scorer;
 import babel.ranking.scorers.context.DictScorer;
 import babel.ranking.scorers.context.FungS1Scorer;
 import babel.ranking.scorers.timedistribution.TimeDistributionCosineScorer;
+
 import babel.util.config.Configurator;
+import babel.util.dict.SimpleDictionary;
 import babel.util.misc.EditDistance;
 
 public class PhraseScorer
@@ -27,9 +30,9 @@ public class PhraseScorer
     LOG.info("\n" + Configurator.getConfigDescriptor());
  
     PhraseScorer scorer = new PhraseScorer();   
-    scorer.scorePhrasesOrder();
+    //scorer.scorePhrasesOrder();
     // TODO: Faster uncomment line below, remove line above
-    //scorer.scorePhrases();
+    scorer.scorePhrases();
   }
 
   // TODO: Faster Used scorePhrasesOrder() instead of scorePhrases()
@@ -38,7 +41,7 @@ public class PhraseScorer
     String outDir = Configurator.CONFIG.getString("output.Path");
     String outReorderingTable = Configurator.CONFIG.getString("output.ReorderingTable");
     
-    DataPreparer preparer = new DataPreparer();
+    PhrasePreparer preparer = new PhrasePreparer();
     
     // Prepare equivalence classes
     preparer.preparePhrasesForOrderingOnly();
@@ -64,7 +67,7 @@ public class PhraseScorer
     String outPhraseTable = Configurator.CONFIG.getString("output.PhraseTable");
     String outReorderingTable = Configurator.CONFIG.getString("output.ReorderingTable");
 
-    DataPreparer preparer = new DataPreparer();
+    PhrasePreparer preparer = new PhrasePreparer();
     
     // Prepare equivalence classes
     preparer.preparePhrases();
@@ -75,6 +78,8 @@ public class PhraseScorer
     
     DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
+    
+    SimpleDictionary translitDict = preparer.getTranslitDict();
     
     LOG.info("--- Estimating monolingual features ---");
     
@@ -90,26 +95,33 @@ public class PhraseScorer
         
         props.addPairFeatVal(contextScorer.score(srcPhrase, trgPhrase));
         props.addPairFeatVal(timeScorer.score(srcPhrase, trgPhrase));
-        props.addPairFeatVal(scoreEdit(srcPhrase, trgPhrase, props));
+        props.addPairFeatVal(scoreEdit(srcPhrase, trgPhrase, props, translitDict));
       }
     }
+
+    // Save the new phrase table (containing mono features)
+    phraseTable.savePhraseTable(outDir + "/" + outPhraseTable);
     
     LOG.info("--- Estimating reordering features ---");
     
     // Estimate reordering features
     estimateReordering(phraseTable);
     
-    // Save the new phrase table (containing mono features) and the reordering table
-    phraseTable.savePhraseTable(outDir + "/" + outPhraseTable);
+    // Save the reordering table
     phraseTable.saveReorderingTable(outDir + "/" + outReorderingTable);
     
     LOG.info("--- Done ---");
   }
   
-  // Compute average per charachted forward and backward edit distance
-  protected double scoreEdit(Phrase srcPhrase, Phrase trgPhrase, PairProps props) {
+  // Compute average per character forward and backward edit distance
+  protected double scoreEdit(Phrase srcPhrase, Phrase trgPhrase, PairProps props, SimpleDictionary translitDict) {
     String[] srcWords = srcPhrase.getWord().split(" ");
     String[] trgWords = trgPhrase.getWord().split(" ");
+    
+    // Try transliterating source phrase
+    if (translitDict != null) {
+      translitWords(srcWords, translitDict);
+    }
     
     double letterCount = 0;
     double numEdits = 0; 
@@ -137,6 +149,17 @@ public class PhraseScorer
     }
     
     return numEdits / letterCount;
+  }
+  
+  protected void translitWords(String[] words, SimpleDictionary translitDict) {
+    
+    Set<String> translits;
+    
+    for (int i = 0; i < words.length; i++) {
+      if (null != (translits = translitDict.getTrg(words[i]))) {
+        words[i] = translits.iterator().next();
+      }
+    }
   }
   
   protected void estimateReordering(PhraseTable phraseTable) {
