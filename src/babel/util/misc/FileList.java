@@ -88,6 +88,7 @@ public class FileList implements Enumeration<InputStream>
   public void gather(int depth)
   {
     m_listOfFiles = null;
+    m_current = 0;
 
     LinkedList<String> list = recursiveGather(depth, m_dir);
     
@@ -97,7 +98,7 @@ public class FileList implements Enumeration<InputStream>
     }    
   }
   
-  public LinkedList<String> recursiveGather(int depth, File parent)
+  protected LinkedList<String> recursiveGather(int depth, File parent)
   {
     LinkedList<String> curList = new LinkedList<String>();
     
