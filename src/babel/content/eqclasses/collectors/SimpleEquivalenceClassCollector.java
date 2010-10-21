@@ -54,6 +54,8 @@ public class SimpleEquivalenceClassCollector extends EquivalenceClassCollector
       }
     }
  
+    reader.close();
+    
     return new HashSet<EquivalenceClass>(eqs.values());
   }
 }
