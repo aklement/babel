@@ -2,11 +2,11 @@
 <configuration>
 <corpora>
 	<crawls>
-		<Path>/mnt/data/babel/Resources/Crawls/Crawls.ur-en.tiny</Path>
+		<Path>/mnt/data/babel/Resources/Crawls/Crawls.ur-en.tiny/</Path>
 		<SrcSubDir>ur/</SrcSubDir>
 		<TrgSubDir>en/</TrgSubDir>
-		<DateFrom>01-01-01</DateFrom>
-		<DateTo>01-01-30</DateTo>
+		<DateFrom>01-11-01</DateFrom>
+		<DateTo>10-09-12</DateTo>
 		<OneSentPerLine>true</OneSentPerLine>
 	</crawls>
 	<wiki>
@@ -51,6 +51,11 @@
 		<SrcName>ur.translit</SrcName>
 		<TrgName>en.translit</TrgName>
 	</translit>
+	<inductvocab>
+		<Path>/mnt/data/babel/Resources/LexInductVocab/ur-en/</Path>
+		<SrcName>ur.vocab.alltest</SrcName>
+		<TrgName>en.vocab.train</TrgName>
+	</inductvocab>
 	<phrases>
    		<PhraseTable>/Users/aklement/Projects/Java/babel/phrase-table.ur-en.work.3</PhraseTable>
 	</phrases>
@@ -80,7 +85,7 @@
 		<PruneMostFrequentTrg>-1</PruneMostFrequentTrg>
 	</candidates>
 	<phrases>
-		<MaxPhraseLength>7</MaxPhraseLength>
+		<MaxPhraseLength>3</MaxPhraseLength>
 		<CaseSensitive>true</CaseSensitive>
 	</phrases>
 	<time>
@@ -101,10 +106,10 @@
 	<NumSource>200</NumSource>
 	<NumTranslationsToAddPerSource>500</NumTranslationsToAddPerSource>
 	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
-	<NumRankingThreads>1</NumRankingThreads>	
+	<NumRankingThreads>4</NumRankingThreads>	
 	<DoTime>true</DoTime>
 	<DoContext>true</DoContext>
-	<DoEditDistance>true</DoEditDistance>
+	<DoEditDistance>false</DoEditDistance>
 	<DoAggregate>true</DoAggregate>
 </experiments>
 </configuration>
