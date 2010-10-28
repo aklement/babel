@@ -1,7 +1,8 @@
 package babel.ranking;
 
 import java.io.BufferedWriter;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -23,13 +24,14 @@ import babel.content.eqclasses.EquivalenceClass;
 import babel.util.dict.Dictionary;
 
 /**
- * Simple container prividing a mechanism for associating scored target 
+ * Simple container providing a mechanism for associating scored target 
  * candidates with a source EquivalenceClass object.
  */
 public class EquivClassCandRanking
 {
   protected static final Log LOG = LogFactory.getLog(EquivClassCandRanking.class);
-
+  protected static final String DEFAULT_ENCODING = "UTF-8";
+  
   /**
    * @param EquivalenceClass source EquivalenceClass object
    * @param numBest maximum number of candidates to keep (negative => no limit)
@@ -292,7 +294,8 @@ public class EquivClassCandRanking
   
   public static void dumpToFile(Dictionary dict, Collection<EquivClassCandRanking> candRankings, String fileName) throws Exception
   {
-    BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
+    
+    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName), DEFAULT_ENCODING));    
     Set<EquivalenceClass> translations;
     
     for (EquivClassCandRanking candRanking : candRankings)
