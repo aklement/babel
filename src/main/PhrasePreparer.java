@@ -172,7 +172,7 @@ public class PhrasePreparer {
     
     if (Configurator.CONFIG.containsKey("resources.dictionary.Dictionary")) {
       String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
-      simpSeedDict = new SimpleDictionary(dictDir + dictFileName, "Seed");
+      simpSeedDict = new SimpleDictionary(dictDir + dictFileName, "SeedDictionary");
     } else {
       String srcDictFileName = Configurator.CONFIG.getString("resources.dictionary.SrcName");
       String trgDictFileName = Configurator.CONFIG.getString("resources.dictionary.TrgName");      
@@ -355,11 +355,11 @@ public class PhrasePreparer {
     
     // Collect context properties
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
-    (new PhraseContextCollector(maxPhraseLength, false, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, eqClasses);
+    (new PhraseContextCollector(maxPhraseLength, true, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, eqClasses);
 
     // Collect time properties
     accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), src);
-    PhraseTimeDistributionCollector distCollector = new PhraseTimeDistributionCollector(maxPhraseLength, false);
+    PhraseTimeDistributionCollector distCollector = new PhraseTimeDistributionCollector(maxPhraseLength, true);
     distCollector.collectProperty(accessor, eqClasses);
     
     // Collect phrase context (for reordering tables)

@@ -93,9 +93,9 @@ public class PhraseScorer
       for (Phrase trgPhrase : phraseTable.getTrgPhrases(srcPhrase)) {
         props = phraseTable.getProps(srcPhrase, trgPhrase);
         
-        props.addPairFeatVal(contextScorer.score(srcPhrase, trgPhrase));
-        props.addPairFeatVal(timeScorer.score(srcPhrase, trgPhrase));
-        props.addPairFeatVal(scoreEdit(srcPhrase, trgPhrase, props, translitDict));
+        props.addPairMonoFeatVal(contextScorer.score(srcPhrase, trgPhrase));
+        props.addPairMonoFeatVal(timeScorer.score(srcPhrase, trgPhrase));
+        props.addPairMonoFeatVal(scoreEdit(srcPhrase, trgPhrase, props, translitDict));
       }
     }
 
