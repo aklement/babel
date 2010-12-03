@@ -5,20 +5,22 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import babel.content.eqclasses.phrases.Phrase;
 import babel.util.misc.InvertibleHashMap;
 
 public abstract class PhrasePropertyCollector extends PropertyCollector {
   
   protected static final Pattern SENT_DELIMS = Pattern.compile("[\\.\\?¿!¡]+");
-  protected static final Pattern PHRASE_DELIMS = Pattern.compile("\\s+");
-  
+  protected static final Pattern PHRASE_DELIMS = Phrase.PHRASE_DELIMS;
+  protected static final Pattern WORD_DELIMS = Pattern.compile(WORD_DELIM_REGEX);  
+
   protected PhrasePropertyCollector(int maxPhraseLength, boolean caseSensitive) {
     super(caseSensitive);
     
     m_maxPhraseLength = maxPhraseLength;
   }
 
-  public static List<String> getSentences(String str, boolean oneSentPerLine) {
+  protected static List<String> getSentences(String str, boolean oneSentPerLine) {
     
     List<String> sents = new LinkedList<String>();
     
@@ -43,25 +45,44 @@ public abstract class PhrasePropertyCollector extends PropertyCollector {
   }
   
   // Returns a map of delimiter index pairs mapped to the ordinal number of the delimiter in the sentence
-  public static InvertibleHashMap<IdxPair, Integer> getAllDelims(String sent) {
+  protected static InvertibleHashMap<IdxPair, Integer> getAllDelims(String sent, Pattern delimPattern) {
     
     InvertibleHashMap<IdxPair, Integer> spaces = new InvertibleHashMap<IdxPair, Integer>();    
-    Matcher m = PHRASE_DELIMS.matcher(sent);
+    Matcher m = delimPattern.matcher(sent);
+    boolean startsWithDelim = false;
+    boolean endsWithDelim = false;
     int idx = 1;
-    
-    while (m.find()) {
-      spaces.put(new IdxPair(m.start(), m.end()), idx++);
-    }
-    
+    int sentLength = sent.length();
+
     if (sent.length() > 0) {
-      spaces.put(new IdxPair(0, 0), 0);
-      spaces.put(new IdxPair(sent.length(), sent.length()), idx);
+
+      while (m.find()) {
+      
+        if (m.start() == 0) {
+          startsWithDelim = true;
+          idx = 0;
+        }
+      
+        if (m.end() == sentLength) {
+          endsWithDelim = true;
+        }
+    
+        spaces.put(new IdxPair(m.start(), m.end()), idx++);
+      }
+    
+      if (!startsWithDelim) {
+        spaces.put(new IdxPair(0, 0), 0);
+      }
+      
+      if (!endsWithDelim) {
+        spaces.put(new IdxPair(sent.length(), sent.length()), idx);
+      }
     }
 
     return spaces;
   }
 
-  public static List<IdxPair> getAllPhraseIdxs(InvertibleHashMap<IdxPair, Integer> delims, int maxPhraseLength) {
+  protected static List<IdxPair> getAllPhraseIdxs(InvertibleHashMap<IdxPair, Integer> delims, int maxPhraseLength) {
     
     List<IdxPair> phrases = new LinkedList<IdxPair>();
          
@@ -73,10 +94,15 @@ public abstract class PhrasePropertyCollector extends PropertyCollector {
     
     return phrases;
   }
-  
-  public static List<IdxPair> getAllPhraseIdxs(String sent, int maxPhraseLength) {
+
+  protected static List<IdxPair> getAllWordIdxs(String sent) {
     
-    return getAllPhraseIdxs(getAllDelims(sent), maxPhraseLength);
+    return getAllPhraseIdxs(getAllDelims(sent, WORD_DELIMS), 1);
+  }
+  
+  protected static List<IdxPair> getAllPhraseIdxs(String sent, int maxPhraseLength) {
+    
+    return getAllPhraseIdxs(getAllDelims(sent, PHRASE_DELIMS), maxPhraseLength);
   }
   
   protected int m_maxPhraseLength;

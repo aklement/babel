@@ -19,8 +19,11 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
 
   public static final Log LOG = LogFactory.getLog(PhrasePropertyCollector.class);
   
-  public PhraseOrderCollector(int maxPhraseLength, boolean caseSensitive) {    
-    super(maxPhraseLength, caseSensitive);    
+  public PhraseOrderCollector(boolean src, int maxPhraseLength, boolean caseSensitive, long maxPhrCount) {    
+    super(maxPhraseLength, caseSensitive);
+    
+    m_src = src;
+    m_maxPhrCount = maxPhrCount;
   }
 
   public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> phrases) throws Exception {
@@ -29,10 +32,20 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
     String curLine;
     List<String> curSents;
     PhraseContext phraseContext;
+    //Number phraseCount;
     List<IndexedPhrase> sentPhrases;
     GettableHashSet<EquivalenceClass> allPhrases = new GettableHashSet<EquivalenceClass>(phrases);
     int logCount = 0;
+    int sentCount = 0;
+    
+    IndexedPhrase beforePhrase, afterPhrase, discontPhrase;
 
+    //Set<IndexedPhrase> discontPhrases = new HashSet<IndexedPhrase>();
+
+    long beforeCount = 0, afterCount = 0, discCount = 0, allDiscCount = 0;
+    
+    
+    
     while ((curLine = reader.readLine()) != null) {
       curLine = curLine.trim();
     
@@ -42,15 +55,153 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
       // Within each sentence, get phrase position counts
       for (String sent : curSents) {
         
+        if (((sentCount++ % 100000) == 0) && (sentCount != 1)) {
+          LOG.info((sentCount-1) + (m_src ? " source" : " target") + " sents processed for reordering.");
+        }
+        
         sentPhrases = getAllIndexedPhrases(sent, allPhrases);
         
         for (IndexedPhrase idxPhrase : sentPhrases) {
+          
+          
+          
+          
+          
+          // TODO: Throw away most frequent phrases (occurring more often than 70% as often as the most frequent phrase)
+          //if (((phraseCount = (Number)idxPhrase.phrase.getProperty(Number.class.getName())) != null) && (phraseCount.getNumber() > 0.7 * m_maxPhrCount)) {            
+          //  break;
+          //}   
+          
+          
+          
           
           // Get/set its context phrase prop
           if ((phraseContext = (PhraseContext)idxPhrase.phrase.getProperty(PhraseContext.class.getName())) == null) {
             idxPhrase.phrase.setProperty(phraseContext = new PhraseContext());
           }
           
+                
+          // TODO: Alternative idea -> only keep the longest contextual phrase
+          beforePhrase = afterPhrase = discontPhrase = null;
+          //discontPhrases.clear();
+
+          for (IndexedPhrase contextIdxPhrase : sentPhrases) {
+            if (idxPhrase.isAfter(contextIdxPhrase)) {
+              
+              if ((beforePhrase == null) || (beforePhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
+                beforePhrase = contextIdxPhrase;
+              }
+            }
+            else if (idxPhrase.isBefore(contextIdxPhrase)) {
+              
+              if ((afterPhrase == null) || (afterPhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
+                afterPhrase = contextIdxPhrase;
+              }              
+            }
+            else if (!m_src && idxPhrase.isOutOfOrderButCloseEnough(contextIdxPhrase, m_maxPhraseLength)) {
+              
+              if ((discontPhrase == null) || (discontPhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
+                discontPhrase = contextIdxPhrase;
+              }
+            }
+            
+            //else if (!m_src && idxPhrase.isOutOfOrder(contextIdxPhrase)) {
+            //  
+            //  if ((discontPhrase == null) || (discontPhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
+            //    discontPhrase = contextIdxPhrase;
+            //  }
+            //}
+            
+            /*
+            else if (!m_src && idxPhrase.isOutOfOrderButCloseEnough(contextIdxPhrase, sent, m_maxPhraseLength)) {
+
+              discontPhrases.add(contextIdxPhrase);
+            }*/
+            
+
+            
+            /*
+            else if (!m_src && idxPhrase.isOutOfOrderButCloseEnough(contextIdxPhrase, sent, m_maxPhraseLength)) {
+              
+              phraseContext.addOutOfOrder(contextIdxPhrase.phrase);
+              
+              if (logCount > 0) {
+                LOG.info("Phrase " + contextIdxPhrase.phrase.toString() + " is discontinuous with " + idxPhrase.toString() + " in sentence [" + sent + "]");
+                logCount--;
+              }
+              
+            }*/
+          }
+
+          if (beforePhrase != null) {
+            phraseContext.addBefore(beforePhrase.phrase);
+            
+            if (logCount > 0) {
+              LOG.info("Phrase " + beforePhrase.toString() + " precedes " + idxPhrase.toString() + " in sentence [" + sent + "]");
+              logCount--;
+            }
+            
+            beforeCount++;
+          }
+          if (afterPhrase != null) {
+            phraseContext.addAfter(afterPhrase.phrase);
+            
+            if (logCount > 0) {
+              LOG.info("Phrase " + afterPhrase.toString() + " follows " + idxPhrase.toString() + " in sentence [" + sent + "]");
+              logCount--;
+            }
+            
+            afterCount++;
+          }
+          /*
+          if (discontPhrases.size() > 0) {
+            
+            boolean contained;
+            
+            for (IndexedPhrase discPhrase : discontPhrases) {
+              
+              contained = false;
+              
+              for (IndexedPhrase other : discontPhrases) {            
+                
+                // If the phrase is contained in some other phrase give up - do not add it
+                if (discPhrase != other && other.contains(discPhrase)) {
+                  contained = true;
+                  break;
+                }
+                
+              }
+                            
+              if (!contained) {
+                phraseContext.addOutOfOrder(discPhrase.phrase);
+             
+                if (logCount > 0) {
+                  LOG.info("Phrase " + discPhrase.toString() + " is discontinous with " + idxPhrase.toString() + " in sentence [" + sent + "]");
+                  logCount--;
+                }
+                
+                discCount++;
+              }
+              
+              allDiscCount++;
+            }
+          }*/
+                    
+          
+          if (discontPhrase != null) {
+            phraseContext.addOutOfOrder(discontPhrase.phrase);
+            
+            if (logCount > 0) {
+              LOG.info("Phrase " + discontPhrase.toString() + " is discontinuous with " + idxPhrase.toString() + " in sentence [" + sent + "]");
+              logCount--;
+            }
+            
+            discCount++;
+            allDiscCount++;
+          }
+
+ 
+          /*
           for (IndexedPhrase contextIdxPhrase : sentPhrases) {
             if (idxPhrase.isAfter(contextIdxPhrase)) {
               phraseContext.addBefore(contextIdxPhrase.phrase);
@@ -80,9 +231,13 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
               
             }
           }
+          */
+          
         }
       }
     }
+    
+    LOG.info("Total collected for " + (m_src ? "source" : "target") + ": before = " + beforeCount + ", after = " + afterCount+ " and discontinuouos = " + discCount + " (out of " + allDiscCount + ")");
 
     reader.close();
   }
@@ -90,7 +245,7 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
   protected List<IndexedPhrase> getAllIndexedPhrases(String sent, GettableHashSet<EquivalenceClass> allPhrases) {
     
     // Get all sentence delimiters
-    InvertibleHashMap<IdxPair, Integer> delimIdxs = getAllDelims(sent);    
+    InvertibleHashMap<IdxPair, Integer> delimIdxs = getAllDelims(sent, PHRASE_DELIMS);    
     // Get all phrases up to length m_maxPhraseLength 
     List<IdxPair> sentPhraseIdxs = getAllPhraseIdxs(delimIdxs, m_maxPhraseLength);
     // Phrases containing index info along with indices of the preceding and following delimiters
@@ -123,6 +278,9 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
     return idxPhrases;
   }
   
+  protected boolean m_src;
+  protected long m_maxPhrCount;
+  
   class IndexedPhrase {
     public IndexedPhrase(Phrase phrase, IdxPair idxPair, int ordDelimBefore, int ordDelimAfter) {
       this.idxPair = idxPair;
@@ -144,8 +302,18 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
       return (other.idxPair.to + 1) < idxPair.from || (idxPair.to + 1) < other.idxPair.from;
     }
     
+    // true iff other is within this phrase 
+    public boolean contains(IndexedPhrase other) {
+      return (idxPair.from <= other.idxPair.from) && (idxPair.to >= other.idxPair.to);
+    }
+    
+    public boolean overlaps(IndexedPhrase other) {
+      boolean noOverlap = (other.idxPair.to <= idxPair.from || other.idxPair.from >= idxPair.to);
+      return !noOverlap;
+    }
+    
     // true iff the two phrases aren't next to each other and do not overlap and there are at most toksBetween tokens between them  
-    public boolean isOutOfOrderButCloseEnough(IndexedPhrase other, String sent, int toksBetween) {
+    public boolean isOutOfOrderButCloseEnough(IndexedPhrase other, int toksBetween) {
       
       int numToks = -1;
 

@@ -1,4 +1,4 @@
-package main;
+package main.lexinduct;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -29,22 +29,21 @@ import babel.ranking.scorers.edit.EditDistanceScorer;
 import babel.util.config.Configurator;
 import babel.util.dict.Dictionary;
 
-public class NBestCollector
+public class Inductor
 {
-  public static final Log LOG = LogFactory.getLog(NBestCollector.class);
+  public static final Log LOG = LogFactory.getLog(Inductor.class);
   protected static int[] K = {1, 5, 10, 20, 30, 40, 50, 60, 80, 100, 200, 300, 400, 500};
 
   public static void main(String[] args) throws Exception
   {
     LOG.info("\n" + Configurator.getConfigDescriptor());
     
-    NBestCollector collector = new NBestCollector();
+    Inductor collector = new Inductor();
     
-    collector.runTwoLanguages();
-    //collector.runSingleLanguage();
+    collector.gogo();
   }
   
-  protected void runTwoLanguages() throws Exception
+  protected void gogo() throws Exception
   {
     boolean slidingWindow = Configurator.CONFIG.getBoolean("experiments.time.SlidingWindow");
     int windowSize = Configurator.CONFIG.getInt("experiments.time.WindowSize");
@@ -56,12 +55,12 @@ public class NBestCollector
     boolean doEditDist = Configurator.CONFIG.getBoolean("experiments.DoEditDistance");
     boolean doAggregate = Configurator.CONFIG.getBoolean("experiments.DoAggregate");
     
-    DataPreparer preparer = new DataPreparer();
+    InductPreparer preparer = new InductPreparer();
     
     // Prepare equivalence classes
     preparer.prepare();
   
-    // Select a subset of src classes to actually induct (i.e. most frequent, or random)
+    // Select a subset of src classes to actually induct
     Set<EquivalenceClass> srcSubset = preparer.getSrcEqsToInduct();   
     Set<EquivalenceClass> trgSet = preparer.getTrgEqs();
     
@@ -81,8 +80,8 @@ public class NBestCollector
     {
       LOG.info("Ranking candidates using time...");  
       cands = rank(timeScorer, srcSubset, trgSet, maxNumTrgPerSrc, numThreads);
-      evaluate(cands, preparer.getTestDict(), outDir + "time.eval");
-      EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "time.scored");                
+      evaluate(cands, preparer.getSeedDict(), outDir + "time.eval");
+      EquivClassCandRanking.dumpToFile(preparer.getSeedDict(), cands, outDir + "time.scored");                
       allCands.add(cands);
     }
     
@@ -90,8 +89,8 @@ public class NBestCollector
     {
       LOG.info("Ranking candidates using context...");
       cands = rank(contextScorer, srcSubset, trgSet, maxNumTrgPerSrc, 0.0, numThreads);
-      evaluate(cands, preparer.getTestDict(), outDir + "context.eval");
-      EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "context.scored");   
+      evaluate(cands, preparer.getSeedDict(), outDir + "context.eval");
+      EquivClassCandRanking.dumpToFile(preparer.getSeedDict(), cands, outDir + "context.scored");   
       allCands.add(cands);
     }
     
@@ -99,8 +98,8 @@ public class NBestCollector
     {
       LOG.info("Ranking candidates using edit distance...");  
       cands = rank(editScorer, srcSubset, trgSet, maxNumTrgPerSrc, numThreads);
-      evaluate(cands, preparer.getTestDict(), outDir + "edit.eval");
-      EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "edit.scored");
+      evaluate(cands, preparer.getSeedDict(), outDir + "edit.eval");
+      EquivClassCandRanking.dumpToFile(preparer.getSeedDict(), cands, outDir + "edit.scored");
       allCands.add(cands);
     }
     
@@ -109,8 +108,8 @@ public class NBestCollector
       LOG.info("Aggregating (MRR) all rankings...");  
       MRRAggregator aggregator = new MRRAggregator();
       cands =  aggregator.aggregate(allCands);
-      evaluate(cands, preparer.getTestDict(), outDir + "aggmrr.eval");
-      EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "aggmrr.scored");; 
+      evaluate(cands, preparer.getSeedDict(), outDir + "aggmrr.eval");
+      EquivClassCandRanking.dumpToFile(preparer.getSeedDict(), cands, outDir + "aggmrr.scored");; 
     }
     
     LOG.info("--- Done ---");

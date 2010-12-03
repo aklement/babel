@@ -31,8 +31,11 @@ public class PhraseTable {
     LEX_FE(1), 
     EF(2), 
     LEX_EF(3), 
-    PHPENALTY(4);   
-  
+    PHPENALTY(4),
+    CONTEXT(5),
+    TIME(6),
+    EDIT(7);
+    
     private PairFeat(final int idx) {
       this.idx = idx;
     }
@@ -40,16 +43,27 @@ public class PhraseTable {
     public final int idx;
   };
   
-  public PhraseTable (String phraseTableFile, String encoding, boolean caseSensitive) throws IOException {
+  public PhraseTable(String encoding, boolean caseSensitive) {
     m_encoding = encoding;
     m_phraseMap = new HashMap<Phrase, Map<Phrase, PairProps>>();
     m_caseSensitive = caseSensitive;
-    
-    processPhraseTableFile(phraseTableFile);
+    m_numPairs = 0;
+    m_curFileName = null;
+    m_curFileReader = null;    
   }
 
-  public PhraseTable (String phraseTableFile, boolean caseSensitive) throws IOException {
-    this(phraseTableFile, DEFAULT_CHARSET, caseSensitive);
+  public PhraseTable(boolean caseSensitive) {
+    this(DEFAULT_CHARSET, caseSensitive);
+  }
+  
+  public PhraseTable(String phraseTableFile, int numLines, String encoding, boolean caseSensitive) throws IOException {
+    this(encoding, caseSensitive);    
+    processPhraseTableFile(phraseTableFile, numLines);
+    closePhraseTableFile();
+  }
+
+  public PhraseTable(String phraseTableFile, int numLines, boolean caseSensitive) throws IOException {
+    this(phraseTableFile, numLines, DEFAULT_CHARSET, caseSensitive);
   }
   
   public Set<Phrase> getAllSrcPhrases() {
@@ -60,6 +74,10 @@ public class PhraseTable {
     return m_phraseMap.size();
   }
   
+  public int numPhrasePairs() {
+    return m_numPairs;
+  }
+ 
   public Set<Phrase> getAllTrgPhrases() {
     HashSet<Phrase> allTrg = new HashSet<Phrase>();
     
@@ -90,14 +108,17 @@ public class PhraseTable {
     return trgMap == null ? null : trgMap.get(trgPhrase);
   }
   
-  public void savePhraseTable(String phraseTableFile) throws IOException {
-    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(phraseTableFile), m_encoding));    
+  public void savePhraseTable(String monoPhraseTableFile, String addMonoPhraseTableFile) throws IOException {
+    
+    BufferedWriter monoWriter = (monoPhraseTableFile == null) ? null : new BufferedWriter(new OutputStreamWriter(new FileOutputStream(monoPhraseTableFile, true), m_encoding));    
+    BufferedWriter addMonoWriter = (addMonoPhraseTableFile == null) ? null : new BufferedWriter(new OutputStreamWriter(new FileOutputStream(addMonoPhraseTableFile, true), m_encoding));    
 
     List<Phrase> srcPhraseList = new ArrayList<Phrase>(m_phraseMap.keySet());
     Collections.sort(srcPhraseList, new LexComparator(true));
     
     Map<Phrase, PairProps> trgMap;
     List<Phrase> trgPhraseList;
+    PairFeat[] featsToWrite = new PairFeat[]{PairFeat.PHPENALTY, PairFeat.CONTEXT, PairFeat.TIME, PairFeat.EDIT};
     
     for (Phrase srcPhrase : srcPhraseList) {
       
@@ -106,11 +127,23 @@ public class PhraseTable {
       Collections.sort(trgPhraseList, new LexComparator(true));
       
       for (Phrase trgPhrase : trgPhraseList) {
-        writer.write(srcPhrase.getStem() + FIELD_DELIM + trgPhrase.getStem() + FIELD_DELIM + trgMap.get(trgPhrase).getPairFeatStr() + "\n");
+        if (monoWriter != null) {
+          monoWriter.write(srcPhrase.getStem() + FIELD_DELIM + trgPhrase.getStem() + FIELD_DELIM + trgMap.get(trgPhrase).getPairFeatStr(featsToWrite) + "\n");
+        }
+        
+        if (addMonoWriter != null) {
+          addMonoWriter.write(srcPhrase.getStem() + FIELD_DELIM + trgPhrase.getStem() + FIELD_DELIM + trgMap.get(trgPhrase).getPairFeatStr() + "\n");          
+        }
       }
     }
 
-    writer.close();
+    if (monoWriter != null) {
+      monoWriter.close();
+    }
+
+    if (addMonoWriter != null) {
+      addMonoWriter.close();
+    }
   }
 
   public void saveReorderingTable(String reorderingTableFile) throws IOException {
@@ -136,24 +169,40 @@ public class PhraseTable {
     writer.close();
   }
   
-  protected void processPhraseTableFile(String phraseTableFile) throws IOException {
+  public int processPhraseTableFile(String phraseTableFile, int numLines) throws IOException {
     
-    InputStream is = new FileInputStream(phraseTableFile);
-    
-    if (phraseTableFile.toLowerCase().endsWith("gz"))
-    { is = new GZIPInputStream(is);
+    // If we got a new file - set up a new reader for it
+    if (!phraseTableFile.equals(m_curFileName)) {
+      
+      m_curFileName = phraseTableFile;
+      if (m_curFileReader != null) {
+        m_curFileReader.close();
+      }
+     
+      InputStream is = new FileInputStream(phraseTableFile);
+      
+      if (phraseTableFile.toLowerCase().endsWith("gz"))
+      { is = new GZIPInputStream(is);
+      }
+      
+      m_curFileReader = new BufferedReader(new InputStreamReader(is, m_encoding));
     }
-        
-    BufferedReader reader = new BufferedReader(new InputStreamReader(is, m_encoding));    
-    String line, srcStr, trgStr, pairProps;
+
+    String line = null, srcStr, trgStr, pairProps;
     Phrase srcPhrase, trgPhrase;
     Map<Phrase, PairProps> trgMap;
     GettableHashSet<Phrase> allTrgPhrases = new GettableHashSet<Phrase>();
     int from, to;
-    
+    int numLinesRead = 0;
+
     m_phraseMap.clear();
+    m_numPairs = 0;
     
-    while ((line = reader.readLine()) != null) {
+    while (((numLines < 0) || (numLinesRead < numLines)) &&
+           ((line = m_curFileReader.readLine()) != null)) {
+      
+      numLinesRead++;
+      
       if (line.contains(FIELD_DELIM)) {
         
         from = 0;
@@ -171,67 +220,121 @@ public class PhraseTable {
         
         if (null == (trgMap = m_phraseMap.get(srcPhrase))) {
           srcPhrase.assignId();
-          m_phraseMap.put(srcPhrase, trgMap = new HashMap<Phrase, PairProps>());
+          m_phraseMap.put(srcPhrase, trgMap = new HashMap<Phrase, PairProps>());          
         }
         
         (trgPhrase = new Phrase()).init(trgStr, m_caseSensitive);
         
         if (!allTrgPhrases.contains(trgPhrase)) {
           trgPhrase.assignId();
-          allTrgPhrases.add(trgPhrase);
+          allTrgPhrases.add(trgPhrase);          
         } else {
           trgPhrase = allTrgPhrases.get(trgPhrase);
         }
         
         assert !trgMap.containsKey(trgPhrase);
         trgMap.put(trgPhrase, new PairProps(pairProps));
+        
+        m_numPairs++;
       }
     }
-
-    reader.close();
+    
+    return numLinesRead;
+  }
+  
+  public void closePhraseTableFile() throws IOException {
+    if (m_curFileReader != null) {
+      m_curFileReader.close();
+    }
+    
+    m_curFileReader = null;
+    m_curFileName = null;
   }
        
   protected Map<Phrase, Map<Phrase, PairProps>> m_phraseMap;
   protected String m_encoding;
   protected boolean m_caseSensitive;
+  protected int m_numPairs;
+  protected String m_curFileName;
+  protected BufferedReader m_curFileReader;  
   
   public class PairProps {    
     public PairProps(String pairFeatStr) {
-      m_pairFeatStr = new StringBuilder(pairFeatStr);
-      m_featVals = null;
-    }
-    
-    public void addPairFeatVal(double val) {
-      m_pairFeatStr.append(" " + val);
-    }
-
-    public double getPairFeatVal(PairFeat feat) {
       
-      if (m_featVals == null) {
-
-        String[] strFeats = m_pairFeatStr.substring(m_pairFeatStr.lastIndexOf(FIELD_DELIM) + FIELD_DELIM.length()).split("\\s");
-        m_featVals = new double[strFeats.length];
-        
-        for (int i = 0; i < strFeats.length; i++) {
-          m_featVals[i] = Double.parseDouble(strFeats[i]);
-        }
+      String[] strFeats = pairFeatStr.substring(pairFeatStr.lastIndexOf(FIELD_DELIM) + FIELD_DELIM.length()).split("\\s");
+      
+      int maxFeats = PairFeat.values().length;
+      assert strFeats.length <= maxFeats;
+      
+      m_pairFeatStr = new StringBuilder(pairFeatStr);
+      m_dirtyFeatStr = false;
+      m_featVals = new String[maxFeats];
+       
+      for (int i = 0; i < strFeats.length; i++) {
+        m_featVals[i] = strFeats[i];
       }
-
-      return m_featVals[feat.idx];
+      
+      for (int i = strFeats.length; i < maxFeats; i++) {
+        m_featVals[i] = null;
+      }
     }
     
+    public void setPairFeatVal(PairFeat feat, double val) {
+      m_featVals[feat.idx] = Double.toString(val);
+      m_dirtyFeatStr = true;
+    }
+
+    public Double getPairFeatVal(PairFeat feat) {      
+      return m_featVals[feat.idx] == null ? null : Double.parseDouble(m_featVals[feat.idx]);
+    }
+    
+    // String up to the first null feature
     public String getPairFeatStr() {
+      
+      if (m_dirtyFeatStr) {
+        m_dirtyFeatStr = false;
+        m_pairFeatStr = new StringBuilder(m_pairFeatStr.substring(0, m_pairFeatStr.lastIndexOf(FIELD_DELIM) + FIELD_DELIM.length()));
+        
+        for (int i = 0; i < PairFeat.values().length; i++) {
+          
+          if (m_featVals[i] == null) {
+            break;
+          } else if (i != 0) {
+            m_pairFeatStr.append(" ");
+          }
+          
+          m_pairFeatStr.append(m_featVals[i]);
+        }        
+
+      }
+      
       return m_pairFeatStr.toString();
     }
-
+    
+    // String up to the first null feature
+    public String getPairFeatStr(PairFeat[] feats) {
+      
+      StringBuilder pairFeatStr = new StringBuilder(m_pairFeatStr.substring(0, m_pairFeatStr.lastIndexOf(FIELD_DELIM) + FIELD_DELIM.length()));
+      boolean first = true;
+      
+      for (PairFeat feat : feats) {
+        if (!first) {
+          pairFeatStr.append(" ");
+        } 
+        pairFeatStr.append(m_featVals[feat.idx] == null ? 0 : m_featVals[feat.idx]);
+        first = false;
+      }
+      
+      return pairFeatStr.toString();
+    }
+    
     public void setBeforeOrderFeatVals(double beforeMono, double beforeSwap, double beforeOutOfOrder) {
       assert beforeMono >= 0 && beforeSwap >= 0 && beforeOutOfOrder >= 0;
-      
+
       m_beforeOrderFeatStr = new StringBuilder();
       m_beforeOrderFeatStr.append(beforeMono + " ");
       m_beforeOrderFeatStr.append(beforeSwap + " ");
       m_beforeOrderFeatStr.append(beforeOutOfOrder + " ");
-
     }
     
     public void setAfterOrderFeatVals(double afterMono, double afterSwap, double afterOutOfOrder) {
@@ -281,8 +384,9 @@ public class PhraseTable {
       return aligns;
     }
 
-    protected double[] m_featVals;
+    protected String[] m_featVals;
     protected StringBuilder m_pairFeatStr;
+    protected boolean m_dirtyFeatStr;
     protected StringBuilder m_beforeOrderFeatStr;
     protected StringBuilder m_afterOrderFeatStr;
   }

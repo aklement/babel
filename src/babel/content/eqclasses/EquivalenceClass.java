@@ -39,10 +39,10 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
     m_properties.clear();
   }
   
-  public void assignId()
-  {    
+  public synchronized void assignId()
+  {
     if (m_id == NO_ID)
-    { m_id = CURRENT_EQCLASS_ID++;
+    { m_id = CURRENT_EQCLASS_ID++;    
     }
     else
     { throw new IllegalStateException("Class has already been assigned id: " + m_id);
@@ -167,7 +167,7 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
    */
   public static String getWordOfAppropriateForm(String word, boolean caseSensitive)
   {
-    return caseSensitive ? word : 
+    return caseSensitive ? word.trim() : 
       ((word == null) ? null : word.toLowerCase().trim());  
   }
   

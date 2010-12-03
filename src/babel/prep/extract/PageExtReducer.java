@@ -37,7 +37,7 @@ class PageExtReducer extends MapReduceBase implements Reducer<Text, NutchChunk, 
     int numVersions = page.numVersions();
     
     // Only care about it if we have at least one version
-    if (numVersions > 0 && (page.pageURL().length() > 0))
+    if (numVersions > 0 && (page.pageURL().length() > 0))// && isBBCEnglish(page))
     { 
       NutchPageExtractor.Stats.incPages();
       NutchPageExtractor.Stats.incVersions(numVersions);
@@ -48,5 +48,16 @@ class PageExtReducer extends MapReduceBase implements Reducer<Text, NutchChunk, 
     {
       NutchPageExtractor.Stats.incIgnoredPages();
     }
+  }
+  
+  protected boolean isBBCEnglish(Page page) {
+    String url = removeProtocolAndPrefix(page.pageURL());
+    return (url.matches("^bbc.co.uk/(hi/|low/)?english/.*") || url.matches("^bbc.co.uk/local/.*") || url.matches("^bbc.co.uk/[12]/.*"));
+  }
+  
+  protected String removeProtocolAndPrefix(String url)
+  {
+    // Strip everything up to first dot, and lowercase
+    return url.substring(url.indexOf(".") + 1).toLowerCase();
   }
 }

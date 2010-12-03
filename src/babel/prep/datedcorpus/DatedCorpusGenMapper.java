@@ -37,7 +37,7 @@ public class DatedCorpusGenMapper extends MapReduceBase implements Mapper<Text, 
     Language lang = page.getLanguage();
     String content;
         
-    if (lang != null)
+    if ((lang != null) && isBBCEnglish(page))
     {
       Long modTime;
       
@@ -58,5 +58,16 @@ public class DatedCorpusGenMapper extends MapReduceBase implements Mapper<Text, 
         }
       }
     } 
+  }
+  
+  protected boolean isBBCEnglish(Page page) {
+    String url = removeProtocolAndPrefix(page.pageURL());
+    return (url.matches("^bbc.co.uk/(hi/|low/)?english/.*") || url.matches("^bbc.co.uk/local/.*") || url.matches("^bbc.co.uk/[12]/.*"));
+  }
+  
+  protected String removeProtocolAndPrefix(String url)
+  {
+    // Strip everything up to first dot, and lowercase
+    return url.substring(url.indexOf(".") + 1).toLowerCase();
   }
 }

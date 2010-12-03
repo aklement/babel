@@ -94,7 +94,7 @@ public class Ranker
       (new Thread(new RankerWorker(this, threadNum, trgEqs))).start();
     }
     
-    // Wait untill all threads are done
+    // Wait until all threads are done
     while (m_workerIds.size() > 0)
     { wait();
     }

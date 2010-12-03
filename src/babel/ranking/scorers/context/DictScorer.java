@@ -28,7 +28,7 @@ public abstract class DictScorer extends Scorer
     Context trgContext = (Context)trgEq.getProperty(Context.class.getName()); 
 
     if (srcContext == null || trgContext == null || !srcContext.areContItemsScored() || !trgContext.areContItemsScored())
-    { throw new IllegalArgumentException("At leas one of the classes has no or unscored context.");
+    { throw new IllegalArgumentException("At least one of the classes has no or unscored context.");
     }
     
     double score = 0, score1 = 0, score2 = 0;
@@ -69,7 +69,7 @@ public abstract class DictScorer extends Scorer
     if (context == null)
     { 
       if (LOG.isWarnEnabled())
-      { LOG.warn("Equivalence Class " + eq.toString() + " has no context property, adding one.");
+      {// LOG.warn("Equivalence Class <" + eq.toString() + "> has no context property, adding one.");
       }
       
       eq.setProperty(context = new Context(eq));

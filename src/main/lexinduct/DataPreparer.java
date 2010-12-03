@@ -1,6 +1,5 @@
-package main;
+package main.lexinduct;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -13,7 +12,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
@@ -38,22 +36,20 @@ import babel.content.eqclasses.filters.NoTimeDistributionFilter;
 import babel.content.eqclasses.filters.NumOccurencesFilter;
 import babel.content.eqclasses.filters.RomanizationFilter;
 import babel.content.eqclasses.filters.StopWordsFilter;
-import babel.content.eqclasses.phrases.Phrase;
 import babel.content.eqclasses.properties.Context;
 import babel.content.eqclasses.properties.ContextCollector;
 import babel.content.eqclasses.properties.Number;
 import babel.content.eqclasses.properties.NumberCollector;
-import babel.content.eqclasses.properties.PhrasePropertyCollector;
 import babel.content.eqclasses.properties.TimeDistribution;
 import babel.content.eqclasses.properties.TimeDistributionCollector;
 import babel.content.eqclasses.properties.Type;
-import babel.content.eqclasses.properties.PhrasePropertyCollector.IdxPair;
 import babel.content.eqclasses.properties.Type.EqType;
 
 import babel.ranking.scorers.Scorer;
 import babel.util.config.Configurator;
 import babel.util.dict.Dictionary;
 import babel.util.dict.SimpleDictionary;
+import babel.util.dict.SimpleDictionary.DictHalves;
 import babel.util.persistence.EqClassPersister;
 
 public class DataPreparer
@@ -176,35 +172,6 @@ public class DataPreparer
     collectTokenCounts(m_contextSrcEqs, m_contextTrgEqs); 
   }
 
-  protected void keepIfNotFound(Set<Phrase> notFound, CorpusAccessor accessor, int maxPhraseLength, boolean caseSensitive) throws IOException {
-        
-    String curLine;
-    BufferedReader reader = new BufferedReader(accessor.getCorpusReader());
-    List<String> curSents;
-    List<IdxPair> sentPhraseIdxs;
-    Phrase tmpPhrase;
-            
-    while ((curLine = reader.readLine()) != null) {
-      curLine = curLine.trim();
-        
-      // Split into likely sentences
-      curSents = PhrasePropertyCollector.getSentences(curLine, accessor.isOneSentencePerLine());
-        
-      // Within each sentence, look for phrases
-      for (String sent : curSents) {
-   
-        // Get all phrases up to length m_maxPhraseLength
-        sentPhraseIdxs = PhrasePropertyCollector.getAllPhraseIdxs(sent, maxPhraseLength);
-          
-        for (IdxPair phraseIdx : sentPhraseIdxs) {
-          (tmpPhrase = new Phrase()).init(sent.substring(phraseIdx.from, phraseIdx.to), caseSensitive);
-          notFound.remove(tmpPhrase);
-        }
-      }
-    }
-        
-    reader.close();
-  }
 
   public void prepareProperties(boolean src, Set<? extends EquivalenceClass> eqs, Scorer contextScorer, Scorer timeScorer)
   {
@@ -628,12 +595,20 @@ public class DataPreparer
       Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs) throws Exception
   {
     String dictDir = Configurator.CONFIG.getString("resources.dictionary.Path");
-    String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
     int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
-
+    SimpleDictionary entireDict;
+    
     LOG.info("Reading/preparing dictionaries ...");
     
-    SimpleDictionary entireDict = new SimpleDictionary(dictDir + dictFileName, "Entire");
+    if (Configurator.CONFIG.containsKey("resources.dictionary.Dictionary")) {
+      String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
+      entireDict = new SimpleDictionary(dictDir + dictFileName, "EntireDictionary");
+    } else {
+      String srcDictFileName = Configurator.CONFIG.getString("resources.dictionary.SrcName");
+      String trgDictFileName = Configurator.CONFIG.getString("resources.dictionary.TrgName");      
+      entireDict = new SimpleDictionary(new DictHalves(dictDir + srcDictFileName, dictDir + trgDictFileName) , "EntireDictionary");
+    }
+        
     entireDict.pruneCounts(ridDictNumTrans);
     
     m_seedDict = new Dictionary(srcContEqs, trgContEqs, entireDict, "Seed dictionary");

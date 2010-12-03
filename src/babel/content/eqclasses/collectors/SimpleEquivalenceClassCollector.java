@@ -34,8 +34,8 @@ public class SimpleEquivalenceClassCollector extends EquivalenceClassCollector
     String line;
     String[] toks;
     SimpleEquivalenceClass tmpEq;
-    int count = 0;
-
+    int count = 0;    
+    
     while ((line = reader.readLine()) != null)
     {
       toks = line.split(WORD_DELIM_REGEX);
@@ -52,8 +52,8 @@ public class SimpleEquivalenceClassCollector extends EquivalenceClassCollector
           count++;
         }
       }
-    }
- 
+    }    
+    
     reader.close();
     
     return new HashSet<EquivalenceClass>(eqs.values());

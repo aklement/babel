@@ -16,9 +16,7 @@ import babel.util.misc.FileList;
 import babel.util.misc.PrefixSuffixFileNameFilter;
 
 public class CrawlCorpusAccessor extends TemporalCorpusAccessor
-{ 
-  public static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-M-d");
-
+{
   protected static final Log LOG = LogFactory.getLog(CrawlCorpusAccessor.class);
   
   protected static final String DEFAULT_CHARSET = "UTF-8";
@@ -26,7 +24,7 @@ public class CrawlCorpusAccessor extends TemporalCorpusAccessor
   /**
    * @param corpusDir
    * @param charset
-   * @param from start date (incluive)
+   * @param from start date (inclusive)
    * @param to end date (exclusive)
    */
   public CrawlCorpusAccessor(String corpusDir, String charset, Date from, Date to, boolean oneSentPerLine)
@@ -141,6 +139,8 @@ public class CrawlCorpusAccessor extends TemporalCorpusAccessor
   public InputStreamReader getCurDayReader()
   {
     InputStreamReader retReader = null;
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-M-d");
+
     
     StringBuilder yearSubdir = new StringBuilder(m_files.getDir());
     if (yearSubdir.length() > 0 && !File.separator.equals(yearSubdir.substring(yearSubdir.length() - 1)))
@@ -150,7 +150,7 @@ public class CrawlCorpusAccessor extends TemporalCorpusAccessor
     yearSubdir.append(m_curDate.get(Calendar.YEAR));
     yearSubdir.append(File.separator);
         
-    PrefixSuffixFileNameFilter nameFilter = new PrefixSuffixFileNameFilter(SDF.format(m_curDate.getTime()), null);
+    PrefixSuffixFileNameFilter nameFilter = new PrefixSuffixFileNameFilter(sdf.format(m_curDate.getTime()), null);
     FileList curDayFiles = new FileList(yearSubdir.toString(), nameFilter);
     
     curDayFiles.gather();

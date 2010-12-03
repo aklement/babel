@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
@@ -24,7 +23,6 @@ public class Dictionary
   public Dictionary(Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs, SimpleDictionary simpleDict, String name)
   {
     m_name = name;
-    m_rand = new Random(1);
     m_map = new HashMap<EquivalenceClass, HashSet<EquivalenceClass>>();
     m_srcMap = new HashMap<Long, EquivalenceClass>();
     m_trgMap = new HashMap<Long, EquivalenceClass>();
@@ -241,6 +239,5 @@ public class Dictionary
   protected HashMap<EquivalenceClass, HashSet<EquivalenceClass>> m_map;
   protected HashMap<Long, EquivalenceClass> m_srcMap;
   protected HashMap<Long, EquivalenceClass> m_trgMap;
-  protected Random m_rand;
   protected String m_name;
 }

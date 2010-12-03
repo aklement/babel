@@ -16,8 +16,6 @@ import babel.util.misc.PrefixSuffixFileNameFilter;
 
 public class EuroParlCorpusAccessor extends TemporalCorpusAccessor
 { 
-  public static final SimpleDateFormat SDF = new SimpleDateFormat("yy-MM-dd");
-
   protected static final Log LOG = LogFactory.getLog(EuroParlCorpusAccessor.class);
   protected static final String FILENAME_PREFIX = "ep-";
   
@@ -146,9 +144,10 @@ public class EuroParlCorpusAccessor extends TemporalCorpusAccessor
 	public InputStreamReader getCurDayReader()
 	{
 		InputStreamReader retReader = null;
+		SimpleDateFormat sdf = new SimpleDateFormat("yy-MM-dd");
    
 		// Accept files with prefixes indicating current day
-    m_fileNameFilter.setPrefix(FILENAME_PREFIX + SDF.format(m_curDate.getTime()));
+    m_fileNameFilter.setPrefix(FILENAME_PREFIX + sdf.format(m_curDate.getTime()));
 		m_files.gather();
 		
 		try
