@@ -21,7 +21,7 @@ public abstract class PropertyCollector {
    * @param corpusAccess Corpus from which to collect the property.
    * eqClasses equivalence class for which to gather properties.
    */
-  public abstract void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> eqClasses) throws Exception;
+  public abstract void collectProperty(CorpusAccessor corpusAccess, Set<? extends EquivalenceClass> eqClasses) throws Exception;
   
   protected boolean m_caseSensitive;
 }

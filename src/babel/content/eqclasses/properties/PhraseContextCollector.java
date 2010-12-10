@@ -34,7 +34,7 @@ public class PhraseContextCollector extends PhrasePropertyCollector {
     }
   }
   
-  public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> phrases) throws Exception {
+  public void collectProperty(CorpusAccessor corpusAccess, Set<? extends EquivalenceClass> phrases) throws Exception {
     
     BufferedReader reader = new BufferedReader(corpusAccess.getCorpusReader());
     String curLine;

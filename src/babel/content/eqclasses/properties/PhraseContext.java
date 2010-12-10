@@ -3,6 +3,8 @@ package babel.content.eqclasses.properties;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.phrases.Phrase;
@@ -14,31 +16,52 @@ public class PhraseContext extends Property {
     m_after = new HashMap<Phrase, Integer>();
     m_outOfOrder = new HashMap<Phrase, Integer>();
     m_all = new HashSet<Phrase>();
+    m_keepProb = 1.0;
+    m_rand = null;
   }
 
+  public PhraseContext(double keepProb) {
+    this();
+    m_keepProb = keepProb;
+    m_rand = new Random(1L);
+  }
+  
   public void addBefore(Phrase phrase) {
-    Integer num = m_before.get(phrase);
-    m_before.put(phrase, num == null ? 1 : num + 1);
+    
+    if ((m_keepProb == 1.0) || keep()) {
+      Integer num = m_before.get(phrase);
+      m_before.put(phrase, num == null ? 1 : num + 1);
 
-    m_all.add(phrase);
+      m_all.add(phrase);
+    }
   }
   
   public void addAfter(Phrase phrase) {
-    Integer num = m_after.get(phrase);
-    m_after.put(phrase, num == null ? 1 : num + 1);
+    
+    if ((m_keepProb == 1.0) || keep()) {
+      Integer num = m_after.get(phrase);
+      m_after.put(phrase, num == null ? 1 : num + 1);
 
-    m_all.add(phrase);
+      m_all.add(phrase);
+    }
   }
   
   public void addOutOfOrder(Phrase phrase) {
-    Integer num = m_outOfOrder.get(phrase);
-    m_outOfOrder.put(phrase, num == null ? 1 : num + 1);
     
-    m_all.add(phrase);
+    if ((m_keepProb == 1.0) || keep()) {
+      Integer num = m_outOfOrder.get(phrase);
+      m_outOfOrder.put(phrase, num == null ? 1 : num + 1);
+    
+      m_all.add(phrase);
+    }
   }
   
   public boolean hasAnywhere(Phrase phrase) {
     return m_all.contains(phrase);
+  }
+  
+  public Set<Phrase> getAll() {
+    return m_all;
   }
   
   public Map<Phrase, Integer> getBefore() {
@@ -70,6 +93,12 @@ public class PhraseContext extends Property {
     assert false : "Not implemented";
   }
   
+  protected synchronized boolean keep() {
+    return (m_rand.nextDouble() < m_keepProb);
+  }
+  
+  protected Random m_rand;
+  protected double m_keepProb;
   protected HashMap<Phrase, Integer> m_before;
   protected HashMap<Phrase, Integer> m_after;
   protected HashMap<Phrase, Integer> m_outOfOrder;

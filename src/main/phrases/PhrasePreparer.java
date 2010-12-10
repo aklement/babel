@@ -3,10 +3,12 @@ package main.phrases;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.logging.Log;
@@ -20,15 +22,19 @@ import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.SimpleEquivalenceClass;
 import babel.content.eqclasses.collectors.EquivalenceClassCollector;
 import babel.content.eqclasses.collectors.SimpleEquivalenceClassCollector;
+import babel.content.eqclasses.comparators.LexComparator;
 import babel.content.eqclasses.filters.DictionaryFilter;
 import babel.content.eqclasses.filters.EquivalenceClassFilter;
 import babel.content.eqclasses.filters.GarbageFilter;
 import babel.content.eqclasses.filters.LengthFilter;
 import babel.content.eqclasses.filters.NumOccurencesFilter;
 import babel.content.eqclasses.filters.RomanizationFilter;
+import babel.content.eqclasses.phrases.Phrase;
 import babel.content.eqclasses.phrases.PhraseTable;
+import babel.content.eqclasses.properties.Context;
 import babel.content.eqclasses.properties.Number;
 import babel.content.eqclasses.properties.NumberCollector;
+import babel.content.eqclasses.properties.PhraseContext;
 import babel.content.eqclasses.properties.PhraseNumberCollector;
 import babel.content.eqclasses.properties.PhraseContextCollector;
 import babel.content.eqclasses.properties.PhraseOrderCollector;
@@ -74,14 +80,6 @@ public class PhrasePreparer {
     return m_maxTokCountInTrg; 
   }
   
-  public long getNumSrcPhrs() { 
-    return m_numPhrsInSrc;
-  }
-  
-  public long getNumTrgPhrs() {
-    return m_numPhrsInTrg;
-  }
-  
   public long getMaxSrcPhrCount(){
     return m_maxPhrCountInSrc;
   }
@@ -90,16 +88,41 @@ public class PhrasePreparer {
     return m_maxPhrCountInTrg; 
   }
   
+  public void clearPhraseTableFeatures(Set<Phrase> phrases) {
+
+    LOG.info(" - Removing context and time phrase properties for " + phrases.size() + " phrases ...");
+
+    if (phrases != null) {
+      for (Phrase phrase : phrases) {
+        phrase.removeProperty(TimeDistribution.class.getName());
+        phrase.removeProperty(Context.class.getName());
+      }
+    }    
+  }
+  
+  public void clearReorderingFeatures(Set<Phrase> phrases) {
+
+    LOG.info(" - Removing ordering phrase properties for " + phrases.size() + " phrases ...");
+
+    if (phrases != null) {
+      for (Phrase phrase : phrases) {
+        phrase.removeProperty(PhraseContext.class.getName());
+      }
+    }
+  }
+  
   @SuppressWarnings({ "unchecked", "rawtypes" })
-  protected int readPhraseTableChunk(int chunkSize) throws Exception {
+  protected int readPhraseTableChunk(int chunkSize, boolean verbose) throws Exception {
 
     if (m_phraseTable == null) {
       boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");     
       m_phraseTable = new PhraseTable(caseSensitive);
     }
     
-    LOG.info(" - Reading candidate phrases from the phrase table...");
-
+    if (verbose) {
+      LOG.info(" - Reading candidate phrases from the phrase table...");
+    }
+    
     String phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
     int numRead = m_phraseTable.processPhraseTableFile(phraseTableFile, chunkSize);
 
@@ -108,8 +131,10 @@ public class PhrasePreparer {
     
     if (numRead == 0) {
       m_phraseTable.closePhraseTableFile();
-      LOG.info(" - Read an empty chunk - done processing phrase table.");
-    } else {
+      if (verbose) {
+        LOG.info(" - Read an empty chunk - done processing phrase table.");
+      }
+    } else if (verbose) {
       LOG.info(" - Source phrases: " + m_srcPhrs.size());
       LOG.info(" - Target phrases: " + m_trgPhrs.size()); 
     }
@@ -124,7 +149,7 @@ public class PhrasePreparer {
     String phraseTableFile;
     
     if (readFromMono) {
-      phraseTableFile = Configurator.CONFIG.getString("output.Path") +  "/" + Configurator.CONFIG.getString("output.PhraseTable");
+      phraseTableFile = Configurator.CONFIG.getString("output.Path") +  "/" + Configurator.CONFIG.getString("output.MonoPhraseTable");
     } else {
       phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
     }
@@ -140,7 +165,7 @@ public class PhrasePreparer {
     LOG.info(" - Target phrases: " + m_trgPhrs.size());   
   }
   
-  protected synchronized void collectNumberProps() throws Exception{
+  protected synchronized void collectNumberProps(Set<Phrase> srcPhrs, Set<Phrase> trgPhrs, boolean computePhraseCounts, boolean verbose) throws Exception{
 
     LOG.info(" - Collecting phrase counts...");
 
@@ -148,9 +173,8 @@ public class PhrasePreparer {
     boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
         
     // Start up the worker threads      
-    NumberCollectorWorker srcNumberWorker = new NumberCollectorWorker(true, m_srcPhrs, maxPhraseLength, caseSensitive);
-    NumberCollectorWorker trgNumberWorker = new NumberCollectorWorker(false, m_trgPhrs, maxPhraseLength, caseSensitive);
-    
+    NumberCollectorWorker srcNumberWorker = new NumberCollectorWorker(true, srcPhrs, maxPhraseLength, caseSensitive);
+    NumberCollectorWorker trgNumberWorker = new NumberCollectorWorker(false, trgPhrs, maxPhraseLength, caseSensitive);
     
     /*
     
@@ -174,26 +198,41 @@ public class PhrasePreparer {
       throw new Exception("One of the number collecting threads failed.");
     }
     
-    m_maxPhrCountInSrc = srcNumberWorker.getMaxPhrCount();
-    m_numPhrsInSrc = srcNumberWorker.getNumPhrs();
+    if (computePhraseCounts) {
+      m_maxPhrCountInSrc = srcNumberWorker.getMaxPhrCount();
 
-    m_maxPhrCountInTrg = trgNumberWorker.getMaxPhrCount();
-    m_numPhrsInTrg = trgNumberWorker.getNumPhrs();
+      m_maxPhrCountInTrg = trgNumberWorker.getMaxPhrCount();
     
-    LOG.info(" - Source phrases max occurrences = " + m_maxPhrCountInSrc + ", total counts = " + m_numPhrsInSrc);
-    LOG.info(" - Target phrases max occurrences = " + m_maxPhrCountInTrg + ", total counts = " + m_numPhrsInTrg);
+      if (verbose) {
+        LOG.info(" - Source phrases max occurrences = " + m_maxPhrCountInSrc);
+        LOG.info(" - Target phrases max occurrences = " + m_maxPhrCountInTrg);
+      }
+    }
   }
   
-  protected synchronized void collectOrderProps() throws Exception{
+  protected void collectTypeProp(Set<Phrase> srcPhrs, Set<Phrase> trgPhrs) {
     
-    LOG.info(" - Collecting phrase ordering properties ...");
+    LOG.info(" - Assigning type phrase properties...");
+    
+    assignTypeProp(srcPhrs, EqType.SOURCE);
+    assignTypeProp(trgPhrs, EqType.TARGET);
+  }
+ 
+  protected synchronized void collectOrderProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
+    
+    LOG.info(" - Collecting phrase ordering properties for " + srcPhrases.size() + " source and " + trgPhrases.size() + " target phrases " + " ...");
     
     int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
     boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
+    double keepContPhraseProb = Configurator.CONFIG.containsKey("preprocessing.phrases.ContPhraseKeepProb") ? Configurator.CONFIG.getDouble("preprocessing.phrases.ContPhraseKeepProb") : 1.0;  
+    
+    if (keepContPhraseProb == 1.0) {
+      LOG.warn(" - Keeping ALL contextual phrases (reordering stage may take a loooong time)");
+    }
     
     // Start up the worker threads
-    PhraseOrderCollectorWorker srcOrderWorker = new PhraseOrderCollectorWorker(true, m_srcPhrs, maxPhraseLength, m_maxPhrCountInSrc, caseSensitive);
-    PhraseOrderCollectorWorker trgOrderWorker = new PhraseOrderCollectorWorker(false, m_trgPhrs, maxPhraseLength, m_maxPhrCountInTrg, caseSensitive);
+    PhraseOrderCollectorWorker srcOrderWorker = new PhraseOrderCollectorWorker(true, srcPhrases, maxPhraseLength, m_maxPhrCountInSrc, caseSensitive, m_srcPhrs, keepContPhraseProb);
+    PhraseOrderCollectorWorker trgOrderWorker = new PhraseOrderCollectorWorker(false, trgPhrases, maxPhraseLength, m_maxPhrCountInTrg, caseSensitive, m_trgPhrs, keepContPhraseProb);
     
     /*
     
@@ -216,10 +255,10 @@ public class PhrasePreparer {
       throw new Exception("One of the order collecting threads failed.");
     }
   }
-  
-  protected synchronized void collectOtherProps() throws Exception{
+
+  protected synchronized void collectOtherProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
     
-    LOG.info(" - Collecting context and time phrase properties...");
+    LOG.info(" - Collecting context and time phrase properties for " + srcPhrases.size() + " source and " + trgPhrases.size() + " target phrases " + " ...");
     
     int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
     boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
@@ -227,8 +266,8 @@ public class PhrasePreparer {
     boolean alignDistros = Configurator.CONFIG.getBoolean("preprocessing.time.Align");
 
     // Start up the worker threads
-    PropCollectorWorker srcPropWorker = new PropCollectorWorker(true, m_srcPhrs, maxPhraseLength, m_contextSrcEqs, contextWindowSize, caseSensitive);
-    PropCollectorWorker trgPropWorker = new PropCollectorWorker(false, m_trgPhrs, maxPhraseLength, m_contextTrgEqs, contextWindowSize, caseSensitive);
+    PropCollectorWorker srcPropWorker = new PropCollectorWorker(true, srcPhrases, maxPhraseLength, m_contextSrcEqs, contextWindowSize, caseSensitive);
+    PropCollectorWorker trgPropWorker = new PropCollectorWorker(false, trgPhrases, maxPhraseLength, m_contextTrgEqs, contextWindowSize, caseSensitive);
 
     /*
     
@@ -251,16 +290,8 @@ public class PhrasePreparer {
       throw new Exception("One of the property collecting threads failed.");
     } else if (alignDistros) {
       LOG.info(" - Aligning temporal distributions...");
-      alignDistributions(srcPropWorker.getBins(), trgPropWorker.getBins(), m_srcPhrs, m_trgPhrs);  
+      alignDistributions(srcPropWorker.getBins(), trgPropWorker.getBins(), srcPhrases, trgPhrases);  
     }
-  }
-  
-  protected void collectTypeProp() {
-    
-    LOG.info(" - Assigning type phrase properties...");
-    
-    assignTypeProp(m_srcPhrs, EqType.SOURCE);
-    assignTypeProp(m_trgPhrs, EqType.TARGET);
   }
   
   @SuppressWarnings("unchecked")
@@ -335,68 +366,167 @@ public class PhrasePreparer {
     return filtContextEqs;
   }
   
-  public void preparePhrasesForFeaturesAndOrder() throws Exception {
+  // Prepare for mono feature and order collection
+  
+  public void prepareForFeaturesAndOrderCollection() throws Exception {
 
     LOG.info(" - Preparing phrases...");
-
     readPhrases(false);
+    collectNumberProps(m_srcPhrs, m_trgPhrs, true, true);  
+    collectTypeProp(m_srcPhrs, m_trgPhrs); 
 
     collectContextEqs();
     prepareSeedDictionary(m_contextSrcEqs, m_contextTrgEqs);
     prepareTranslitDictionary(m_contextSrcEqs);
     filterContextEqs();
 
-    collectNumberProps();  
-    collectOtherProps();
-    collectOrderProps();
-    collectTypeProp(); 
+    collectOtherProps(m_srcPhrs, m_trgPhrs);
+    collectOrderProps(m_srcPhrs, m_trgPhrs);
   }
   
+  // Prepare for mono feature collection only
+  /*
   public void preparePhrasesForFeaturesOnly() throws Exception {
 
-    LOG.info(" - Preparing phrases for estimating monolingual features only...");
-
+    LOG.info(" - Preparing phrases for estimating monolingual features only ...");
     readPhrases(false);
+    collectNumberProps(m_srcPhrs, m_trgPhrs);
+    collectTypeProp(m_srcPhrs, m_trgPhrs);
 
     collectContextEqs();
     prepareSeedDictionary(m_contextSrcEqs, m_contextTrgEqs);
     prepareTranslitDictionary(m_contextSrcEqs);
     filterContextEqs();
     
-    collectNumberProps();  
-    collectOtherProps();
-    collectTypeProp(); 
+    collectOtherProps(m_srcPhrs, m_trgPhrs);
   }
+  */
   
   public void prepareForChunkFeaturesCollection() throws Exception {
+    
+    LOG.info(" - Preparing phrases for estimating monolingual features only ...");
+    
+    readPhrases(false);
+    collectNumberProps(m_srcPhrs, m_trgPhrs, true, true);
+    collectTypeProp(m_srcPhrs, m_trgPhrs); 
+    
+    collectContextEqs();
+    prepareSeedDictionary(m_contextSrcEqs, m_contextTrgEqs);
+    prepareTranslitDictionary(m_contextSrcEqs);
+    filterContextEqs();
+  
+    m_srcPhrasesToProcess = new ArrayList<Phrase>(m_srcPhrs);
+    Collections.sort(m_srcPhrasesToProcess, new LexComparator(true));
+  }
+  
+  public void collectPropsForFeaturesOnly(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception {    
+    collectOtherProps(srcPhrases, trgPhrases); 
+  }
+  
+  public void prepareForChunkFeaturesCollectionForAnni(int chunkSize) throws Exception {
+    
+    LOG.info(" - Preparing phrases for estimating monolingual features only ...");
+    
+    // Go though phrase table in chunks and compute max occur numbers
+    long curMaxInSrc = 0, curMaxInTrg = 0;
+    m_maxPhrCountInSrc = m_maxPhrCountInTrg = 0;
+    
+    while (readPhraseTableChunk(chunkSize, false) > 0) {
+      
+      collectNumberProps(m_srcPhrs, m_trgPhrs, true, false);
+
+      if (m_maxPhrCountInSrc > curMaxInSrc) {
+        curMaxInSrc = m_maxPhrCountInSrc;
+      }
+      
+      if (m_maxPhrCountInTrg > curMaxInTrg) {
+        curMaxInTrg = m_maxPhrCountInTrg;
+      }
+    }
+
+    m_maxPhrCountInSrc = curMaxInSrc;
+    m_maxPhrCountInTrg = curMaxInTrg;
+    
+    m_phraseTable = null;
+    m_srcPhrs = null;
+    m_trgPhrs = null;
+    
+    LOG.info(" - Source phrases max occurrences = " + m_maxPhrCountInSrc);
+    LOG.info(" - Target phrases max occurrences = " + m_maxPhrCountInTrg);
+     
     collectContextEqs();
     prepareSeedDictionary(m_contextSrcEqs, m_contextTrgEqs);
     prepareTranslitDictionary(m_contextSrcEqs);
     filterContextEqs();
   }
+  
+  public int readNextChunkForAnni(int chunkSize, int chunkNum) throws Exception {
+    
+    LOG.info(" - Reading chunk " + chunkNum + " of phrase table ...");
 
-  public int preparePhraseChunkForFeaturesOnly(int chunkNum, int chunkSize) throws Exception {
+    int numRead;
     
-    LOG.info(" - Preparing chunk " + chunkNum + " of phrase table for estimating monolingual features only...");
-    int linesRead;
-    
-    if ((linesRead = readPhraseTableChunk(chunkSize)) > 0) {
-      collectNumberProps();
-      collectOtherProps();
-      collectTypeProp();
+    if ((numRead = readPhraseTableChunk(chunkSize, true)) > 0) {
+      
+      collectNumberProps(m_srcPhrs, m_trgPhrs, false, false);
+      collectTypeProp(m_srcPhrs, m_trgPhrs); 
+      
+      m_srcPhrasesToProcess = new ArrayList<Phrase>(m_srcPhrs);
+      Collections.sort(m_srcPhrasesToProcess, new LexComparator(true));
+    } else {
+      m_srcPhrasesToProcess = new ArrayList<Phrase>();
     }
-    
-    return linesRead;
+        
+    return numRead;
   }
-   
+  
+  
+  
+  // Prepare for ordering collection only
+  /*
   public void preparePhrasesForOrderingOnly() throws Exception {
 
     LOG.info(" - Preparing phrases for estimating ordering features only ...");
-    
     readPhrases(true);
-    collectNumberProps();
-    collectOrderProps();
-    collectTypeProp();
+    collectNumberProps(m_srcPhrs, m_trgPhrs);  
+    collectTypeProp(m_srcPhrs, m_trgPhrs);
+    
+    collectOrderProps(m_srcPhrs, m_trgPhrs);
+  }
+  */
+  
+  public void prepareForChunkOrderCollection()  throws Exception {
+
+    LOG.info(" - Preparing phrases for estimating ordering features only ...");
+    readPhrases(true);
+    collectNumberProps(m_srcPhrs, m_trgPhrs, true, true);  
+    collectTypeProp(m_srcPhrs, m_trgPhrs);  
+    
+    m_srcPhrasesToProcess = new ArrayList<Phrase>(m_srcPhrs);
+    Collections.sort(m_srcPhrasesToProcess, new LexComparator(true));
+  }
+  
+  public void collectPropsForOrderOnly(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception {    
+    collectOrderProps(srcPhrases, trgPhrases); 
+  }
+  
+  public Set<Phrase> getNextChunk(int chunkSize) {
+    
+    Set<Phrase> chunk = null;  
+  
+    if (chunkSize > 0 && m_srcPhrasesToProcess != null && m_srcPhrasesToProcess.size() > 0) {
+      
+      int maxIdx = Math.min(chunkSize, m_srcPhrasesToProcess.size());
+      chunk = new HashSet<Phrase>(m_srcPhrasesToProcess.subList(0, maxIdx));
+    
+      if (maxIdx < chunkSize) {
+        m_srcPhrasesToProcess.clear();
+      } else {
+        m_srcPhrasesToProcess = m_srcPhrasesToProcess.subList(maxIdx, m_srcPhrasesToProcess.size());
+      }
+    }
+      
+    return chunk;
   }
   
   protected void prepareSeedDictionary(Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs) throws Exception {
@@ -448,7 +578,7 @@ public class PhrasePreparer {
     }
   }
 
-  protected void alignDistributions(Set<Integer> srcBins, Set<Integer> trgBins, Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs)
+  protected void alignDistributions(Set<Integer> srcBins, Set<Integer> trgBins, Set<Phrase> srcEqs, Set<Phrase> trgEqs)
   {
     HashSet<Integer> toRemove = new HashSet<Integer>(srcBins);
     TimeDistribution timeProp;
@@ -676,20 +806,20 @@ public class PhrasePreparer {
   
   protected Set<EquivalenceClass> m_contextSrcEqs = null;
   protected Set<EquivalenceClass> m_contextTrgEqs = null;
-  protected Set<EquivalenceClass> m_srcPhrs = null;
-  protected Set<EquivalenceClass> m_trgPhrs = null;
+  protected Set<Phrase> m_srcPhrs = null;
+  protected Set<Phrase> m_trgPhrs = null;
+  
+  protected List<Phrase> m_srcPhrasesToProcess = null;
   
   protected long m_numToksInSrc = 0;
   protected long m_numToksInTrg = 0;
-  protected long m_numPhrsInSrc = 0;
-  protected long m_numPhrsInTrg = 0;
   protected long m_maxTokCountInSrc = 0;
   protected long m_maxTokCountInTrg = 0;
   protected long m_maxPhrCountInSrc = 0;
   protected long m_maxPhrCountInTrg = 0;
 
   class PropCollectorWorker implements Runnable {
-    public PropCollectorWorker(boolean src, Set<EquivalenceClass> phrases, int maxPhraseLength, Set<EquivalenceClass> contextEqs, int contextWindowSize, boolean caseSensitive) {
+    public PropCollectorWorker(boolean src, Set<Phrase> phrases, int maxPhraseLength, Set<EquivalenceClass> contextEqs, int contextWindowSize, boolean caseSensitive) {
       
       m_succeeded = true;
       m_src = src;
@@ -734,7 +864,7 @@ public class PhrasePreparer {
 
     boolean m_succeeded;
     boolean m_src;
-    Set<EquivalenceClass> m_phrases;
+    Set<Phrase> m_phrases;
     int m_maxPhraseLength;
     Set<EquivalenceClass> m_contextEqs;
     int m_contextWindowSize;
@@ -743,7 +873,7 @@ public class PhrasePreparer {
   }
   
   class NumberCollectorWorker implements Runnable {
-    public NumberCollectorWorker(boolean src, Set<EquivalenceClass> phrases, int maxPhraseLength, boolean caseSensitive) {
+    public NumberCollectorWorker(boolean src, Set<Phrase> phrases, int maxPhraseLength, boolean caseSensitive) {
       
       m_src = src;
       m_phrases = phrases;
@@ -787,7 +917,7 @@ public class PhrasePreparer {
     }
     
     boolean m_succeeded;
-    Set<EquivalenceClass> m_phrases;
+    Set<Phrase> m_phrases;
     boolean m_src;
     int m_maxPhraseLength;
     boolean m_caseSensitive; 
@@ -796,13 +926,15 @@ public class PhrasePreparer {
   }
   
   class PhraseOrderCollectorWorker implements Runnable {
-    public PhraseOrderCollectorWorker(boolean src, Set<EquivalenceClass> phrases, int maxPhraseLength, long maxPhraseCountInCorpus, boolean caseSensitive) {
+    public PhraseOrderCollectorWorker(boolean src, Set<Phrase> phrases, int maxPhraseLength, long maxPhraseCountInCorpus, boolean caseSensitive, Set<Phrase> allPhrases, double keepContPhraseProb) {
       
       m_src = src;
       m_phrases = phrases;
       m_maxPhraseLength = maxPhraseLength;
       m_maxPhraseCountInCorpus = maxPhraseCountInCorpus;
       m_caseSensitive = caseSensitive;
+      m_allPhrases = allPhrases;
+      m_keepContPhraseProb = keepContPhraseProb;
       m_succeeded = true;
     }
 
@@ -810,7 +942,7 @@ public class PhrasePreparer {
 
       try {  
         CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), m_src);
-        (new PhraseOrderCollector(m_src, m_maxPhraseLength, m_caseSensitive, m_maxPhraseCountInCorpus)).collectProperty(accessor, m_phrases);
+        (new PhraseOrderCollector(m_src, m_maxPhraseLength, m_caseSensitive, m_maxPhraseCountInCorpus, m_allPhrases, m_keepContPhraseProb)).collectProperty(accessor, m_phrases);
         
       } catch (Exception e) {
         LOG.error(e.toString());
@@ -825,11 +957,13 @@ public class PhrasePreparer {
     }
     
     boolean m_succeeded;
-    Set<EquivalenceClass> m_phrases;
+    Set<Phrase> m_phrases;
     boolean m_src;
     int m_maxPhraseLength;
     long m_maxPhraseCountInCorpus;
-    boolean m_caseSensitive; 
+    boolean m_caseSensitive;
+    Set<Phrase> m_allPhrases;
+    double m_keepContPhraseProb;
   }
   
   class ContextEqsCollectorWorker implements Runnable {

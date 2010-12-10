@@ -19,7 +19,7 @@ public class NumberCollector extends PropertyCollector
     super(caseSensitive);
   }
   
-  public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> eqs) throws Exception
+  public void collectProperty(CorpusAccessor corpusAccess, Set<? extends EquivalenceClass> eqs) throws Exception
   {
     BufferedReader reader = new BufferedReader(corpusAccess.getCorpusReader());
     String curLine;

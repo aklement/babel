@@ -23,7 +23,7 @@ public class PhraseTimeDistributionCollector extends PhrasePropertyCollector {
     m_binIdxs = new HashSet<Integer>();
   }
   
-  public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> phrases) throws Exception {
+  public void collectProperty(CorpusAccessor corpusAccess, Set<? extends EquivalenceClass> phrases) throws Exception {
     
     if (!(corpusAccess instanceof TemporalCorpusAccessor)) {
       throw new IllegalArgumentException("Did not supply a TemporalCorpusAccessor");

@@ -39,7 +39,7 @@ public class TimeDistributionCosineScorer extends Scorer
 		}
 		
 		if (!distroOne.isNormalized() || !distroTwo.isNormalized())
-    { throw new IllegalArgumentException("At least one of the arguments' distribution property is no normalized.");
+    { throw new IllegalArgumentException("At least one of the arguments' distribution property is not normalized.");
 		}
     
     double result = 0.0;

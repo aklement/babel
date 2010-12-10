@@ -23,54 +23,83 @@ public class FeatureEstimator {
   protected static final Log LOG = LogFactory.getLog(FeatureEstimator.class);
   protected static final int NUM_PAIRS_TO_GIVE = 1000;
   protected static final int PERCENT_REPORT = 5;
-  
-  public FeatureEstimator(PhraseTable phraseTable, int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict) {
+
+  protected FeatureEstimator(int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean useAlignments) {
     
     if (numThreads < 1) { 
       throw new IllegalArgumentException("Must request at least one thread");
     }
    
-    m_phraseTable = phraseTable;
     m_numThreads = numThreads;
     m_contextScorer = contextScorer;
     m_timeScorer = timeScorer;
     m_translitDict = translitDict;
+    m_useAlignments = useAlignments;
     m_workerIds = new ArrayList<Integer>(m_numThreads); 
     m_phrasePairsToProcess = new LinkedList<PhrasePair>();
     m_srcToks = new HashMap<String, Phrase>();
     m_trgToks = new HashMap<String, Phrase>();
+  }  
+  
+  public FeatureEstimator(PhraseTable phraseTable, int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean useAlignments) {
     
-    for (Phrase srcPhrase : phraseTable.getAllSrcPhrases()) {
-      
-      if (srcPhrase.numTokens() == 1) {
-        m_srcToks.put(srcPhrase.toString(), srcPhrase);
+    this(numThreads, contextScorer, timeScorer, translitDict, useAlignments);
+    m_phraseTable = phraseTable;
+    
+    if (useAlignments) {
+      for (Phrase srcPhrase : phraseTable.getAllSrcPhrases()) {      
+        if (srcPhrase.numTokens() == 1) {
+          m_srcToks.put(srcPhrase.toString(), srcPhrase);
+        }
       }
-      
-      for (Phrase trgPhrase : phraseTable.getTrgPhrases(srcPhrase)) {         
-        m_phrasePairsToProcess.add(new PhrasePair(srcPhrase, trgPhrase));
-        
+
+      for (Phrase trgPhrase : phraseTable.getAllTrgPhrases()) {
         if (trgPhrase.numTokens() == 1) {
           m_trgToks.put(trgPhrase.toString(), trgPhrase);
         }
       }
     }
-       
-    m_totalPairs = m_phrasePairsToProcess.size();
   }
   
-  public synchronized void estimateFeatures() throws Exception {
+  public FeatureEstimator(PhraseTable phraseTable, Set<Phrase> srcSingleTokenPhrases, Set<Phrase> trgSingleTokenPhrases, int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean useAlignments) {
+    
+    this(numThreads, contextScorer, timeScorer, translitDict, useAlignments); 
+    m_phraseTable = phraseTable;
+
+    if (useAlignments) {
+      for (Phrase srcPhrase : srcSingleTokenPhrases) {
+        m_srcToks.put(srcPhrase.toString(), srcPhrase);
+      }
+
+      for (Phrase trgPhrase : trgSingleTokenPhrases) {
+        m_trgToks.put(trgPhrase.toString(), trgPhrase);
+      }
+    }
+  }
+  
+  public synchronized void estimateFeatures(Set<Phrase> srcPhrases) throws Exception {
     
     m_workerIds.clear();
     m_percentComplete = 0;
     m_completePairs = 0;
     m_percentThreshold = PERCENT_REPORT;
+  
+    m_phrasePairsToProcess.clear();
     
+    for (Phrase srcPhrase : srcPhrases) {
+      for (Phrase trgPhrase : m_phraseTable.getTrgPhrases(srcPhrase)) {         
+        m_phrasePairsToProcess.add(new PhrasePair(srcPhrase, trgPhrase));
+      }
+    }
+    
+    m_totalPairs = m_phrasePairsToProcess.size();
+        
     LOG.info(" - Estimating monolingual features for " + (int)m_totalPairs + " phrase pairs.");
     
     // Start up the worker threads
     for (int threadNum = 0; threadNum < m_numThreads; threadNum++) { 
       m_workerIds.add(threadNum);   
-      (new Thread(new FeatureWorker(this, threadNum))).start();
+      (new Thread(new FeatureWorker(this, m_useAlignments, threadNum))).start();
     }
     
     // Wait until all threads are done
@@ -110,17 +139,18 @@ public class FeatureEstimator {
     notify();
   }
 
-  protected void estimateFeatures(Phrase srcPhrase, Phrase trgPhrase) {
-   
+  protected void estimateFeatures(Phrase srcPhrase, Phrase trgPhrase, boolean useAlignments) {
     PairProps props = m_phraseTable.getProps(srcPhrase, trgPhrase);
-    
-    double[] scores = scoreAverage(srcPhrase, trgPhrase, props, new Scorer[]{m_contextScorer, m_timeScorer});
-    props.setPairFeatVal(PairFeat.CONTEXT, scores[0]);
-    props.setPairFeatVal(PairFeat.TIME, scores[1]);  
-    
-    //props.setPairFeatVal(PairFeat.CONTEXT, m_contextScorer.score(srcPhrase, trgPhrase));
-    //props.setPairFeatVal(PairFeat.TIME, m_timeScorer.score(srcPhrase, trgPhrase));
-    props.setPairFeatVal(PairFeat.EDIT, scoreEdit(srcPhrase, trgPhrase, props, m_translitDict));
+   
+    if (useAlignments) {
+      double[] scores = scoreAverage(srcPhrase, trgPhrase, props, new Scorer[]{m_contextScorer, m_timeScorer});
+      props.setPairFeatVal(PairFeat.CONTEXT, scores[0]);
+      props.setPairFeatVal(PairFeat.TIME, scores[1]);  
+      props.setPairFeatVal(PairFeat.EDIT, scoreEdit(srcPhrase, trgPhrase, props, m_translitDict));
+    } else {
+      props.setPairFeatVal(PairFeat.CONTEXT, m_contextScorer.score(srcPhrase, trgPhrase));
+      props.setPairFeatVal(PairFeat.TIME, m_timeScorer.score(srcPhrase, trgPhrase));
+    }
   }
   
   // Compute average per character forward and backward edit distance
@@ -252,6 +282,7 @@ public class FeatureEstimator {
   protected Scorer m_contextScorer;
   protected Scorer m_timeScorer;
   protected SimpleDictionary m_translitDict;
+  protected boolean m_useAlignments;
   protected int m_numThreads;
   protected List<Integer> m_workerIds;
   protected LinkedList<PhrasePair> m_phrasePairsToProcess;
@@ -262,9 +293,10 @@ public class FeatureEstimator {
   
   class FeatureWorker implements Runnable {
     
-    public FeatureWorker(FeatureEstimator estimator, int workerId) {
+    public FeatureWorker(FeatureEstimator estimator, boolean useAlignments, int workerId) {
       m_workerId = workerId;
       m_estimator = estimator;
+      m_useAlignments = useAlignments;
     }
   
     public void run() {
@@ -276,7 +308,7 @@ public class FeatureEstimator {
       while (null != (phrasePairs = m_estimator.getPhrasePairsToProcess())) { 
         
         for (PhrasePair pair : phrasePairs) {
-          m_estimator.estimateFeatures(pair.srcPhrase(), pair.trgPhrase());
+          m_estimator.estimateFeatures(pair.srcPhrase(), pair.trgPhrase(), m_useAlignments);
         }
         
         m_estimator.estimationDone(phrasePairs.size());
@@ -289,5 +321,6 @@ public class FeatureEstimator {
   
     protected int m_workerId;
     protected FeatureEstimator m_estimator;
+    protected boolean m_useAlignments;
   }
 }

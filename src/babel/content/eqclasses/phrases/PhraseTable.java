@@ -51,6 +51,33 @@ public class PhraseTable {
     m_curFileName = null;
     m_curFileReader = null;    
   }
+  
+  public PhraseTable(PhraseTable table, Set<Phrase> srcToRetain, Set<Phrase> trgToRetain) {
+    this(table.m_encoding, table.m_caseSensitive);
+
+    Map<Phrase, PairProps> newMap, oldMap;
+    
+    // Only copy phrases we want to retain
+    for (Phrase srcPhrase : table.m_phraseMap.keySet()) {
+      if (srcToRetain.contains(srcPhrase)) {
+        
+        newMap = new HashMap<Phrase, PairProps>();
+        oldMap = table.m_phraseMap.get(srcPhrase);
+        
+        if (oldMap != null) {
+          for (Phrase trgPhrase : oldMap.keySet()) {
+            if (trgToRetain.contains(trgPhrase)) {
+              newMap.put(trgPhrase, oldMap.get(trgPhrase));
+            }
+          }
+        }
+        
+        if (newMap.size() > 0) {
+          m_phraseMap.put(srcPhrase, newMap);
+        }
+      }
+    }
+  }
 
   public PhraseTable(boolean caseSensitive) {
     this(DEFAULT_CHARSET, caseSensitive);
@@ -64,6 +91,31 @@ public class PhraseTable {
 
   public PhraseTable(String phraseTableFile, int numLines, boolean caseSensitive) throws IOException {
     this(phraseTableFile, numLines, DEFAULT_CHARSET, caseSensitive);
+  }
+  
+  public Set<Phrase> getAllSingleTokenSrcPhrases() {
+    Set<Phrase> srcPhrases = new HashSet<Phrase>();
+    
+    for (Phrase srcPhrase : m_phraseMap.keySet()) {
+      if (srcPhrase.numTokens() == 1) {
+        srcPhrases.add(srcPhrase);
+      }
+    }
+    
+    return srcPhrases;
+  }
+
+  public Set<Phrase> getAllSingleTokenTrgPhrases() {
+    Set<Phrase> trgPhrases = new HashSet<Phrase>();
+    Set<Phrase> allTrgPhrases = getAllTrgPhrases();
+    
+    for (Phrase trgPhrase : allTrgPhrases) {
+      if (trgPhrase.numTokens() == 1) {
+        trgPhrases.add(trgPhrase);
+      }
+    }
+    
+    return trgPhrases;
   }
   
   public Set<Phrase> getAllSrcPhrases() {
@@ -99,7 +151,29 @@ public class PhraseTable {
   }
   
   public Set<Phrase> getTrgPhrases(Phrase srcPhrase) {
-    return m_phraseMap.get(srcPhrase).keySet();
+    Set<Phrase> s;
+    
+    if (m_phraseMap.containsKey(srcPhrase)) {
+      s = m_phraseMap.get(srcPhrase).keySet();
+    } else {
+      s = Collections.emptySet();
+    }
+    
+    return s;
+  }
+
+  public Set<Phrase> getTrgPhrases(Set<Phrase> srcPhrases) {
+    
+    Set<Phrase> trgPhrases = new HashSet<Phrase>();
+    
+    if (srcPhrases != null) {
+      for (Phrase srcPhrase : srcPhrases) {
+        if (m_phraseMap.containsKey(srcPhrase)) {
+          trgPhrases.addAll(m_phraseMap.get(srcPhrase).keySet());
+        }
+      }
+    }
+    return trgPhrases;
   }
   
   public PairProps getProps(Phrase srcPhrase, Phrase trgPhrase) {
@@ -107,18 +181,21 @@ public class PhraseTable {
     Map<Phrase, PairProps> trgMap = m_phraseMap.get(srcPhrase);    
     return trgMap == null ? null : trgMap.get(trgPhrase);
   }
+
+  public void savePhraseTable(String monoPhraseTableFile, String addMonoPhraseTableFile, boolean alignmentBasedFeatures) throws IOException {
+    savePhraseTableChunk(m_phraseMap.keySet(), monoPhraseTableFile, addMonoPhraseTableFile, alignmentBasedFeatures);
+  }
   
-  public void savePhraseTable(String monoPhraseTableFile, String addMonoPhraseTableFile) throws IOException {
-    
+  public void savePhraseTableChunk(Set<Phrase> srcPhrases, String monoPhraseTableFile, String addMonoPhraseTableFile, boolean alignmentBasedFeatures) throws IOException {
     BufferedWriter monoWriter = (monoPhraseTableFile == null) ? null : new BufferedWriter(new OutputStreamWriter(new FileOutputStream(monoPhraseTableFile, true), m_encoding));    
     BufferedWriter addMonoWriter = (addMonoPhraseTableFile == null) ? null : new BufferedWriter(new OutputStreamWriter(new FileOutputStream(addMonoPhraseTableFile, true), m_encoding));    
 
-    List<Phrase> srcPhraseList = new ArrayList<Phrase>(m_phraseMap.keySet());
+    List<Phrase> srcPhraseList = new ArrayList<Phrase>(srcPhrases);
     Collections.sort(srcPhraseList, new LexComparator(true));
     
     Map<Phrase, PairProps> trgMap;
     List<Phrase> trgPhraseList;
-    PairFeat[] featsToWrite = new PairFeat[]{PairFeat.PHPENALTY, PairFeat.CONTEXT, PairFeat.TIME, PairFeat.EDIT};
+    PairFeat[] featsToWrite = alignmentBasedFeatures ? new PairFeat[]{PairFeat.PHPENALTY, PairFeat.CONTEXT, PairFeat.TIME, PairFeat.EDIT} : new PairFeat[]{PairFeat.PHPENALTY, PairFeat.CONTEXT, PairFeat.TIME};
     
     for (Phrase srcPhrase : srcPhraseList) {
       
@@ -147,9 +224,13 @@ public class PhraseTable {
   }
 
   public void saveReorderingTable(String reorderingTableFile) throws IOException {
-    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(reorderingTableFile), m_encoding));    
+    saveReorderingTableChunk(m_phraseMap.keySet(), reorderingTableFile);
+  }
+  
+  public void saveReorderingTableChunk(Set<Phrase> srcPhrases, String reorderingTableFile) throws IOException {
+    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(reorderingTableFile, true), m_encoding));    
 
-    List<Phrase> srcPhraseList = new ArrayList<Phrase>(m_phraseMap.keySet());
+    List<Phrase> srcPhraseList = new ArrayList<Phrase>(srcPhrases);
     Collections.sort(srcPhraseList, new LexComparator(true));
     
     Map<Phrase, PairProps> trgMap;
@@ -261,12 +342,12 @@ public class PhraseTable {
   public class PairProps {    
     public PairProps(String pairFeatStr) {
       
-      String[] strFeats = pairFeatStr.substring(pairFeatStr.lastIndexOf(FIELD_DELIM) + FIELD_DELIM.length()).split("\\s");
+      String[] strFeats = pairFeatStr.contains(FIELD_DELIM) ? pairFeatStr.substring(pairFeatStr.lastIndexOf(FIELD_DELIM) + FIELD_DELIM.length()).split("\\s") : new String[0];
       
       int maxFeats = PairFeat.values().length;
       assert strFeats.length <= maxFeats;
       
-      m_pairFeatStr = new StringBuilder(pairFeatStr);
+      m_pairFeatStr = new StringBuilder(pairFeatStr.isEmpty() ? (FIELD_DELIM + FIELD_DELIM) : pairFeatStr);
       m_dirtyFeatStr = false;
       m_featVals = new String[maxFeats];
        
@@ -276,6 +357,10 @@ public class PhraseTable {
       
       for (int i = strFeats.length; i < maxFeats; i++) {
         m_featVals[i] = null;
+      }
+      
+      if (m_featVals[PairFeat.PHPENALTY.idx] == null) {
+        m_featVals[PairFeat.PHPENALTY.idx] = "2.718";
       }
     }
     

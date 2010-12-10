@@ -1,9 +1,11 @@
 package main.phrases;
 
 import java.util.ArrayList;
+//import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -11,7 +13,7 @@ import org.apache.commons.logging.LogFactory;
 import babel.content.eqclasses.phrases.Phrase;
 import babel.content.eqclasses.phrases.PhrasePair;
 import babel.content.eqclasses.phrases.PhraseTable;
-import babel.content.eqclasses.phrases.PhraseTable.PairFeat;
+//import babel.content.eqclasses.phrases.PhraseTable.PairFeat;
 import babel.content.eqclasses.phrases.PhraseTable.PairProps;
 import babel.content.eqclasses.properties.PhraseContext;
 
@@ -32,32 +34,43 @@ public class OrderEstimator {
     m_numThreads = numThreads;
     m_workerIds = new ArrayList<Integer>(m_numThreads);
     m_phrasePairsToProcess = new LinkedList<PhrasePair>();
-     
-    // Collect all phrase pairs in phrase table with PhraseContext property
-    for (Phrase srcPhrase : phraseTable.getAllSrcPhrases()) {
-      
-      if (null != srcPhrase.getProperty(PhraseContext.class.getName())) {
-        
-        for (Phrase trgPhrase : phraseTable.getTrgPhrases(srcPhrase)) {
-          
-          if (null != trgPhrase.getProperty(PhraseContext.class.getName())) {
-            
-            m_phrasePairsToProcess.add(new PhrasePair(srcPhrase, trgPhrase));
-          }
-        }
-      }
-    }
   }
   
-  public synchronized void estimateReordering() throws Exception {
+  public synchronized void estimateReordering(Set<Phrase> srcPhrases) throws Exception {
     
     m_workerIds.clear();
     m_percentComplete = 0;
     m_completePairs = 0;
     m_percentThreshold = PERCENT_REPORT;
-    m_totalPairs = m_phrasePairsToProcess.size();
+
+    m_phrasePairsToProcess.clear();
     
-    LOG.info(" - Estimating reordering for " + m_totalPairs + " phrases with contextual phrases found in monolingual data (total number of pairs in phrase table is " + (int)m_phraseTable.numPhrasePairs() + ").");
+    // Collect all phrase pairs in phrase table with reordering property
+//    PhraseContext srcCont, trgCont;
+//    HashSet<Phrase> srcContAll = new HashSet<Phrase>();
+//    HashSet<Phrase> trgContAll = new HashSet<Phrase>();
+    
+    LOG.info(" - Selecting phrase pairs with reordering property ...");
+    
+    for (Phrase srcPhrase : srcPhrases) {
+      if (null != (/*srcCont = */(PhraseContext)srcPhrase.getProperty(PhraseContext.class.getName()))) {
+        for (Phrase trgPhrase : m_phraseTable.getTrgPhrases(srcPhrase)) {
+          if (null != (/*trgCont = */(PhraseContext)trgPhrase.getProperty(PhraseContext.class.getName()))) {
+            m_phrasePairsToProcess.add(new PhrasePair(srcPhrase, trgPhrase));
+//            srcContAll.addAll(srcCont.getAll());
+//            trgContAll.addAll(trgCont.getAll());
+          }
+        }
+      }
+    }
+
+//    LOG.info(" - Smaller phrasetable contains " + srcContAll.size() + " source and " + trgContAll.size() + " target phrases.");
+    
+    m_totalPairs = m_phrasePairsToProcess.size();
+    // Smaller effective phrase table => quicker reordering score estimations
+    m_smallPhraseTable = m_phraseTable;//new PhraseTable(m_phraseTable, srcContAll, trgContAll);    
+    
+    LOG.info(" - Estimating reordering for " + (int)m_totalPairs + " phrases with contextual phrases found in monolingual data ...");
     
     // Start up the worker threads
     for (int threadNum = 0; threadNum < m_numThreads; threadNum++) { 
@@ -114,15 +127,20 @@ public class OrderEstimator {
     Map<Phrase, Integer> beforeSrcPhrases = srcPhraseContext.getBefore();        
     double numBeforeMono = 0, numBeforeSwap = 0, numBeforeOutOfOrder = 0;
 
-    //int count = 0;
+    int count = 0;
     
     for (Phrase beforeSrcPhrase : beforeSrcPhrases.keySet()) {
-      for (Phrase transTrgPhrase : m_phraseTable.getTrgPhrases(beforeSrcPhrase)) {
+      
+      if (count++ >= 1000) {
+        break;
+      }
+      
+      for (Phrase transTrgPhrase : m_smallPhraseTable.getTrgPhrases(beforeSrcPhrase)) {
         //count++;
         if (trgPhraseContext.hasAnywhere(transTrgPhrase)) {
           
-          //weight = 1.0;
-          weight = m_phraseTable.getProps(beforeSrcPhrase, transTrgPhrase).getPairFeatVal(PairFeat.EF); // PairFeat.EF  
+          weight = 1.0;
+          //weight = m_phraseTable.getProps(beforeSrcPhrase, transTrgPhrase).getPairFeatVal(PairFeat.EF); // PairFeat.EF  
                 
           numBeforeMono += weight * (numMono = trgPhraseContext.beforeCount(transTrgPhrase));
           numBeforeSwap += weight * (numSwap = trgPhraseContext.afterCount(transTrgPhrase));
@@ -153,13 +171,19 @@ public class OrderEstimator {
 
     Map<Phrase, Integer> afterSrcPhrases = srcPhraseContext.getAfter();
     double numAfterMono = 0, numAfterSwap = 0, numAfterOutOfOrder = 0;
+    count = 0;
+    
+    for (Phrase afterSrcPhrase : afterSrcPhrases.keySet()) {
 
-    for (Phrase afterSrcPhrase : afterSrcPhrases.keySet()) {        
-      for (Phrase transTrgPhrase : m_phraseTable.getTrgPhrases(afterSrcPhrase)) {
+      if (count++ >= 1000) {
+        break;
+      }
+      
+      for (Phrase transTrgPhrase : m_smallPhraseTable.getTrgPhrases(afterSrcPhrase)) {
         if (trgPhraseContext.hasAnywhere(transTrgPhrase)) {
 
-          //weight = 1.0;
-          weight = m_phraseTable.getProps(afterSrcPhrase, transTrgPhrase).getPairFeatVal(PairFeat.EF); // PairFeat.EF
+          weight = 1.0;
+          //weight = m_phraseTable.getProps(afterSrcPhrase, transTrgPhrase).getPairFeatVal(PairFeat.EF); // PairFeat.EF
                 
           numAfterMono += weight * (numMono = trgPhraseContext.afterCount(transTrgPhrase));
           numAfterSwap += weight * (numSwap = trgPhraseContext.beforeCount(transTrgPhrase));
@@ -208,6 +232,7 @@ public class OrderEstimator {
   }
 
   protected PhraseTable m_phraseTable;
+  protected PhraseTable m_smallPhraseTable;
   protected int m_numThreads;
   protected List<Integer> m_workerIds;
   protected LinkedList<PhrasePair> m_phrasePairsToProcess;

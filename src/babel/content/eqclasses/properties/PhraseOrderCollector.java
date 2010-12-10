@@ -19,14 +19,16 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
 
   public static final Log LOG = LogFactory.getLog(PhrasePropertyCollector.class);
   
-  public PhraseOrderCollector(boolean src, int maxPhraseLength, boolean caseSensitive, long maxPhrCount) {    
+  public PhraseOrderCollector(boolean src, int maxPhraseLength, boolean caseSensitive, long maxPhrCount, Set<? extends EquivalenceClass> allPhrases, double keepContPhraseProb) {    
     super(maxPhraseLength, caseSensitive);
     
     m_src = src;
     m_maxPhrCount = maxPhrCount;
+    m_allPhrases = new GettableHashSet<EquivalenceClass>(allPhrases);
+    m_keepContPhraseProb = keepContPhraseProb;
   }
 
-  public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> phrases) throws Exception {
+  public void collectProperty(CorpusAccessor corpusAccess, Set<? extends EquivalenceClass> phrases) throws Exception {
     
     BufferedReader reader = new BufferedReader(corpusAccess.getCorpusReader());
     String curLine;
@@ -34,7 +36,6 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
     PhraseContext phraseContext;
     //Number phraseCount;
     List<IndexedPhrase> sentPhrases;
-    GettableHashSet<EquivalenceClass> allPhrases = new GettableHashSet<EquivalenceClass>(phrases);
     int logCount = 0;
     int sentCount = 0;
     
@@ -59,7 +60,7 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
           LOG.info((sentCount-1) + (m_src ? " source" : " target") + " sents processed for reordering.");
         }
         
-        sentPhrases = getAllIndexedPhrases(sent, allPhrases);
+        sentPhrases = getAllIndexedPhrases(sent, m_allPhrases);
         
         for (IndexedPhrase idxPhrase : sentPhrases) {
           
@@ -77,7 +78,7 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
           
           // Get/set its context phrase prop
           if ((phraseContext = (PhraseContext)idxPhrase.phrase.getProperty(PhraseContext.class.getName())) == null) {
-            idxPhrase.phrase.setProperty(phraseContext = new PhraseContext());
+            idxPhrase.phrase.setProperty(phraseContext = new PhraseContext(m_keepContPhraseProb));
           }
           
                 
@@ -280,6 +281,8 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
   
   protected boolean m_src;
   protected long m_maxPhrCount;
+  protected GettableHashSet<EquivalenceClass> m_allPhrases;
+  protected double m_keepContPhraseProb;
   
   class IndexedPhrase {
     public IndexedPhrase(Phrase phrase, IdxPair idxPair, int ordDelimBefore, int ordDelimAfter) {

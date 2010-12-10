@@ -24,7 +24,7 @@ public class TimeDistributionCollector extends PropertyCollector
     m_binIdxs = new HashSet<Integer>();
   }
   
-  public void collectProperty(CorpusAccessor corpusAccess, Set<EquivalenceClass> eqs) throws Exception
+  public void collectProperty(CorpusAccessor corpusAccess, Set<? extends EquivalenceClass> eqs) throws Exception
   {    
     if (!(corpusAccess instanceof TemporalCorpusAccessor))
     { throw new IllegalArgumentException("Did not supply a TemporalCorpusAccessor");
