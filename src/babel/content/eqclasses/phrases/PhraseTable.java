@@ -66,8 +66,9 @@ public class PhraseTable {
         
         if (oldMap != null) {
           for (Phrase trgPhrase : oldMap.keySet()) {
-            if (trgToRetain.contains(trgPhrase)) {
+            if ((trgToRetain == null) || (trgToRetain.contains(trgPhrase))) {
               newMap.put(trgPhrase, oldMap.get(trgPhrase));
+              m_numPairs++;
             }
           }
         }

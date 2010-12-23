@@ -20,6 +20,8 @@ import babel.util.dict.SimpleDictionary;
 public class PhraseScorer
 {
   protected static final Log LOG = LogFactory.getLog(PhraseScorer.class);
+  protected static final int KEEP_PH_CONTEXT = 1000;
+  
   
   public static void main(String[] args) throws Exception {
     
@@ -73,6 +75,8 @@ public class PhraseScorer
       trgChunk = phraseTable.getTrgPhrases(chunk);
       
       preparer.collectPropsForOrderOnly(chunk, trgChunk);
+      preparer.pruneMostFrequentContext(true, chunk, KEEP_PH_CONTEXT, KEEP_PH_CONTEXT, 3 * KEEP_PH_CONTEXT);
+      //preparer.pruneMostFrequentContext(false, trgChunk, KEEP_PH_CONTEXT, KEEP_PH_CONTEXT, 3 * KEEP_PH_CONTEXT);
          
       LOG.info(" - Estimating reordering features for phrase table chunk " + (chunkNum-1) + "...");
 
@@ -241,6 +245,8 @@ public class PhraseScorer
     phraseTable.savePhraseTable(outMonoPhraseTable, outAddMonoPhraseTable, useAlignments);
     
     LOG.info("--- Estimating reordering features ---");
+    preparer.pruneMostFrequentContext(true, srcPhrases, KEEP_PH_CONTEXT, KEEP_PH_CONTEXT, 3 * KEEP_PH_CONTEXT);
+    //preparer.pruneMostFrequentContext(false, trgPhrases, KEEP_PH_CONTEXT, KEEP_PH_CONTEXT, 3 * KEEP_PH_CONTEXT);
     
     // Estimate reordering features
     (new OrderEstimator(phraseTable, numReorderingThreads, preparer.getMaxTrgPhrCount())).estimateReordering(srcPhrases);

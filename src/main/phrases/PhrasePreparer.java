@@ -697,6 +697,31 @@ public class PhrasePreparer {
       timeScorer.prepare(eq);
     }
   }
+
+  public void pruneMostFrequentContext(boolean src, Set<? extends EquivalenceClass> phrases, int numKeepBefore, int numKeepAfter, int numKeepDisc) {
+      
+    LOG.info(" - Pruning context for " + (src ? "source" : "target") + " phrases ...");
+    
+    PhraseContext context;
+    int bBefore = 0, bAfter = 0, bDisc = 0;
+    int aBefore = 0, aAfter = 0, aDisc = 0;
+    
+    for (EquivalenceClass phrase : phrases) {      
+      
+      if (null != (context = ((PhraseContext)phrase.getProperty(PhraseContext.class.getName())))) {
+        bBefore += context.getBefore().size();
+        bAfter += context.getAfter().size();
+        bDisc += context.getDiscontinuous().size();
+        
+        context.pruneMostFreq(numKeepBefore, numKeepAfter, numKeepDisc);
+        aBefore += context.getBefore().size();
+        aAfter += context.getAfter().size();
+        aDisc += context.getDiscontinuous().size();
+      }
+    }
+
+    LOG.info(" - Pruned context: before " + bBefore + "->" + aBefore + ", after " + bAfter + "->" + aAfter + ", discontinous " + bDisc + "->" + aDisc);
+  }
   
   protected synchronized CorpusAccessor getAccessor(String kind, boolean src) throws Exception
   {

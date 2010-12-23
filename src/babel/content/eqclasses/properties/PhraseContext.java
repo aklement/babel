@@ -1,12 +1,15 @@
 package babel.content.eqclasses.properties;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.comparators.NumberComparator;
 import babel.content.eqclasses.phrases.Phrase;
 
 public class PhraseContext extends Property {
@@ -71,6 +74,10 @@ public class PhraseContext extends Property {
   public Map<Phrase, Integer> getAfter() {
     return m_after;
   }
+
+  public Map<Phrase, Integer> getDiscontinuous() {
+    return m_outOfOrder;
+  }
   
   public int beforeCount(Phrase phrase) {
     return m_before.containsKey(phrase) ? m_before.get(phrase) : 0;
@@ -91,6 +98,43 @@ public class PhraseContext extends Property {
 
   public void unpersistFromString(EquivalenceClass eq, String str) throws Exception {
     assert false : "Not implemented";
+  }
+  
+  public void pruneMostFreq(int keepBefore, int keepAfter, int keepDisc) {
+    
+    LinkedList<Phrase> phraseList;
+    
+    if (keepBefore < m_before.size()) {
+      phraseList = new LinkedList<Phrase>(m_before.keySet());
+      Collections.sort(phraseList, new NumberComparator(true));
+      
+      for (int i = keepBefore; i < phraseList.size(); i++) {
+        m_before.remove(phraseList.get(i));
+      }
+    }
+
+    if (keepAfter < m_after.size()) {
+      phraseList = new LinkedList<Phrase>(m_after.keySet());
+      Collections.sort(phraseList, new NumberComparator(true));
+      
+      for (int i = keepAfter; i < phraseList.size(); i++) {
+        m_after.remove(phraseList.get(i));
+      }
+    }
+
+    if (keepDisc < m_outOfOrder.size()) {
+      phraseList = new LinkedList<Phrase>(m_outOfOrder.keySet());
+      Collections.sort(phraseList, new NumberComparator(true));
+      
+      for (int i = keepDisc; i < phraseList.size(); i++) {
+        m_outOfOrder.remove(phraseList.get(i));
+      }
+    }
+    
+    m_all.clear();
+    m_all.addAll(m_before.keySet());
+    m_all.addAll(m_after.keySet());
+    m_all.addAll(m_outOfOrder.keySet());
   }
   
   protected synchronized boolean keep() {
