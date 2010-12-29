@@ -104,7 +104,7 @@ public class PhraseContext extends Property {
     
     LinkedList<Phrase> phraseList;
     
-    if (keepBefore < m_before.size()) {
+    if ((keepBefore >= 0) && (keepBefore < m_before.size())) {
       phraseList = new LinkedList<Phrase>(m_before.keySet());
       Collections.sort(phraseList, new NumberComparator(true));
       
@@ -113,7 +113,7 @@ public class PhraseContext extends Property {
       }
     }
 
-    if (keepAfter < m_after.size()) {
+    if ((keepAfter >= 0) && (keepAfter < m_after.size())) {
       phraseList = new LinkedList<Phrase>(m_after.keySet());
       Collections.sort(phraseList, new NumberComparator(true));
       
@@ -122,7 +122,7 @@ public class PhraseContext extends Property {
       }
     }
 
-    if (keepDisc < m_outOfOrder.size()) {
+    if ((keepDisc >= 0) && (keepDisc < m_outOfOrder.size())) {
       phraseList = new LinkedList<Phrase>(m_outOfOrder.keySet());
       Collections.sort(phraseList, new NumberComparator(true));
       

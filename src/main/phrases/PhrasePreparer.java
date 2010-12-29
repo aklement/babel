@@ -18,6 +18,7 @@ import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.corpora.accessors.CrawlCorpusAccessor;
 import babel.content.corpora.accessors.EuroParlCorpusAccessor;
 import babel.content.corpora.accessors.LexCorpusAccessor;
+
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.SimpleEquivalenceClass;
 import babel.content.eqclasses.collectors.EquivalenceClassCollector;
@@ -42,7 +43,9 @@ import babel.content.eqclasses.properties.PhraseTimeDistributionCollector;
 import babel.content.eqclasses.properties.TimeDistribution;
 import babel.content.eqclasses.properties.Type;
 import babel.content.eqclasses.properties.Type.EqType;
+
 import babel.ranking.scorers.Scorer;
+
 import babel.util.config.Configurator;
 import babel.util.dict.Dictionary;
 import babel.util.dict.SimpleDictionary;
@@ -62,14 +65,6 @@ public class PhrasePreparer {
 
   public SimpleDictionary getTranslitDict() {
     return m_translitDict;
-  }
-  
-  public long getNumSrcToks() { 
-    return m_numToksInSrc;
-  }
-  
-  public long getNumTrgToks() {
-    return m_numToksInTrg;
   }
   
   public long getMaxSrcTokCount(){
@@ -149,7 +144,7 @@ public class PhrasePreparer {
     String phraseTableFile;
     
     if (readFromMono) {
-      phraseTableFile = Configurator.CONFIG.getString("output.Path") +  "/" + Configurator.CONFIG.getString("output.MonoPhraseTable");
+      phraseTableFile = Configurator.CONFIG.getString("output.Path") +  "/" + Configurator.CONFIG.getString("output.PhraseTablePL");
     } else {
       phraseTableFile = Configurator.CONFIG.getString("resources.phrases.PhraseTable");
     }
@@ -165,49 +160,35 @@ public class PhrasePreparer {
     LOG.info(" - Target phrases: " + m_trgPhrs.size());   
   }
   
-  protected synchronized void collectNumberProps(Set<Phrase> srcPhrs, Set<Phrase> trgPhrs, boolean computePhraseCounts, boolean verbose) throws Exception{
+  protected void collectNumberProps(Set<Phrase> srcPhrs, Set<Phrase> trgPhrs, boolean computePhraseCounts, boolean verbose) throws Exception {
 
     LOG.info(" - Collecting phrase counts...");
 
     int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
     boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
-        
-    // Start up the worker threads      
-    NumberCollectorWorker srcNumberWorker = new NumberCollectorWorker(true, srcPhrs, maxPhraseLength, caseSensitive);
-    NumberCollectorWorker trgNumberWorker = new NumberCollectorWorker(false, trgPhrs, maxPhraseLength, caseSensitive);
     
-    /*
-    
-    m_runningThreads.clear();
-    m_runningThreads.add(srcNumberWorker);
-    m_runningThreads.add(trgNumberWorker);
-    
-    (new Thread(srcNumberWorker, "Source NumberCollectorWorker")).start();
-    (new Thread(trgNumberWorker, "Target NumberCollectorWorker")).start();
-   
-    // Wait until both threads are done
-    wait();
-    
-    */
-    
-    srcNumberWorker.run();
-    trgNumberWorker.run();
-    
-    
-    if (!srcNumberWorker.succeeded() || !trgNumberWorker.succeeded()) {
-      throw new Exception("One of the number collecting threads failed.");
-    }
+    collectNumberProps(true, srcPhrs, maxPhraseLength, caseSensitive);
+    collectNumberProps(false, trgPhrs, maxPhraseLength, caseSensitive);
     
     if (computePhraseCounts) {
-      m_maxPhrCountInSrc = srcNumberWorker.getMaxPhrCount();
-
-      m_maxPhrCountInTrg = trgNumberWorker.getMaxPhrCount();
+      
+      m_maxPhrCountInSrc = collectMaxOccurrenceCount(srcPhrs);
+      m_maxPhrCountInTrg = collectMaxOccurrenceCount(trgPhrs);
     
       if (verbose) {
         LOG.info(" - Source phrases max occurrences = " + m_maxPhrCountInSrc);
         LOG.info(" - Target phrases max occurrences = " + m_maxPhrCountInTrg);
       }
     }
+  }
+  
+  /**
+   * @return max count of any of the given phrases in the corpus
+   */
+  protected void collectNumberProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, boolean caseSensitive) throws Exception {
+    // Collect counts
+    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);
+    (new PhraseNumberCollector(maxPhraseLength, caseSensitive)).collectProperty(accessor, phrases);
   }
   
   protected void collectTypeProp(Set<Phrase> srcPhrs, Set<Phrase> trgPhrs) {
@@ -218,45 +199,28 @@ public class PhrasePreparer {
     assignTypeProp(trgPhrs, EqType.TARGET);
   }
  
-  protected synchronized void collectOrderProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
+  protected void collectOrderProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
     
     LOG.info(" - Collecting phrase ordering properties for " + srcPhrases.size() + " source and " + trgPhrases.size() + " target phrases " + " ...");
     
     int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
     boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
-    double keepContPhraseProb = Configurator.CONFIG.containsKey("preprocessing.phrases.ContPhraseKeepProb") ? Configurator.CONFIG.getDouble("preprocessing.phrases.ContPhraseKeepProb") : 1.0;  
+    double keepContPhraseProb = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.ContPhraseKeepProb") ? Configurator.CONFIG.getDouble("preprocessing.phrases.reordering.ContPhraseKeepProb") : 1.0;  
     
     if (keepContPhraseProb == 1.0) {
-      LOG.warn(" - Keeping ALL contextual phrases (reordering stage may take a loooong time)");
+      LOG.warn(" - Keeping ALL contextual phrases at collection");
     }
     
-    // Start up the worker threads
-    PhraseOrderCollectorWorker srcOrderWorker = new PhraseOrderCollectorWorker(true, srcPhrases, maxPhraseLength, m_maxPhrCountInSrc, caseSensitive, m_srcPhrs, keepContPhraseProb);
-    PhraseOrderCollectorWorker trgOrderWorker = new PhraseOrderCollectorWorker(false, trgPhrases, maxPhraseLength, m_maxPhrCountInTrg, caseSensitive, m_trgPhrs, keepContPhraseProb);
-    
-    /*
-    
-    m_runningThreads.clear();
-    m_runningThreads.add(srcOrderWorker);
-    m_runningThreads.add(trgOrderWorker);
-    
-    (new Thread(srcOrderWorker, "Source PhraseOrderCollectorWorker")).start();
-    (new Thread(trgOrderWorker, "Target PhraseOrderCollectorWorker")).start();
-   
-    // Wait until both threads are done
-    wait();
- 
-    */
-    
-    srcOrderWorker.run();
-    trgOrderWorker.run();
-    
-    if (!srcOrderWorker.succeeded() || !trgOrderWorker.succeeded()) {
-      throw new Exception("One of the order collecting threads failed.");
-    }
+    collectOrderProps(true, srcPhrases, maxPhraseLength, m_maxPhrCountInSrc, caseSensitive, m_srcPhrs, keepContPhraseProb);
+    collectOrderProps(false, trgPhrases, maxPhraseLength, m_maxPhrCountInTrg, caseSensitive, m_trgPhrs, keepContPhraseProb);
+  }
+  
+  protected void collectOrderProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, long maxPhraseCountInCorpus, boolean caseSensitive, Set<Phrase> allPhrases, double keepContPhraseProb) throws Exception { 
+    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);
+    (new PhraseOrderCollector(src, maxPhraseLength, caseSensitive, maxPhraseCountInCorpus, allPhrases, keepContPhraseProb)).collectProperty(accessor, phrases);      
   }
 
-  protected synchronized void collectOtherProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
+  protected void collectOtherProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
     
     LOG.info(" - Collecting context and time phrase properties for " + srcPhrases.size() + " source and " + trgPhrases.size() + " target phrases " + " ...");
     
@@ -265,37 +229,32 @@ public class PhrasePreparer {
     int contextWindowSize = Configurator.CONFIG.getInt("preprocessing.context.Window");
     boolean alignDistros = Configurator.CONFIG.getBoolean("preprocessing.time.Align");
 
-    // Start up the worker threads
-    PropCollectorWorker srcPropWorker = new PropCollectorWorker(true, srcPhrases, maxPhraseLength, m_contextSrcEqs, contextWindowSize, caseSensitive);
-    PropCollectorWorker trgPropWorker = new PropCollectorWorker(false, trgPhrases, maxPhraseLength, m_contextTrgEqs, contextWindowSize, caseSensitive);
-
-    /*
+    Set<Integer> srcBins = collectOtherProps(true, srcPhrases, maxPhraseLength, m_contextSrcEqs, contextWindowSize, caseSensitive);
+    Set<Integer> trgBins = collectOtherProps(false, trgPhrases, maxPhraseLength, m_contextTrgEqs, contextWindowSize, caseSensitive);
     
-    m_runningThreads.clear();
-    m_runningThreads.add(srcPropWorker);
-    m_runningThreads.add(trgPropWorker);
-    
-    (new Thread(srcPropWorker, "Source PropCollectorWorker")).start();
-    (new Thread(trgPropWorker, "Target PropCollectorWorker")).start();
-   
-    // Wait until both threads are done
-    wait();
-    
-    */
-    
-    srcPropWorker.run();
-    trgPropWorker.run();
-    
-    if (!srcPropWorker.succeeded() || !trgPropWorker.succeeded()) {
-      throw new Exception("One of the property collecting threads failed.");
-    } else if (alignDistros) {
+    if (alignDistros) {
       LOG.info(" - Aligning temporal distributions...");
-      alignDistributions(srcPropWorker.getBins(), trgPropWorker.getBins(), srcPhrases, trgPhrases);  
+      alignDistributions(srcBins, trgBins, srcPhrases, trgPhrases);  
     }
   }
   
+  /**
+   * @return time bins for which counts were collected
+   */
+  protected Set<Integer> collectOtherProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, Set<EquivalenceClass> contextEqs, int contextWindowSize, boolean caseSensitive) throws Exception {
+
+    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
+    (new PhraseContextCollector(maxPhraseLength, caseSensitive, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, phrases);
+
+    accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), src);
+    PhraseTimeDistributionCollector distCollector = new PhraseTimeDistributionCollector(maxPhraseLength, caseSensitive);
+    distCollector.collectProperty(accessor, phrases);
+      
+    return distCollector.binsCollected();
+  }
+  
   @SuppressWarnings("unchecked")
-  protected synchronized void collectContextEqs() throws Exception {
+  protected void collectContextEqs() throws Exception {
     
     LOG.info(" - Constructing contextual equivalence classes...");
     
@@ -304,43 +263,40 @@ public class PhrasePreparer {
     Class<EquivalenceClass> srcContClassClass = (Class<EquivalenceClass>)Class.forName(Configurator.CONFIG.getString("preprocessing.context.SrcEqClass"));
     Class<EquivalenceClass> trgContClassClass = (Class<EquivalenceClass>)Class.forName(Configurator.CONFIG.getString("preprocessing.context.TrgEqClass"));
     
-    // Start up the worker threads
-    ContextEqsCollectorWorker srcContextWorker = new ContextEqsCollectorWorker(true, true, filterRomanSrc, srcContClassClass);
-    ContextEqsCollectorWorker trgContextWorker = new ContextEqsCollectorWorker(false, true, filterRomanTrg, trgContClassClass);
-
-    
-    /*
-
-    m_runningThreads.clear();
-    m_runningThreads.add(srcContextWorker);
-    m_runningThreads.add(trgContextWorker);
-    
-    (new Thread(srcContextWorker, "Source ContextEqsCollectorWorker")).start();
-    (new Thread(trgContextWorker, "Target ContextEqsCollectorWorker")).start();
+    m_contextSrcEqs = collectContextEqs(true, true, filterRomanSrc, srcContClassClass);
+    m_contextTrgEqs = collectContextEqs(false, true, filterRomanTrg, trgContClassClass);
    
-    // Wait until both threads are done
-    wait();
+    m_maxTokCountInSrc = collectMaxOccurrenceCount(m_contextSrcEqs);
+    m_maxTokCountInTrg = collectMaxOccurrenceCount(m_contextTrgEqs);
     
-    */
+    LOG.info(" - Source context classes = " + m_contextSrcEqs.size() + ", max occurrences = " + m_maxTokCountInSrc);
+    LOG.info(" - Target context classes = " + m_contextTrgEqs.size() + ", max occurrences = " + m_maxTokCountInTrg);
+  }
+ 
+  protected Set<EquivalenceClass> collectContextEqs(boolean src, boolean caseSensitive, boolean filterRoman, Class<EquivalenceClass> contextClassClass) throws Exception {
     
-    srcContextWorker.run();
-    trgContextWorker.run();
+    Set<EquivalenceClass> eqs;
+    ArrayList<EquivalenceClassFilter> filters = new ArrayList<EquivalenceClassFilter>(3);
+    filters.add(new GarbageFilter());
+    filters.add(new LengthFilter(2));
     
-    
-    if (!srcContextWorker.succeeded() || !trgContextWorker.succeeded()) {
-      throw new Exception("One of the property collecting threads failed.");
+    if (filterRoman) {
+      filters.add(new RomanizationFilter());
     }
-
-    m_contextSrcEqs = srcContextWorker.getEqs();
-    m_maxTokCountInSrc = srcContextWorker.getMaxTokCount();
-    m_numToksInSrc = srcContextWorker.getNumToks();
-
-    m_contextTrgEqs = trgContextWorker.getEqs();
-    m_maxTokCountInTrg = trgContextWorker.getMaxTokCount();
-    m_numToksInTrg = trgContextWorker.getNumToks();
     
-    LOG.info(" - Source context classes = " + m_contextSrcEqs.size() + ", max occurrences = " + m_maxTokCountInSrc + ", total counts = " + m_numToksInSrc);
-    LOG.info(" - Target context classes = " + m_contextTrgEqs.size() + ", max occurrences = " + m_maxTokCountInTrg + ", total counts = " + m_numToksInTrg);
+    CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);
+    
+    // Collect init classes
+    SimpleEquivalenceClassCollector collector = new SimpleEquivalenceClassCollector(filters, caseSensitive);
+    eqs = collector.collect(accessor.getCorpusReader(), -1);
+    // Collect counts property
+    (new NumberCollector(caseSensitive)).collectProperty(accessor, eqs);
+    // Construct context classes
+    eqs = constructEqClasses(src, eqs, contextClassClass);
+    // Assign type property
+    assignTypeProp(eqs, src ? EqType.SOURCE : EqType.TARGET);
+        
+    return eqs;
   }
   
   protected void filterContextEqs() throws Exception {
@@ -644,42 +600,29 @@ public class PhrasePreparer {
     
     return new HashSet<EquivalenceClass>(eqsMap.values());
   }
-    
-  // Returns a tuple with counts (0 -> maximum count, 1 -> total count)
-  protected long[] collectCounts(Set<? extends EquivalenceClass> eqs) {
+ 
+  protected long collectMaxOccurrenceCount(Set<? extends EquivalenceClass> eqs) {
 
-    long[] c = new long[2];
-    c[0] = c[1] = 0;
+    long maxOccurCount = 0;
     
     Number num;
-    TimeDistribution distro;
     long count;
     
-    for (EquivalenceClass eq : eqs)
-    {
-      count = -1;
+    for (EquivalenceClass eq : eqs) {
       
       if ((num = (Number)eq.getProperty(Number.class.getName())) != null) {
-        count = num.getNumber();
-      } else if ((distro = (TimeDistribution)eq.getProperty(TimeDistribution.class.getName())) != null) {
-        count = distro.getTotalOccurences();
-      }
-      
-      if (count > 0) {
-        
-        if (count > c[0])
-        { c[0] = count;
-        }
-        
-        c[1] += count;
+
+        if ((count = num.getNumber()) > maxOccurCount)
+        { maxOccurCount = count;
+        }        
       }
     }
 
-    return c;
+    return maxOccurCount;
   }
   
-  protected void assignTypeProp(Set<? extends EquivalenceClass> eqClasses, EqType type)
-  {
+  protected void assignTypeProp(Set<? extends EquivalenceClass> eqClasses, EqType type) {
+    
     Type commonType = new Type(type);
     
     for (EquivalenceClass eq : eqClasses)
@@ -698,13 +641,26 @@ public class PhrasePreparer {
     }
   }
 
-  public void pruneMostFrequentContext(boolean src, Set<? extends EquivalenceClass> phrases, int numKeepBefore, int numKeepAfter, int numKeepDisc) {
-      
-    LOG.info(" - Pruning context for " + (src ? "source" : "target") + " phrases ...");
+  public void pruneMostFrequentContext(boolean src, Set<? extends EquivalenceClass> phrases) {
+    int numKeepBefore;
+    int numKeepAfter;
+    int numKeepDisc;
+ 
+    if (src) {
+      numKeepBefore = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.SrcContPhraseKeepBefore") ? Configurator.CONFIG.getInt("preprocessing.phrases.reordering.SrcContPhraseKeepBefore") : -1;  
+      numKeepAfter = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.SrcContPhraseKeepAfter") ? Configurator.CONFIG.getInt("preprocessing.phrases.reordering.SrcContPhraseKeepAfter") : -1;  
+      numKeepDisc = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.SrcContPhraseKeepDisc") ? Configurator.CONFIG.getInt("preprocessing.phrases.reordering.SrcContPhraseKeepDisc") : -1;
+    } else {
+      numKeepBefore = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.TrgContPhraseKeepBefore") ? Configurator.CONFIG.getInt("preprocessing.phrases.reordering.TrgContPhraseKeepBefore") : -1;  
+      numKeepAfter = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.TrgContPhraseKeepAfter") ? Configurator.CONFIG.getInt("preprocessing.phrases.reordering.TrgContPhraseKeepAfter") : -1;  
+      numKeepDisc = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.TrgContPhraseKeepDisc") ? Configurator.CONFIG.getInt("preprocessing.phrases.reordering.TrgContPhraseKeepDisc") : -1;  
+    }
+    
+    LOG.info(" - Pruning context for " + (src ? "source" : "target") + " phrases. Keeping most frequent " + numKeepBefore + " before, " + numKeepAfter + " after, and " + numKeepDisc + " discontinous phrases...");
     
     PhraseContext context;
-    int bBefore = 0, bAfter = 0, bDisc = 0;
-    int aBefore = 0, aAfter = 0, aDisc = 0;
+    long bBefore = 0, bAfter = 0, bDisc = 0;
+    long aBefore = 0, aAfter = 0, aDisc = 0;
     
     for (EquivalenceClass phrase : phrases) {      
       
@@ -723,7 +679,7 @@ public class PhrasePreparer {
     LOG.info(" - Pruned context: before " + bBefore + "->" + aBefore + ", after " + bAfter + "->" + aAfter + ", discontinous " + bDisc + "->" + aDisc);
   }
   
-  protected synchronized CorpusAccessor getAccessor(String kind, boolean src) throws Exception
+  protected CorpusAccessor getAccessor(String kind, boolean src) throws Exception
   {
     CorpusAccessor accessor = null;
 
@@ -813,17 +769,6 @@ public class PhrasePreparer {
     return ret;
   }
   
-  protected synchronized void workerDone(Runnable worker) {
-    
-    m_runningThreads.remove(worker);
-    
-    if (m_runningThreads.size() == 0) {
-      notify();
-    }
-  }
-  
-  protected HashSet<Runnable> m_runningThreads = new HashSet<Runnable>();
-
   protected PhraseTable m_phraseTable;
   
   protected Dictionary m_seedDict = null;
@@ -836,234 +781,9 @@ public class PhrasePreparer {
   
   protected List<Phrase> m_srcPhrasesToProcess = null;
   
-  protected long m_numToksInSrc = 0;
-  protected long m_numToksInTrg = 0;
   protected long m_maxTokCountInSrc = 0;
   protected long m_maxTokCountInTrg = 0;
   protected long m_maxPhrCountInSrc = 0;
   protected long m_maxPhrCountInTrg = 0;
-
-  class PropCollectorWorker implements Runnable {
-    public PropCollectorWorker(boolean src, Set<Phrase> phrases, int maxPhraseLength, Set<EquivalenceClass> contextEqs, int contextWindowSize, boolean caseSensitive) {
-      
-      m_succeeded = true;
-      m_src = src;
-      m_phrases = phrases;
-      m_contextEqs = contextEqs;
-      m_maxPhraseLength = maxPhraseLength;
-      m_caseSensitive = caseSensitive;
-      m_contextWindowSize = contextWindowSize;
-      m_bins = null;
-    }
-
-    public void run() {
-
-      try {
-
-        CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), m_src);    
-        (new PhraseContextCollector(m_maxPhraseLength, m_caseSensitive, m_contextWindowSize, m_contextWindowSize, m_contextEqs)).collectProperty(accessor, m_phrases);
-
-        // Collect time properties
-        accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), m_src);
-        PhraseTimeDistributionCollector distCollector = new PhraseTimeDistributionCollector(m_maxPhraseLength, m_caseSensitive);
-        distCollector.collectProperty(accessor, m_phrases);
-        
-        m_bins = distCollector.binsCollected();
-
-      } catch (Exception e) {        
-        LOG.error(e.toString());
-        m_succeeded = false;
-      }
-      
-      PhrasePreparer.this.workerDone(this);
-    }
-    
-    // Returns time bins for which counts were collected
-    public Set<Integer> getBins() {
-      return m_bins;
-    }
-    
-    public boolean succeeded() {
-      return m_succeeded;
-    }
-
-    boolean m_succeeded;
-    boolean m_src;
-    Set<Phrase> m_phrases;
-    int m_maxPhraseLength;
-    Set<EquivalenceClass> m_contextEqs;
-    int m_contextWindowSize;
-    boolean m_caseSensitive; 
-    Set<Integer> m_bins;
-  }
   
-  class NumberCollectorWorker implements Runnable {
-    public NumberCollectorWorker(boolean src, Set<Phrase> phrases, int maxPhraseLength, boolean caseSensitive) {
-      
-      m_src = src;
-      m_phrases = phrases;
-      m_maxPhraseLength = maxPhraseLength;
-      m_caseSensitive = caseSensitive;
-      m_maxPhrCount = 0;
-      m_numPhrs = 0;
-      m_succeeded = true;
-    }
-
-    public void run() {
-            
-      try {
-        // Collect counts and order properties
-        CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), m_src);
-        (new PhraseNumberCollector(m_maxPhraseLength, m_caseSensitive)).collectProperty(accessor, m_phrases);
-
-        long[] c = collectCounts(m_phrases); 
-        
-        m_maxPhrCount = c[0];
-        m_numPhrs = c[1];  
-
-      } catch (Exception e) {
-        LOG.error(e.toString());
-        m_succeeded = false;
-      }
-      
-      PhrasePreparer.this.workerDone(this);
-    }
-    
-    public long getMaxPhrCount() {
-      return m_maxPhrCount;
-    }
-    
-    public long getNumPhrs() {
-      return m_numPhrs;
-    }
-    
-    public boolean succeeded() {
-      return m_succeeded;
-    }
-    
-    boolean m_succeeded;
-    Set<Phrase> m_phrases;
-    boolean m_src;
-    int m_maxPhraseLength;
-    boolean m_caseSensitive; 
-    long m_maxPhrCount;
-    long m_numPhrs;
-  }
-  
-  class PhraseOrderCollectorWorker implements Runnable {
-    public PhraseOrderCollectorWorker(boolean src, Set<Phrase> phrases, int maxPhraseLength, long maxPhraseCountInCorpus, boolean caseSensitive, Set<Phrase> allPhrases, double keepContPhraseProb) {
-      
-      m_src = src;
-      m_phrases = phrases;
-      m_maxPhraseLength = maxPhraseLength;
-      m_maxPhraseCountInCorpus = maxPhraseCountInCorpus;
-      m_caseSensitive = caseSensitive;
-      m_allPhrases = allPhrases;
-      m_keepContPhraseProb = keepContPhraseProb;
-      m_succeeded = true;
-    }
-
-    public void run() {
-
-      try {  
-        CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), m_src);
-        (new PhraseOrderCollector(m_src, m_maxPhraseLength, m_caseSensitive, m_maxPhraseCountInCorpus, m_allPhrases, m_keepContPhraseProb)).collectProperty(accessor, m_phrases);
-        
-      } catch (Exception e) {
-        LOG.error(e.toString());
-        m_succeeded = false;
-      }
-      
-      PhrasePreparer.this.workerDone(this);
-    }
-    
-    public boolean succeeded() {
-      return m_succeeded;
-    }
-    
-    boolean m_succeeded;
-    Set<Phrase> m_phrases;
-    boolean m_src;
-    int m_maxPhraseLength;
-    long m_maxPhraseCountInCorpus;
-    boolean m_caseSensitive;
-    Set<Phrase> m_allPhrases;
-    double m_keepContPhraseProb;
-  }
-  
-  class ContextEqsCollectorWorker implements Runnable {
-    public ContextEqsCollectorWorker(boolean src, boolean caseSensitive, boolean filterRoman, Class<EquivalenceClass> contextClassClass) {
-      m_src = src;
-      m_caseSensitive = caseSensitive;
-      m_succeeded = true;
-      m_filterRoman = filterRoman;
-      m_eqs = null;
-      m_contextClassClass = contextClassClass;
-    }
-
-    public void run() {
-
-      try {          
-        ArrayList<EquivalenceClassFilter> filters = new ArrayList<EquivalenceClassFilter>(3);
-        filters.add(new GarbageFilter());
-        filters.add(new LengthFilter(2));
-        
-        if (m_filterRoman)
-        { filters.add(new RomanizationFilter());
-        }
-        
-        CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), m_src);
-        
-        // Collect init classes
-        SimpleEquivalenceClassCollector collector = new SimpleEquivalenceClassCollector(filters, m_caseSensitive);
-        m_eqs = collector.collect(accessor.getCorpusReader(), -1);
-
-        // TODO: break up into multiple workers?
-        
-        // Collect counts property
-        (new NumberCollector(m_caseSensitive)).collectProperty(accessor, m_eqs);
-
-        // Construct context classes
-        m_eqs = constructEqClasses(m_src, m_eqs, m_contextClassClass);
-        
-        // Assign type property
-        assignTypeProp(m_eqs, m_src ? EqType.SOURCE : EqType.TARGET);
-        
-        long[] c = collectCounts(m_eqs);
-        m_maxTokCount = c[0];
-        m_numToks = c[1];
-        
-      } catch (Exception e) {
-        LOG.error(e.toString());
-        m_succeeded = false;
-      }
-      
-      PhrasePreparer.this.workerDone(this);
-    }
-    
-    public boolean succeeded() {
-      return m_succeeded;
-    }
-    
-    public Set<EquivalenceClass> getEqs() {
-      return m_eqs;
-    }
-    
-    public long getMaxTokCount() {
-      return m_maxTokCount;
-    }
-
-    public long getNumToks() {
-      return m_numToks;
-    }
-    
-    boolean m_succeeded;
-    Set<EquivalenceClass> m_eqs;
-    boolean m_src;
-    boolean m_caseSensitive; 
-    boolean m_filterRoman;
-    long m_maxTokCount;
-    long m_numToks;
-    Class<EquivalenceClass> m_contextClassClass;
-  } 
  }

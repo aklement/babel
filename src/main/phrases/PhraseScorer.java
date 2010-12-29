@@ -8,6 +8,7 @@ import org.apache.commons.logging.LogFactory;
 
 import babel.content.eqclasses.phrases.Phrase;
 import babel.content.eqclasses.phrases.PhraseTable;
+import babel.content.eqclasses.phrases.PhraseTable.PairFeat;
 
 import babel.ranking.scorers.Scorer;
 import babel.ranking.scorers.context.DictScorer;
@@ -20,15 +21,18 @@ import babel.util.dict.SimpleDictionary;
 public class PhraseScorer
 {
   protected static final Log LOG = LogFactory.getLog(PhraseScorer.class);
-  protected static final int KEEP_PH_CONTEXT = 1000;
-  
-  
+  protected static PairFeat[] FEATS_BPL = new PairFeat[]{PairFeat.FE, PairFeat.LEX_FE, PairFeat.EF, PairFeat.LEX_EF, PairFeat.PHPENALTY, PairFeat.PH_CONTEXT, PairFeat.PH_TIME, PairFeat.LEX_CONTEXT, PairFeat.LEX_TIME, PairFeat.LEX_EDIT};
+  protected static PairFeat[] FEATS_PL = new PairFeat[]{PairFeat.PHPENALTY, PairFeat.PH_CONTEXT, PairFeat.PH_TIME, PairFeat.LEX_CONTEXT, PairFeat.LEX_TIME, PairFeat.LEX_EDIT};
+  protected static PairFeat[] FEATS_P = new PairFeat[]{PairFeat.PHPENALTY, PairFeat.PH_CONTEXT, PairFeat.PH_TIME};
+  protected static PairFeat[] FEATS_L = new PairFeat[]{PairFeat.PHPENALTY, PairFeat.LEX_CONTEXT, PairFeat.LEX_TIME, PairFeat.LEX_EDIT};
+  protected static PairFeat[] FEATS_NONE = new PairFeat[]{PairFeat.PHPENALTY};
+
   public static void main(String[] args) throws Exception {
     
     LOG.info("\n" + Configurator.getConfigDescriptor());
  
-    boolean doMonoFeatures = Configurator.CONFIG.getBoolean("preprocessing.phrases.DoMonoFeatures");
-    boolean doReordering = Configurator.CONFIG.getBoolean("preprocessing.phrases.DoReordering");
+    boolean doMonoFeatures = Configurator.CONFIG.getBoolean("preprocessing.phrases.features.DoMonoFeatures");
+    boolean doReordering = Configurator.CONFIG.getBoolean("preprocessing.phrases.reordering.DoReordering");
     
     PhraseScorer scorer = new PhraseScorer();
     
@@ -53,11 +57,10 @@ public class PhraseScorer
   protected void scorePhraseOrderOnly() throws Exception
   {
     String outDir = Configurator.CONFIG.getString("output.Path");
-    String outMonoReorderingTable = Configurator.CONFIG.getString("output.MonoReorderingTable");
-    int numReorderingThreads = Configurator.CONFIG.getInt("preprocessing.phrases.ReorderingThreads");
-    int chunkSize = (Configurator.CONFIG.containsKey("preprocessing.phrases.ChunkSize") && Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") > 0) ? 
-        Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") : Integer.MAX_VALUE;
-    
+    String outReorderingTableM = Configurator.CONFIG.getString("output.ReorderingTableM");
+    int numReorderingThreads = Configurator.CONFIG.getInt("preprocessing.phrases.reordering.ReorderingThreads");
+    int chunkSize = (Configurator.CONFIG.containsKey("preprocessing.phrases.ChunkSize") && Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") > 0) ? Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") : Integer.MAX_VALUE;
+
     LOG.info("--- Preparing for estimating reordering features " + (chunkSize != Integer.MAX_VALUE ? "in chunks of size " + chunkSize : "") + " ---");
     
     PhrasePreparer preparer = new PhrasePreparer();
@@ -75,8 +78,8 @@ public class PhraseScorer
       trgChunk = phraseTable.getTrgPhrases(chunk);
       
       preparer.collectPropsForOrderOnly(chunk, trgChunk);
-      preparer.pruneMostFrequentContext(true, chunk, KEEP_PH_CONTEXT, KEEP_PH_CONTEXT, 3 * KEEP_PH_CONTEXT);
-      //preparer.pruneMostFrequentContext(false, trgChunk, KEEP_PH_CONTEXT, KEEP_PH_CONTEXT, 3 * KEEP_PH_CONTEXT);
+      preparer.pruneMostFrequentContext(true, chunk);
+      preparer.pruneMostFrequentContext(false, trgChunk);
          
       LOG.info(" - Estimating reordering features for phrase table chunk " + (chunkNum-1) + "...");
 
@@ -84,7 +87,7 @@ public class PhraseScorer
       orderEstimator.estimateReordering(chunk);
       
       // Save the new phrase table (containing mono features)
-      phraseTable.saveReorderingTableChunk(chunk, outDir + "/" + outMonoReorderingTable);
+      phraseTable.saveReorderingTableChunk(chunk, outDir + "/" + outReorderingTableM);
       
       // Clear the collected reordering features
       preparer.clearReorderingFeatures(chunk);
@@ -97,19 +100,30 @@ public class PhraseScorer
     boolean slidingWindow = Configurator.CONFIG.getBoolean("experiments.time.SlidingWindow");
     int windowSize = Configurator.CONFIG.getInt("experiments.time.WindowSize");
     String outDir = Configurator.CONFIG.getString("output.Path");
-    String outMonoPhraseTable = Configurator.CONFIG.getString("output.MonoPhraseTable");
-    String outAddMonoPhraseTable = Configurator.CONFIG.getString("output.AddMonoPhraseTable");
-    int numMonoScoringThreads = Configurator.CONFIG.getInt("preprocessing.phrases.MonoScoringThreads");
-    int chunkSize = (Configurator.CONFIG.containsKey("preprocessing.phrases.ChunkSize") && Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") > 0) ? 
-        Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") : Integer.MAX_VALUE;    
-    boolean useAlignments = Configurator.CONFIG.getBoolean("preprocessing.phrases.UseAlignmentsForMonoScores");
-
-    if (outMonoPhraseTable != null) {
-      outMonoPhraseTable = outDir + "/" + outMonoPhraseTable; 
+    int numMonoScoringThreads = Configurator.CONFIG.getInt("preprocessing.phrases.features.MonoScoringThreads");
+    int chunkSize = (Configurator.CONFIG.containsKey("preprocessing.phrases.ChunkSize") && Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") > 0) ? Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") : Integer.MAX_VALUE;    
+    String outPhraseTableBPL = Configurator.CONFIG.getString("output.PhraseTableBPL");
+    String outPhraseTablePL = Configurator.CONFIG.getString("output.PhraseTablePL");
+    String outPhraseTableP = Configurator.CONFIG.getString("output.PhraseTableP");
+    String outPhraseTableL = Configurator.CONFIG.getString("output.PhraseTableL");
+    String outPhraseTableNone = Configurator.CONFIG.getString("output.PhraseTableNone");
+    boolean collectPhraseFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableP != null);
+    boolean collectLexFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableL != null);
+      
+    if (outPhraseTableBPL != null) {
+      outPhraseTableBPL = outDir + "/" + outPhraseTableBPL; 
     }
-    
-    if (outAddMonoPhraseTable != null) {
-      outAddMonoPhraseTable = outDir + "/" + outAddMonoPhraseTable; 
+    if (outPhraseTablePL != null) {
+      outPhraseTablePL = outDir + "/" + outPhraseTablePL; 
+    }
+    if (outPhraseTableP != null) {
+      outPhraseTableP = outDir + "/" + outPhraseTableP; 
+    }    
+    if (outPhraseTableL != null) {
+      outPhraseTableL = outDir + "/" + outPhraseTableL; 
+    }
+    if (outPhraseTableNone != null) {
+      outPhraseTableNone = outDir + "/" + outPhraseTableNone; 
     }
     
     LOG.info("--- Preparing for estimating monolingual features " + (chunkSize != Integer.MAX_VALUE ? "in chunks of size " + chunkSize : "") + " ---");
@@ -125,7 +139,7 @@ public class PhraseScorer
     SimpleDictionary translitDict = preparer.getTranslitDict();
     Set<Phrase> singleTokenSrcPhrases = phraseTable.getAllSingleTokenSrcPhrases();
     Set<Phrase> singleTokenTrgPhrases = phraseTable.getAllSingleTokenTrgPhrases();
-    FeatureEstimator featEstimator = new FeatureEstimator(phraseTable, singleTokenSrcPhrases, singleTokenTrgPhrases, numMonoScoringThreads, contextScorer, timeScorer, translitDict, useAlignments);
+    FeatureEstimator featEstimator = new FeatureEstimator(phraseTable, singleTokenSrcPhrases, singleTokenTrgPhrases, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats);
 
     // Prepare for single tokens first (we are going to need them when estimating for longer phrases)
     preparer.collectPropsForFeaturesOnly(singleTokenSrcPhrases, singleTokenTrgPhrases);
@@ -151,8 +165,12 @@ public class PhraseScorer
       // Estimate monolingual similarity features
       featEstimator.estimateFeatures(chunk);
     
-      // Save the new phrase table (containing mono features)
-      phraseTable.savePhraseTableChunk(chunk, outMonoPhraseTable, outAddMonoPhraseTable, useAlignments);
+      // Save the new phrase tables
+      phraseTable.savePhraseTableChunk(chunk, outPhraseTableBPL, FEATS_BPL);
+      phraseTable.savePhraseTableChunk(chunk, outPhraseTablePL, FEATS_PL);
+      phraseTable.savePhraseTableChunk(chunk, outPhraseTableP, FEATS_P);
+      phraseTable.savePhraseTableChunk(chunk, outPhraseTableL, FEATS_L);
+      phraseTable.savePhraseTableChunk(chunk, outPhraseTableNone, FEATS_NONE);
       
       // Clear collected phrase features
       preparer.clearPhraseTableFeatures(srcChunkToProcess);
@@ -165,11 +183,24 @@ public class PhraseScorer
     boolean slidingWindow = Configurator.CONFIG.getBoolean("experiments.time.SlidingWindow");
     int windowSize = Configurator.CONFIG.getInt("experiments.time.WindowSize");
     String outDir = Configurator.CONFIG.getString("output.Path");
-    String outMonoPhraseTable = Configurator.CONFIG.getString("output.MonoPhraseTable");
-    int numMonoScoringThreads = Configurator.CONFIG.getInt("preprocessing.phrases.MonoScoringThreads");
-    int chunkSize = (Configurator.CONFIG.containsKey("preprocessing.phrases.ChunkSize") && Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") > 0) ? 
-        Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") : Integer.MAX_VALUE;
-        
+    int numMonoScoringThreads = Configurator.CONFIG.getInt("preprocessing.phrases.features.MonoScoringThreads");
+    int chunkSize = (Configurator.CONFIG.containsKey("preprocessing.phrases.ChunkSize") && Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") > 0) ? Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") : Integer.MAX_VALUE;
+    String outPhraseTablePL = Configurator.CONFIG.getString("output.PhraseTablePL");
+    String outPhraseTableP = Configurator.CONFIG.getString("output.PhraseTableP");
+    String outPhraseTableL = Configurator.CONFIG.getString("output.PhraseTableL");
+    boolean collectPhraseFeats = (outPhraseTablePL != null) || (outPhraseTableP != null);
+    boolean collectLexFeats = (outPhraseTablePL != null) || (outPhraseTableL != null);
+ 
+    if (outPhraseTablePL != null) {
+      outPhraseTablePL = outDir + "/" + outPhraseTablePL; 
+    }
+    if (outPhraseTableP != null) {
+      outPhraseTableP = outDir + "/" + outPhraseTableP; 
+    }    
+    if (outPhraseTableL != null) {
+      outPhraseTableL = outDir + "/" + outPhraseTableL; 
+    }
+    
     LOG.info("--- Preparing for estimating monolingual features " + (chunkSize != Integer.MAX_VALUE ? "in chunks of size " + chunkSize : "") + " ---");
     
     PhrasePreparer preparer = new PhrasePreparer();    
@@ -193,10 +224,12 @@ public class PhraseScorer
       
       LOG.info(" - Estimating monolingual features for phrase table chunk " + (chunkNum-1) + "...");
       
-      (new FeatureEstimator(preparer.getPhraseTable(), numMonoScoringThreads, contextScorer, timeScorer, translitDict, false)).estimateFeatures(srcChunkToProcess);
+      (new FeatureEstimator(preparer.getPhraseTable(), numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcChunkToProcess);
     
-      // Save the new phrase table (containing mono features)
-      preparer.getPhraseTable().savePhraseTableChunk(srcChunkToProcess, outDir + "/" + outMonoPhraseTable, null, false);      
+      // Save the new phrase tables
+      preparer.getPhraseTable().savePhraseTableChunk(srcChunkToProcess, outPhraseTablePL, FEATS_PL);
+      preparer.getPhraseTable().savePhraseTableChunk(srcChunkToProcess, outPhraseTableP, FEATS_P);
+      preparer.getPhraseTable().savePhraseTableChunk(srcChunkToProcess, outPhraseTableL, FEATS_L);      
     }    
   }
   
@@ -205,21 +238,33 @@ public class PhraseScorer
     boolean slidingWindow = Configurator.CONFIG.getBoolean("experiments.time.SlidingWindow");
     int windowSize = Configurator.CONFIG.getInt("experiments.time.WindowSize");
     String outDir = Configurator.CONFIG.getString("output.Path");
-    String outMonoPhraseTable = Configurator.CONFIG.getString("output.MonoPhraseTable");
-    String outAddMonoPhraseTable = Configurator.CONFIG.getString("output.AddMonoPhraseTable");
-    String outMonoReorderingTable = Configurator.CONFIG.getString("output.MonoReorderingTable");
-    int numReorderingThreads = Configurator.CONFIG.getInt("preprocessing.phrases.ReorderingThreads");
-    int numMonoScoringThreads = Configurator.CONFIG.getInt("preprocessing.phrases.MonoScoringThreads");
-    boolean useAlignments = Configurator.CONFIG.getBoolean("preprocessing.phrases.UseAlignmentsForMonoScores");
+    String outReorderingTableM = Configurator.CONFIG.getString("output.ReorderingTableM");
+    int numReorderingThreads = Configurator.CONFIG.getInt("preprocessing.phrases.reordering.ReorderingThreads");
+    int numMonoScoringThreads = Configurator.CONFIG.getInt("preprocessing.phrases.features.MonoScoringThreads");
+    String outPhraseTableBPL = Configurator.CONFIG.getString("output.PhraseTableBPL");
+    String outPhraseTablePL = Configurator.CONFIG.getString("output.PhraseTablePL");
+    String outPhraseTableP = Configurator.CONFIG.getString("output.PhraseTableP");
+    String outPhraseTableL = Configurator.CONFIG.getString("output.PhraseTableL");
+    String outPhraseTableNone = Configurator.CONFIG.getString("output.PhraseTableNone");
+    boolean collectPhraseFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableP != null);
+    boolean collectLexFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableL != null);
+      
+    if (outPhraseTableBPL != null) {
+      outPhraseTableBPL = outDir + "/" + outPhraseTableBPL; 
+    }
+    if (outPhraseTablePL != null) {
+      outPhraseTablePL = outDir + "/" + outPhraseTablePL; 
+    }
+    if (outPhraseTableP != null) {
+      outPhraseTableP = outDir + "/" + outPhraseTableP; 
+    }    
+    if (outPhraseTableL != null) {
+      outPhraseTableL = outDir + "/" + outPhraseTableL; 
+    }
+    if (outPhraseTableNone != null) {
+      outPhraseTableNone = outDir + "/" + outPhraseTableNone; 
+    }
 
-    if (outMonoPhraseTable != null) {
-      outMonoPhraseTable = outDir + "/" + outMonoPhraseTable; 
-    }
-    
-    if (outAddMonoPhraseTable != null) {
-      outAddMonoPhraseTable = outDir + "/" + outAddMonoPhraseTable; 
-    }
-    
     PhrasePreparer preparer = new PhrasePreparer();    
     preparer.prepareForFeaturesAndOrderCollection();
     
@@ -239,19 +284,23 @@ public class PhraseScorer
     preparer.prepareProperties(false, trgPhrases, contextScorer, timeScorer);
     
     // Estimate monolingual similarity features
-    (new FeatureEstimator(phraseTable, numMonoScoringThreads, contextScorer, timeScorer, translitDict, useAlignments)).estimateFeatures(srcPhrases);
+    (new FeatureEstimator(phraseTable, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);
     
-    // Save the new phrase table (containing mono features)
-    phraseTable.savePhraseTable(outMonoPhraseTable, outAddMonoPhraseTable, useAlignments);
+    // Save the new phrase tables
+    phraseTable.savePhraseTable(outPhraseTableBPL, FEATS_BPL);
+    phraseTable.savePhraseTable(outPhraseTablePL, FEATS_PL);
+    phraseTable.savePhraseTable(outPhraseTableP, FEATS_P);
+    phraseTable.savePhraseTable(outPhraseTableL, FEATS_L);
+    phraseTable.savePhraseTable(outPhraseTableNone, FEATS_NONE);
     
     LOG.info("--- Estimating reordering features ---");
-    preparer.pruneMostFrequentContext(true, srcPhrases, KEEP_PH_CONTEXT, KEEP_PH_CONTEXT, 3 * KEEP_PH_CONTEXT);
-    //preparer.pruneMostFrequentContext(false, trgPhrases, KEEP_PH_CONTEXT, KEEP_PH_CONTEXT, 3 * KEEP_PH_CONTEXT);
+    preparer.pruneMostFrequentContext(true, srcPhrases);
+    preparer.pruneMostFrequentContext(false, trgPhrases);
     
     // Estimate reordering features
     (new OrderEstimator(phraseTable, numReorderingThreads, preparer.getMaxTrgPhrCount())).estimateReordering(srcPhrases);
     
     // Save the reordering table
-    phraseTable.saveReorderingTable(outDir + "/" + outMonoReorderingTable);    
+    phraseTable.saveReorderingTable(outDir + "/" + outReorderingTableM);    
   }
 }

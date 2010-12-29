@@ -24,7 +24,7 @@ public class FeatureEstimator {
   protected static final int NUM_PAIRS_TO_GIVE = 1000;
   protected static final int PERCENT_REPORT = 5;
 
-  protected FeatureEstimator(int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean useAlignments) {
+  protected FeatureEstimator(int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean collectPhraseFeats, boolean collectLexFeats) {
     
     if (numThreads < 1) { 
       throw new IllegalArgumentException("Must request at least one thread");
@@ -34,19 +34,20 @@ public class FeatureEstimator {
     m_contextScorer = contextScorer;
     m_timeScorer = timeScorer;
     m_translitDict = translitDict;
-    m_useAlignments = useAlignments;
+    m_collectPhraseFeats = collectPhraseFeats;
+    m_collectLexFeats = collectLexFeats;
     m_workerIds = new ArrayList<Integer>(m_numThreads); 
     m_phrasePairsToProcess = new LinkedList<PhrasePair>();
     m_srcToks = new HashMap<String, Phrase>();
     m_trgToks = new HashMap<String, Phrase>();
   }  
   
-  public FeatureEstimator(PhraseTable phraseTable, int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean useAlignments) {
+  public FeatureEstimator(PhraseTable phraseTable, int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean collectPhraseFeats, boolean collectLexFeats) {
     
-    this(numThreads, contextScorer, timeScorer, translitDict, useAlignments);
+    this(numThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats);
     m_phraseTable = phraseTable;
     
-    if (useAlignments) {
+    if (collectLexFeats) {
       for (Phrase srcPhrase : phraseTable.getAllSrcPhrases()) {      
         if (srcPhrase.numTokens() == 1) {
           m_srcToks.put(srcPhrase.toString(), srcPhrase);
@@ -61,12 +62,12 @@ public class FeatureEstimator {
     }
   }
   
-  public FeatureEstimator(PhraseTable phraseTable, Set<Phrase> srcSingleTokenPhrases, Set<Phrase> trgSingleTokenPhrases, int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean useAlignments) {
+  public FeatureEstimator(PhraseTable phraseTable, Set<Phrase> srcSingleTokenPhrases, Set<Phrase> trgSingleTokenPhrases, int numThreads, Scorer contextScorer, Scorer timeScorer, SimpleDictionary translitDict, boolean collectPhraseFeats, boolean collectLexFeats) {
     
-    this(numThreads, contextScorer, timeScorer, translitDict, useAlignments); 
+    this(numThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats); 
     m_phraseTable = phraseTable;
 
-    if (useAlignments) {
+    if (collectLexFeats) {
       for (Phrase srcPhrase : srcSingleTokenPhrases) {
         m_srcToks.put(srcPhrase.toString(), srcPhrase);
       }
@@ -99,7 +100,7 @@ public class FeatureEstimator {
     // Start up the worker threads
     for (int threadNum = 0; threadNum < m_numThreads; threadNum++) { 
       m_workerIds.add(threadNum);   
-      (new Thread(new FeatureWorker(this, m_useAlignments, threadNum))).start();
+      (new Thread(new FeatureWorker(this, m_collectPhraseFeats, m_collectLexFeats, threadNum))).start();
     }
     
     // Wait until all threads are done
@@ -139,17 +140,19 @@ public class FeatureEstimator {
     notify();
   }
 
-  protected void estimateFeatures(Phrase srcPhrase, Phrase trgPhrase, boolean useAlignments) {
+  protected void estimateFeatures(Phrase srcPhrase, Phrase trgPhrase, boolean collectPhraseFeats, boolean collectLexFeats) {
     PairProps props = m_phraseTable.getProps(srcPhrase, trgPhrase);
-   
-    if (useAlignments) {
+
+    if (collectPhraseFeats) {
+      props.setPairFeatVal(PairFeat.PH_CONTEXT, m_contextScorer.score(srcPhrase, trgPhrase));
+      props.setPairFeatVal(PairFeat.PH_TIME, m_timeScorer.score(srcPhrase, trgPhrase));
+    }
+    
+    if (collectLexFeats) {
       double[] scores = scoreAverage(srcPhrase, trgPhrase, props, new Scorer[]{m_contextScorer, m_timeScorer});
-      props.setPairFeatVal(PairFeat.CONTEXT, scores[0]);
-      props.setPairFeatVal(PairFeat.TIME, scores[1]);  
-      props.setPairFeatVal(PairFeat.EDIT, scoreEdit(srcPhrase, trgPhrase, props, m_translitDict));
-    } else {
-      props.setPairFeatVal(PairFeat.CONTEXT, m_contextScorer.score(srcPhrase, trgPhrase));
-      props.setPairFeatVal(PairFeat.TIME, m_timeScorer.score(srcPhrase, trgPhrase));
+      props.setPairFeatVal(PairFeat.LEX_CONTEXT, scores[0]);
+      props.setPairFeatVal(PairFeat.LEX_TIME, scores[1]);  
+      props.setPairFeatVal(PairFeat.LEX_EDIT, scoreEdit(srcPhrase, trgPhrase, props, m_translitDict));
     }
   }
   
@@ -282,7 +285,8 @@ public class FeatureEstimator {
   protected Scorer m_contextScorer;
   protected Scorer m_timeScorer;
   protected SimpleDictionary m_translitDict;
-  protected boolean m_useAlignments;
+  protected boolean m_collectPhraseFeats;
+  protected boolean m_collectLexFeats;
   protected int m_numThreads;
   protected List<Integer> m_workerIds;
   protected LinkedList<PhrasePair> m_phrasePairsToProcess;
@@ -293,10 +297,11 @@ public class FeatureEstimator {
   
   class FeatureWorker implements Runnable {
     
-    public FeatureWorker(FeatureEstimator estimator, boolean useAlignments, int workerId) {
+    public FeatureWorker(FeatureEstimator estimator, boolean collectPhraseFeats, boolean collectLexFeats, int workerId) {
       m_workerId = workerId;
       m_estimator = estimator;
-      m_useAlignments = useAlignments;
+      m_collectPhraseFeats = collectPhraseFeats;
+      m_collectLexFeats = collectLexFeats;
     }
   
     public void run() {
@@ -308,7 +313,7 @@ public class FeatureEstimator {
       while (null != (phrasePairs = m_estimator.getPhrasePairsToProcess())) { 
         
         for (PhrasePair pair : phrasePairs) {
-          m_estimator.estimateFeatures(pair.srcPhrase(), pair.trgPhrase(), m_useAlignments);
+          m_estimator.estimateFeatures(pair.srcPhrase(), pair.trgPhrase(), m_collectPhraseFeats, m_collectLexFeats);
         }
         
         m_estimator.estimationDone(phrasePairs.size());
@@ -321,6 +326,7 @@ public class FeatureEstimator {
   
     protected int m_workerId;
     protected FeatureEstimator m_estimator;
-    protected boolean m_useAlignments;
+    protected boolean m_collectPhraseFeats;
+    protected boolean m_collectLexFeats;
   }
 }
