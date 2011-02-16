@@ -58,7 +58,7 @@ public class DatedLangFilesOutputFormat extends MultipleOutputFormat<Text, Text>
       int month = cal.get(Calendar.MONTH) + 1;
       int day = cal.get(Calendar.DAY_OF_MONTH);
       
-      if (year < 2000 || year > 2010)
+      if (year < 2000 || year > 2011)
       {
         return REJECTED_FILE;
       }
