@@ -37,7 +37,7 @@ public class DatedCorpusGenMapper extends MapReduceBase implements Mapper<Text, 
     Language lang = page.getLanguage();
     String content;
         
-    if ((lang != null) && isBBCEnglish(page))
+    if (lang != null) // && isBBCEnglish(page))
     {
       Long modTime;
       
