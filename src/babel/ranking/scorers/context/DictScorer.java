@@ -24,26 +24,32 @@ public abstract class DictScorer extends Scorer
   
   public double score(EquivalenceClass srcEq, EquivalenceClass trgEq)
   {
-    Context srcContext = (Context)srcEq.getProperty(Context.class.getName());     
-    Context trgContext = (Context)trgEq.getProperty(Context.class.getName()); 
+    Context smContext = (Context)srcEq.getProperty(Context.class.getName());     
+    Context lgContext = (Context)trgEq.getProperty(Context.class.getName()); 
 
-    if (srcContext == null || trgContext == null || !srcContext.areContItemsScored() || !trgContext.areContItemsScored())
+    if (smContext == null || lgContext == null || !smContext.areContItemsScored() || !lgContext.areContItemsScored())
     { throw new IllegalArgumentException("At least one of the classes has no or unscored context.");
+    }
+
+    if (lgContext.size() < smContext.size()) {
+      Context tmpContext = smContext;
+      smContext = lgContext;
+      lgContext = tmpContext;
     }
     
     double score = 0, score1 = 0, score2 = 0;
     double w2, w1;
     
-    ContextualItem trgCi;
+    ContextualItem lgCi;
     
-    for (ContextualItem srcCi : srcContext.getContextualItems())
+    for (ContextualItem smCi : smContext.getContextualItems())
     {
-      w1 = srcCi.getScore();
+      w1 = smCi.getScore();
       w2 = 0;
       
-      if (null != (trgCi = trgContext.getContextualItem(srcCi.getContextEqId())))
+      if (null != (lgCi = lgContext.getContextualItem(smCi.getContextEqId())))
       {
-        w2 = trgCi.getScore();
+        w2 = lgCi.getScore();
       }
       
       score1 += w2 * w2;
