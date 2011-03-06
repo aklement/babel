@@ -25,7 +25,7 @@ public class LSHScorer extends Scorer {
       throw new IllegalArgumentException("At least one of the classes has no property " + m_propClass.getName() + ".");
     }
     
-    return LSH.scoreSignatures(srcProp.getSignature(), trgProp.getSignature());    
+    return Math.max(0.0, LSH.scoreSignatures(srcProp.getSignature(), trgProp.getSignature()));
   }
 
   public void prepare(EquivalenceClass eq) {
