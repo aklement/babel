@@ -168,15 +168,20 @@ public class FeatureEstimator {
     
     double letterCount = 0;
     double numEdits = 0; 
+    double unAlignedSrcLetters = 0;
+    double unAlignedTrgLetters = 0;
     
     // Forward counts
     int[][] aligns = props.getForwardAligns();
     for (int i = 0; i < aligns.length; i++) {
+      
       if (aligns[i] != null) {
         for (int j = 0; j < aligns[i].length; j++) {
           numEdits += EditDistance.distance(srcWords[i], trgWords[aligns[i][j]]);
           letterCount += (double)(srcWords[i].length() + trgWords[aligns[i][j]].length()) / 2.0;
         }
+      } else {
+        unAlignedSrcLetters += srcWords[i].length();
       }
     }
     
@@ -188,8 +193,14 @@ public class FeatureEstimator {
           numEdits += EditDistance.distance(trgWords[i], srcWords[aligns[i][j]]);
           letterCount += (double)(trgWords[i].length() + srcWords[aligns[i][j]].length()) / 2.0;
         }
+      } else {
+        unAlignedTrgLetters += trgWords[i].length();
       }
     }
+    
+    // Account for the unaligned words
+    numEdits += Math.max(unAlignedSrcLetters, unAlignedTrgLetters);
+    letterCount += (unAlignedSrcLetters + unAlignedTrgLetters) / 2.0;
     
     return numEdits / letterCount;
   }
