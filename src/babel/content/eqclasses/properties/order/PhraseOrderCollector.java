@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.order;
 
 import java.io.BufferedReader;
 import java.util.HashMap;
@@ -12,6 +12,7 @@ import org.apache.commons.logging.LogFactory;
 import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.phrases.Phrase;
+import babel.content.eqclasses.properties.PhrasePropertyCollector;
 import babel.util.misc.GettableHashSet;
 import babel.util.misc.InvertibleHashMap;
 

@@ -19,6 +19,6 @@ public abstract class Property
   { return getClass().getName();
   }
   
-  public abstract String persistToString();
+  public abstract String persistToString() throws Exception;
   public abstract void unpersistFromString(EquivalenceClass eq, String str) throws Exception;
 }

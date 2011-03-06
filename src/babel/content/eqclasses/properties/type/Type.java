@@ -1,7 +1,8 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.type;
 
 
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.properties.Property;
 
 public class Type extends Property
 {

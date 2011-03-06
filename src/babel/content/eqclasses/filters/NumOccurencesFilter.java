@@ -1,7 +1,7 @@
 package babel.content.eqclasses.filters;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.properties.Number;
+import babel.content.eqclasses.properties.number.Number;
 
 public class NumOccurencesFilter implements EquivalenceClassFilter
 {

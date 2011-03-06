@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.number;
 
 import java.io.BufferedReader;
 import java.util.HashMap;
@@ -9,6 +9,7 @@ import org.apache.commons.logging.LogFactory;
 
 import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.properties.PropertyCollector;
 
 public class NumberCollector extends PropertyCollector
 {

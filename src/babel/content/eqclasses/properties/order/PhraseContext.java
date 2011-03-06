@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.order;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,6 +11,7 @@ import java.util.Set;
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.comparators.NumberComparator;
 import babel.content.eqclasses.phrases.Phrase;
+import babel.content.eqclasses.properties.Property;
 
 public class PhraseContext extends Property {
   

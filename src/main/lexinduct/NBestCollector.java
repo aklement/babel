@@ -13,8 +13,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.properties.Context;
-import babel.content.eqclasses.properties.Context.ScoreComparator;
+import babel.content.eqclasses.properties.context.Context;
+import babel.content.eqclasses.properties.context.Context.ScoreComparator;
 
 import babel.ranking.EquivClassCandRanking;
 import babel.ranking.MRRAggregator;

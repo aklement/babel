@@ -6,10 +6,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.properties.Context;
-import babel.content.eqclasses.properties.Type;
-import babel.content.eqclasses.properties.Context.ContextualItem;
-import babel.content.eqclasses.properties.Type.EqType;
+import babel.content.eqclasses.properties.context.Context;
+import babel.content.eqclasses.properties.context.Context.ContextualItem;
+import babel.content.eqclasses.properties.type.Type;
+import babel.content.eqclasses.properties.type.Type.EqType;
 import babel.ranking.scorers.Scorer;
 import babel.util.dict.Dictionary;
 
@@ -60,7 +60,7 @@ public abstract class DictScorer extends Scorer
   
   protected abstract double scoreContItem(ContextualItem contItem, EqType type);
   
-  /** Projects and precomuptes feature scores. */
+  /** Projects and pre-computes feature scores. */
   public void prepare(EquivalenceClass eq)
   {
     EqType type = ((Type)eq.getProperty(Type.class.getName())).getType();

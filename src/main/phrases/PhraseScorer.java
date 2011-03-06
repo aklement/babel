@@ -9,10 +9,13 @@ import org.apache.commons.logging.LogFactory;
 import babel.content.eqclasses.phrases.Phrase;
 import babel.content.eqclasses.phrases.PhraseTable;
 import babel.content.eqclasses.phrases.PhraseTable.PairFeat;
+import babel.content.eqclasses.properties.lshcontext.LSHContext;
+import babel.content.eqclasses.properties.lshtime.LSHTimeDistribution;
 
 import babel.ranking.scorers.Scorer;
 import babel.ranking.scorers.context.DictScorer;
 import babel.ranking.scorers.context.FungS1Scorer;
+import babel.ranking.scorers.lsh.LSHScorer;
 import babel.ranking.scorers.timedistribution.TimeDistributionCosineScorer;
 
 import babel.util.config.Configurator;
@@ -20,6 +23,8 @@ import babel.util.dict.SimpleDictionary;
 
 public class PhraseScorer
 {
+  protected static final boolean MAP_TO_LSH = true; // TODO: make a config option!
+  
   protected static final Log LOG = LogFactory.getLog(PhraseScorer.class);
   protected static PairFeat[] FEATS_BPL = new PairFeat[]{PairFeat.FE, PairFeat.LEX_FE, PairFeat.EF, PairFeat.LEX_EF, PairFeat.PHPENALTY, PairFeat.PH_CONTEXT, PairFeat.PH_TIME, PairFeat.LEX_CONTEXT, PairFeat.LEX_TIME, PairFeat.LEX_EDIT};
   protected static PairFeat[] FEATS_PL = new PairFeat[]{PairFeat.PHPENALTY, PairFeat.PH_CONTEXT, PairFeat.PH_TIME, PairFeat.LEX_CONTEXT, PairFeat.LEX_TIME, PairFeat.LEX_EDIT};
@@ -139,13 +144,15 @@ public class PhraseScorer
     SimpleDictionary translitDict = preparer.getTranslitDict();
     Set<Phrase> singleTokenSrcPhrases = phraseTable.getAllSingleTokenSrcPhrases();
     Set<Phrase> singleTokenTrgPhrases = phraseTable.getAllSingleTokenTrgPhrases();
-    FeatureEstimator featEstimator = new FeatureEstimator(phraseTable, singleTokenSrcPhrases, singleTokenTrgPhrases, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats);
-
+    FeatureEstimator featEstimator = MAP_TO_LSH ?
+        new FeatureEstimator(phraseTable, singleTokenSrcPhrases, singleTokenTrgPhrases, numMonoScoringThreads, new LSHScorer(LSHContext.class),  new LSHScorer(LSHTimeDistribution.class), translitDict, collectPhraseFeats, collectLexFeats) :
+        new FeatureEstimator(phraseTable, singleTokenSrcPhrases, singleTokenTrgPhrases, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats);
+    
     // Prepare for single tokens first (we are going to need them when estimating for longer phrases)
     preparer.collectPropsForFeaturesOnly(singleTokenSrcPhrases, singleTokenTrgPhrases);
     // Pre-process properties (i.e. project contexts, normalizes distributions)
-    preparer.prepareProperties(true, singleTokenSrcPhrases, contextScorer, timeScorer);
-    preparer.prepareProperties(false, singleTokenTrgPhrases, contextScorer, timeScorer);
+    preparer.prepareContextAndTimeProps(true, singleTokenSrcPhrases, contextScorer, timeScorer, MAP_TO_LSH);
+    preparer.prepareContextAndTimeProps(false, singleTokenTrgPhrases, contextScorer, timeScorer, MAP_TO_LSH);
     
     // Split up the phrase table and process one chunk at a time
     while ((chunk = preparer.getNextChunk(chunkSize)) != null) {
@@ -157,8 +164,8 @@ public class PhraseScorer
     
       preparer.collectPropsForFeaturesOnly(srcChunkToProcess, trgChunkToProcess);
       // Pre-process properties (i.e. project contexts, normalizes distributions)
-      preparer.prepareProperties(true, srcChunkToProcess, contextScorer, timeScorer);
-      preparer.prepareProperties(false, trgChunkToProcess, contextScorer, timeScorer);
+      preparer.prepareContextAndTimeProps(true, srcChunkToProcess, contextScorer, timeScorer, MAP_TO_LSH);
+      preparer.prepareContextAndTimeProps(false, trgChunkToProcess, contextScorer, timeScorer, MAP_TO_LSH);
       
       LOG.info(" - Estimating monolingual features for phrase table chunk " + (chunkNum-1) + "...");
       
@@ -219,13 +226,18 @@ public class PhraseScorer
       trgChunkToProcess = preparer.getPhraseTable().getAllTrgPhrases();
     
       preparer.collectPropsForFeaturesOnly(srcChunkToProcess, trgChunkToProcess);
-      preparer.prepareProperties(true, srcChunkToProcess, contextScorer, timeScorer);
-      preparer.prepareProperties(false, trgChunkToProcess, contextScorer, timeScorer);
+      // Pre-process properties (i.e. project contexts, normalizes distributions)
+      preparer.prepareContextAndTimeProps(true, srcChunkToProcess, contextScorer, timeScorer, MAP_TO_LSH);
+      preparer.prepareContextAndTimeProps(false, trgChunkToProcess, contextScorer, timeScorer, MAP_TO_LSH);
       
       LOG.info(" - Estimating monolingual features for phrase table chunk " + (chunkNum-1) + "...");
       
-      (new FeatureEstimator(preparer.getPhraseTable(), numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcChunkToProcess);
-    
+      if (MAP_TO_LSH) {
+        (new FeatureEstimator(preparer.getPhraseTable(), numMonoScoringThreads, new LSHScorer(LSHContext.class),  new LSHScorer(LSHTimeDistribution.class), translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcChunkToProcess);
+      } else {
+        (new FeatureEstimator(preparer.getPhraseTable(), numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcChunkToProcess);
+      }
+      
       // Save the new phrase tables
       preparer.getPhraseTable().savePhraseTableChunk(srcChunkToProcess, outPhraseTablePL, FEATS_PL);
       preparer.getPhraseTable().savePhraseTableChunk(srcChunkToProcess, outPhraseTableP, FEATS_P);
@@ -278,13 +290,17 @@ public class PhraseScorer
     SimpleDictionary translitDict = preparer.getTranslitDict();
     
     LOG.info("--- Estimating monolingual features ---");
-    
+
     // Pre-process properties (i.e. project contexts, normalizes distributions)
-    preparer.prepareProperties(true, srcPhrases, contextScorer, timeScorer);
-    preparer.prepareProperties(false, trgPhrases, contextScorer, timeScorer);
+    preparer.prepareContextAndTimeProps(true, srcPhrases, contextScorer, timeScorer, MAP_TO_LSH);
+    preparer.prepareContextAndTimeProps(false, trgPhrases, contextScorer, timeScorer, MAP_TO_LSH);
     
     // Estimate monolingual similarity features
-    (new FeatureEstimator(phraseTable, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);
+    if (MAP_TO_LSH) {
+      (new FeatureEstimator(phraseTable, numMonoScoringThreads,  new LSHScorer(LSHContext.class),  new LSHScorer(LSHTimeDistribution.class), translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);      
+    } else {
+     (new FeatureEstimator(phraseTable, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);
+    }
     
     // Save the new phrase tables
     phraseTable.savePhraseTable(outPhraseTableBPL, FEATS_BPL);

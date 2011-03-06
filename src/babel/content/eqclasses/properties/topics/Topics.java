@@ -1,9 +1,10 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.topics;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.properties.Property;
 
 public class Topics extends Property
 {   

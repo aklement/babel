@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.time;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.properties.Property;
 
 public class TimeDistribution extends Property implements Cloneable
 {

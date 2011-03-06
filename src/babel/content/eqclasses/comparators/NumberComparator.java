@@ -3,7 +3,7 @@ package babel.content.eqclasses.comparators;
 import java.util.Comparator;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.properties.Number;
+import babel.content.eqclasses.properties.number.Number;
 
 /**
  * Compares two EquivalenceClasses based on the value of the number property.

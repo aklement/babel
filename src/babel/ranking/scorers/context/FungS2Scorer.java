@@ -4,10 +4,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.properties.Context;
-import babel.content.eqclasses.properties.Type;
-import babel.content.eqclasses.properties.Context.ContextualItem;
-import babel.content.eqclasses.properties.Type.EqType;
+import babel.content.eqclasses.properties.context.Context;
+import babel.content.eqclasses.properties.context.Context.ContextualItem;
+import babel.content.eqclasses.properties.type.Type;
+import babel.content.eqclasses.properties.type.Type.EqType;
 import babel.util.dict.Dictionary;
 
 public class FungS2Scorer extends DictScorer

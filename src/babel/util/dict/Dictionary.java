@@ -9,8 +9,8 @@ import java.util.Set;
 
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.SimpleEquivalenceClass;
-import babel.content.eqclasses.properties.Context;
-import babel.content.eqclasses.properties.Context.ContextualItem;
+import babel.content.eqclasses.properties.context.Context;
+import babel.content.eqclasses.properties.context.Context.ContextualItem;
 
 public class Dictionary
 {

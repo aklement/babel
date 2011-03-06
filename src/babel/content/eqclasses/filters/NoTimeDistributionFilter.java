@@ -1,7 +1,7 @@
 package babel.content.eqclasses.filters;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.properties.TimeDistribution;
+import babel.content.eqclasses.properties.time.TimeDistribution;
 
 public class NoTimeDistributionFilter implements EquivalenceClassFilter
 {  

@@ -15,7 +15,7 @@ import babel.content.eqclasses.phrases.PhrasePair;
 import babel.content.eqclasses.phrases.PhraseTable;
 //import babel.content.eqclasses.phrases.PhraseTable.PairFeat;
 import babel.content.eqclasses.phrases.PhraseTable.PairProps;
-import babel.content.eqclasses.properties.PhraseContext;
+import babel.content.eqclasses.properties.order.PhraseContext;
 
 public class OrderEstimator {
 

@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.context;
 
 import java.io.BufferedReader;
 
@@ -13,6 +13,7 @@ import org.apache.commons.logging.LogFactory;
 
 import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.properties.PhrasePropertyCollector;
 
 public class PhraseContextCollector extends PhrasePropertyCollector {
   

@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.context;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -8,6 +8,8 @@ import java.util.Collections;
 import java.util.Comparator;
 
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.properties.Property;
+import babel.content.eqclasses.properties.number.Number;
 import babel.ranking.scorers.context.DictScorer;
 
 /**

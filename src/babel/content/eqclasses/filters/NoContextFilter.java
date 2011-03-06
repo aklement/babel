@@ -1,7 +1,7 @@
 package babel.content.eqclasses.filters;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.properties.Context;
+import babel.content.eqclasses.properties.context.Context;
 
 public class NoContextFilter implements EquivalenceClassFilter
 {  

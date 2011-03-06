@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.time;
 
 import java.io.BufferedReader;
 import java.util.HashMap;
@@ -12,6 +12,7 @@ import org.apache.commons.logging.LogFactory;
 import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.corpora.accessors.TemporalCorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.properties.PhrasePropertyCollector;
 
 public class PhraseTimeDistributionCollector extends PhrasePropertyCollector {
   

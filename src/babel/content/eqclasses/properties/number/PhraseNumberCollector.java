@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.number;
 
 import java.io.BufferedReader;
 import java.util.List;
@@ -7,6 +7,7 @@ import java.util.Set;
 import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.phrases.Phrase;
+import babel.content.eqclasses.properties.PhrasePropertyCollector;
 import babel.util.misc.GettableHashSet;
 
 public class PhraseNumberCollector extends PhrasePropertyCollector {

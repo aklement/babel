@@ -1,8 +1,8 @@
 package babel.ranking.scorers.context;
 
-import babel.content.eqclasses.properties.Type;
-import babel.content.eqclasses.properties.Context.ContextualItem;
-import babel.content.eqclasses.properties.Type.EqType;
+import babel.content.eqclasses.properties.context.Context.ContextualItem;
+import babel.content.eqclasses.properties.type.Type;
+import babel.content.eqclasses.properties.type.Type.EqType;
 import babel.util.dict.Dictionary;
 
 public class FungS1Scorer extends DictScorer

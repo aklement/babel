@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import babel.content.eqclasses.EquivalenceClass;
-import babel.content.eqclasses.properties.TimeDistribution;
+import babel.content.eqclasses.properties.time.TimeDistribution;
 import babel.ranking.scorers.Scorer;
 
 /**

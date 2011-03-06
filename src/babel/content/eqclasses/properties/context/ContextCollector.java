@@ -1,4 +1,4 @@
-package babel.content.eqclasses.properties;
+package babel.content.eqclasses.properties.context;
 
 import java.io.BufferedReader;
 import java.util.HashMap;
@@ -10,6 +10,7 @@ import org.apache.commons.logging.LogFactory;
 
 import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
+import babel.content.eqclasses.properties.PropertyCollector;
 
 /**
  * Collects contextual equivalence class.  Does not collect across sentence 
@@ -44,8 +45,6 @@ public class ContextCollector extends PropertyCollector
     String[] curSents;
     String[] curSentTokens;
     EquivalenceClass foundEq;
-    //EquivalenceClass cntEq;
-    //CoOccurrers cntCoOcc;
     Context fountEqContext;
     int min, max;
       
@@ -91,19 +90,7 @@ public class ContextCollector extends PropertyCollector
               if (contextIdx != numToken)
               { 
                 // Add current word to the current equivalence class context
-                //cntEq = 
-                  fountEqContext.addContextWord(m_caseSensitive, m_allContextEqsMap, curSentTokens[contextIdx]);
-                  
-               // TODO: Temp
-               // if (cntEq != null)
-               // {
-               //   // Get/set and update the co-occurrers prop
-               //   if ((cntCoOcc = (CoOccurrers)cntEq.getProperty(CoOccurrers.class.getName())) == null)
-               //   { cntEq.setProperty(cntCoOcc = new CoOccurrers());
-               //   }
-                    
-               //   cntCoOcc.addCoOccurrer(tmpEq);    
-               // }
+                fountEqContext.addContextWord(m_caseSensitive, m_allContextEqsMap, curSentTokens[contextIdx]);
               }
             }
           }

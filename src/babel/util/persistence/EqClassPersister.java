@@ -61,7 +61,7 @@ public class EqClassPersister
     return eqs;
   }
   
-  public static void persistProperty(Set<EquivalenceClass> eqs, String propClassName, String fileName) throws IOException
+  public static void persistProperty(Set<? extends EquivalenceClass> eqs, String propClassName, String fileName) throws Exception
   {
     BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
     int numNoProp = 0;
@@ -90,7 +90,7 @@ public class EqClassPersister
   }
 
   @SuppressWarnings("unchecked")
-  public static void unpersistProperty(Set<EquivalenceClass> eqs, String propClassName, String fileName) throws Exception
+  public static void unpersistProperty(Set<? extends EquivalenceClass> eqs, String propClassName, String fileName) throws Exception
   {
     BufferedReader reader = new BufferedReader(new FileReader(fileName));
     HashMap<Long, EquivalenceClass> eqMap = new HashMap<Long, EquivalenceClass>();
