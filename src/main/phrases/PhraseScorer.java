@@ -22,9 +22,7 @@ import babel.util.config.Configurator;
 import babel.util.dict.SimpleDictionary;
 
 public class PhraseScorer
-{
-  protected static final boolean MAP_TO_LSH = true; // TODO: make a config option!
-  
+{  
   protected static final Log LOG = LogFactory.getLog(PhraseScorer.class);
   protected static PairFeat[] FEATS_BPL = new PairFeat[]{PairFeat.FE, PairFeat.LEX_FE, PairFeat.EF, PairFeat.LEX_EF, PairFeat.PHPENALTY, PairFeat.PH_CONTEXT, PairFeat.PH_TIME, PairFeat.LEX_CONTEXT, PairFeat.LEX_TIME, PairFeat.LEX_EDIT};
   protected static PairFeat[] FEATS_PL = new PairFeat[]{PairFeat.PHPENALTY, PairFeat.PH_CONTEXT, PairFeat.PH_TIME, PairFeat.LEX_CONTEXT, PairFeat.LEX_TIME, PairFeat.LEX_EDIT};
@@ -114,6 +112,7 @@ public class PhraseScorer
     String outPhraseTableNone = Configurator.CONFIG.getString("output.PhraseTableNone");
     boolean collectPhraseFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableP != null);
     boolean collectLexFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableL != null);
+    boolean approxFeats = Configurator.CONFIG.getBoolean("preprocessing.phrases.features.ApproxFeatsWithLSH");
       
     if (outPhraseTableBPL != null) {
       outPhraseTableBPL = outDir + "/" + outPhraseTableBPL; 
@@ -144,15 +143,15 @@ public class PhraseScorer
     SimpleDictionary translitDict = preparer.getTranslitDict();
     Set<Phrase> singleTokenSrcPhrases = phraseTable.getAllSingleTokenSrcPhrases();
     Set<Phrase> singleTokenTrgPhrases = phraseTable.getAllSingleTokenTrgPhrases();
-    FeatureEstimator featEstimator = MAP_TO_LSH ?
+    FeatureEstimator featEstimator = approxFeats ?
         new FeatureEstimator(phraseTable, singleTokenSrcPhrases, singleTokenTrgPhrases, numMonoScoringThreads, new LSHScorer(LSHContext.class),  new LSHScorer(LSHTimeDistribution.class), translitDict, collectPhraseFeats, collectLexFeats) :
         new FeatureEstimator(phraseTable, singleTokenSrcPhrases, singleTokenTrgPhrases, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats);
     
     // Prepare for single tokens first (we are going to need them when estimating for longer phrases)
     preparer.collectPropsForFeaturesOnly(singleTokenSrcPhrases, singleTokenTrgPhrases);
     // Pre-process properties (i.e. project contexts, normalizes distributions)
-    preparer.prepareContextAndTimeProps(true, singleTokenSrcPhrases, contextScorer, timeScorer, MAP_TO_LSH);
-    preparer.prepareContextAndTimeProps(false, singleTokenTrgPhrases, contextScorer, timeScorer, MAP_TO_LSH);
+    preparer.prepareContextAndTimeProps(true, singleTokenSrcPhrases, contextScorer, timeScorer, approxFeats);
+    preparer.prepareContextAndTimeProps(false, singleTokenTrgPhrases, contextScorer, timeScorer, approxFeats);
     
     // Split up the phrase table and process one chunk at a time
     while ((chunk = preparer.getNextChunk(chunkSize)) != null) {
@@ -164,8 +163,8 @@ public class PhraseScorer
     
       preparer.collectPropsForFeaturesOnly(srcChunkToProcess, trgChunkToProcess);
       // Pre-process properties (i.e. project contexts, normalizes distributions)
-      preparer.prepareContextAndTimeProps(true, srcChunkToProcess, contextScorer, timeScorer, MAP_TO_LSH);
-      preparer.prepareContextAndTimeProps(false, trgChunkToProcess, contextScorer, timeScorer, MAP_TO_LSH);
+      preparer.prepareContextAndTimeProps(true, srcChunkToProcess, contextScorer, timeScorer, approxFeats);
+      preparer.prepareContextAndTimeProps(false, trgChunkToProcess, contextScorer, timeScorer, approxFeats);
       
       LOG.info(" - Estimating monolingual features for phrase table chunk " + (chunkNum-1) + "...");
       
@@ -178,6 +177,9 @@ public class PhraseScorer
       phraseTable.savePhraseTableChunk(chunk, outPhraseTableP, FEATS_P);
       phraseTable.savePhraseTableChunk(chunk, outPhraseTableL, FEATS_L);
       phraseTable.savePhraseTableChunk(chunk, outPhraseTableNone, FEATS_NONE);
+      
+      // Save stats for Ben
+      phraseTable.saveContextStatsForBen(outDir + "/statsForBen.txt");
       
       // Clear collected phrase features
       preparer.clearPhraseTableFeatures(srcChunkToProcess);
@@ -197,6 +199,7 @@ public class PhraseScorer
     String outPhraseTableL = Configurator.CONFIG.getString("output.PhraseTableL");
     boolean collectPhraseFeats = (outPhraseTablePL != null) || (outPhraseTableP != null);
     boolean collectLexFeats = (outPhraseTablePL != null) || (outPhraseTableL != null);
+    boolean approxFeats = Configurator.CONFIG.getBoolean("preprocessing.phrases.features.ApproxFeatsWithLSH");
  
     if (outPhraseTablePL != null) {
       outPhraseTablePL = outDir + "/" + outPhraseTablePL; 
@@ -227,12 +230,12 @@ public class PhraseScorer
     
       preparer.collectPropsForFeaturesOnly(srcChunkToProcess, trgChunkToProcess);
       // Pre-process properties (i.e. project contexts, normalizes distributions)
-      preparer.prepareContextAndTimeProps(true, srcChunkToProcess, contextScorer, timeScorer, MAP_TO_LSH);
-      preparer.prepareContextAndTimeProps(false, trgChunkToProcess, contextScorer, timeScorer, MAP_TO_LSH);
+      preparer.prepareContextAndTimeProps(true, srcChunkToProcess, contextScorer, timeScorer, approxFeats);
+      preparer.prepareContextAndTimeProps(false, trgChunkToProcess, contextScorer, timeScorer, approxFeats);
       
       LOG.info(" - Estimating monolingual features for phrase table chunk " + (chunkNum-1) + "...");
       
-      if (MAP_TO_LSH) {
+      if (approxFeats) {
         (new FeatureEstimator(preparer.getPhraseTable(), numMonoScoringThreads, new LSHScorer(LSHContext.class),  new LSHScorer(LSHTimeDistribution.class), translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcChunkToProcess);
       } else {
         (new FeatureEstimator(preparer.getPhraseTable(), numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcChunkToProcess);
@@ -260,7 +263,8 @@ public class PhraseScorer
     String outPhraseTableNone = Configurator.CONFIG.getString("output.PhraseTableNone");
     boolean collectPhraseFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableP != null);
     boolean collectLexFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableL != null);
-      
+    boolean approxFeats = Configurator.CONFIG.getBoolean("preprocessing.phrases.features.ApproxFeatsWithLSH");
+          
     if (outPhraseTableBPL != null) {
       outPhraseTableBPL = outDir + "/" + outPhraseTableBPL; 
     }
@@ -292,11 +296,11 @@ public class PhraseScorer
     LOG.info("--- Estimating monolingual features ---");
 
     // Pre-process properties (i.e. project contexts, normalizes distributions)
-    preparer.prepareContextAndTimeProps(true, srcPhrases, contextScorer, timeScorer, MAP_TO_LSH);
-    preparer.prepareContextAndTimeProps(false, trgPhrases, contextScorer, timeScorer, MAP_TO_LSH);
+    preparer.prepareContextAndTimeProps(true, srcPhrases, contextScorer, timeScorer, approxFeats);
+    preparer.prepareContextAndTimeProps(false, trgPhrases, contextScorer, timeScorer, approxFeats);
     
     // Estimate monolingual similarity features
-    if (MAP_TO_LSH) {
+    if (approxFeats) {
       (new FeatureEstimator(phraseTable, numMonoScoringThreads,  new LSHScorer(LSHContext.class),  new LSHScorer(LSHTimeDistribution.class), translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);      
     } else {
      (new FeatureEstimator(phraseTable, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);
@@ -308,6 +312,9 @@ public class PhraseScorer
     phraseTable.savePhraseTable(outPhraseTableP, FEATS_P);
     phraseTable.savePhraseTable(outPhraseTableL, FEATS_L);
     phraseTable.savePhraseTable(outPhraseTableNone, FEATS_NONE);
+    
+    // Save stats for Ben
+    //phraseTable.saveContextStatsForBen(outDir + "/statsForBen.txt");
     
     LOG.info("--- Estimating reordering features ---");
     preparer.pruneMostFrequentContext(true, srcPhrases);
