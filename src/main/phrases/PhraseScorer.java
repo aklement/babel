@@ -179,7 +179,7 @@ public class PhraseScorer
       phraseTable.savePhraseTableChunk(chunk, outPhraseTableNone, FEATS_NONE);
       
       // Save stats for Ben
-      phraseTable.saveContextStatsForBen(outDir + "/statsForBen.txt");
+      //phraseTable.saveContextStatsForBen(outDir + "/statsForBen.txt");
       
       // Clear collected phrase features
       preparer.clearPhraseTableFeatures(srcChunkToProcess);
