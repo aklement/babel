@@ -21,6 +21,10 @@ public class LSHContextCollector extends LSHPropertyCollector {
   private static final Log LOG = LogFactory.getLog(LSHContextCollector.class);
   private static final LSH CONTEXT_LSH = new LSH();
   
+  public LSHContextCollector(boolean removeOrigProp) {
+    super(removeOrigProp);
+  }
+  
   public void collectProperty(Set<? extends EquivalenceClass> eqClasses) throws Exception {
 
     Context context;
@@ -43,7 +47,9 @@ public class LSHContextCollector extends LSHPropertyCollector {
         }
         
         eq.setProperty(new LSHContext(eq, CONTEXT_LSH.buildSignature(features)));
-        eq.removeProperty(Context.class.getName());
+        if (m_removeOrigProp) {
+          eq.removeProperty(Context.class.getName());
+        }
       }
     }
     

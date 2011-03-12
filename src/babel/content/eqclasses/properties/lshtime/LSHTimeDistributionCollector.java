@@ -20,6 +20,10 @@ public class LSHTimeDistributionCollector extends LSHPropertyCollector {
   private static final Log LOG = LogFactory.getLog(LSHTimeDistributionCollector.class);
   private static final LSH TIME_LSH = new LSH();
   
+  public LSHTimeDistributionCollector(boolean removeOrigProp) {
+    super(removeOrigProp);
+  }
+  
   public void collectProperty(Set<? extends EquivalenceClass> eqClasses) throws Exception {
 
     TimeDistribution distro;
@@ -44,7 +48,10 @@ public class LSHTimeDistributionCollector extends LSHPropertyCollector {
         }
         
         eq.setProperty(new LSHTimeDistribution(eq, TIME_LSH.buildSignature(features)));
-        eq.removeProperty(TimeDistribution.class.getName());
+        
+        if (m_removeOrigProp) {
+          eq.removeProperty(TimeDistribution.class.getName());
+        }
       }
     }
     
