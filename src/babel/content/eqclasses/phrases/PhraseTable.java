@@ -18,6 +18,8 @@ import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 import babel.content.eqclasses.comparators.LexComparator;
+import babel.content.eqclasses.properties.context.Context;
+import babel.content.eqclasses.properties.context.Context.ContextualItem;
 import babel.util.misc.GettableHashSet;
 
 public class PhraseTable {
@@ -208,6 +210,51 @@ public class PhraseTable {
       
         for (Phrase trgPhrase : trgPhraseList) {
           writer.write(srcPhrase.getStem() + FIELD_DELIM + trgPhrase.getStem() + FIELD_DELIM + trgMap.get(trgPhrase).getPairFeatStr(featsToWrite) + "\n");
+        }
+      }
+
+      writer.close();
+    }
+  }
+  
+  /** 
+   * Outputs per phrase pair stats (i.e. feature overlap and the size of the smaller vector).
+   * Note: Make sure the LHSContextCollector is initialized not to remove the original context property.  
+   */
+  public void saveContextStatsForBen(String statsFile) throws IOException {
+    
+    if (statsFile != null) {
+      BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(statsFile, true), m_encoding));    
+    
+      List<Phrase> srcPhraseList = new ArrayList<Phrase>(m_phraseMap.keySet());
+      Collections.sort(srcPhraseList, new LexComparator(true));
+  
+      Map<Phrase, PairProps> trgMap;
+      List<Phrase> trgPhraseList;
+      Context srcContext, trgContext;
+      int intersection;
+    
+      for (Phrase srcPhrase : srcPhraseList) {
+      
+        trgMap = m_phraseMap.get(srcPhrase);    
+        trgPhraseList = new ArrayList<Phrase>(trgMap.keySet());
+        Collections.sort(trgPhraseList, new LexComparator(true));
+
+        srcContext = (Context)srcPhrase.getProperty(Context.class.getName());     
+        
+        for (Phrase trgPhrase : trgPhraseList) {
+        
+          trgContext = (Context)trgPhrase.getProperty(Context.class.getName());
+          intersection = 0;
+          
+          for (ContextualItem srcCi : srcContext.getContextualItems()) {
+            
+            if (null != (trgContext.getContextualItem(srcCi.getContextEqId()))) {
+              intersection++;
+            }
+          }
+          
+          writer.write(srcPhrase.getStem() + FIELD_DELIM + trgPhrase.getStem() + FIELD_DELIM + srcContext.size() + " " + trgContext.size() + " " + intersection + "\n");
         }
       }
 
