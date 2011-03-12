@@ -610,8 +610,8 @@ public class PhrasePreparer {
 
     if (mapToLSH) {
       LOG.info(" - Mapping into LSH...");    
-      (new LSHContextCollector()).collectProperty(eqs);
-      (new LSHTimeDistributionCollector()).collectProperty(eqs);
+      (new LSHContextCollector(true)).collectProperty(eqs);
+      (new LSHTimeDistributionCollector(true)).collectProperty(eqs);
 
       //String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");
       //String ext = src ? ".src" : ".trg";
