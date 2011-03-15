@@ -45,6 +45,7 @@ import babel.content.eqclasses.properties.type.Type;
 import babel.content.eqclasses.properties.type.Type.EqType;
 import babel.content.eqclasses.properties.lshcontext.LSHContextCollector;
 import babel.content.eqclasses.properties.lshtime.LSHTimeDistributionCollector;
+import babel.content.eqclasses.properties.lshorder.LSHPhraseContextCollector;
 
 import babel.ranking.scorers.Scorer;
 
@@ -201,7 +202,7 @@ public class PhrasePreparer {
     assignTypeProp(trgPhrs, EqType.TARGET);
   }
  
-  protected void getOrderProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
+  protected void collectOrderProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
     
     LOG.info(" - Collecting phrase ordering properties for " + srcPhrases.size() + " source and " + trgPhrases.size() + " target phrases " + " ...");
     
@@ -213,16 +214,16 @@ public class PhrasePreparer {
       LOG.warn(" - Keeping ALL contextual phrases at collection");
     }
     
-    getOrderProps(true, srcPhrases, maxPhraseLength, m_maxPhrCountInSrc, caseSensitive, m_srcPhrs, keepContPhraseProb);
-    getOrderProps(false, trgPhrases, maxPhraseLength, m_maxPhrCountInTrg, caseSensitive, m_trgPhrs, keepContPhraseProb);
+    collectOrderProps(true, srcPhrases, maxPhraseLength, m_maxPhrCountInSrc, caseSensitive, m_srcPhrs, keepContPhraseProb);
+    collectOrderProps(false, trgPhrases, maxPhraseLength, m_maxPhrCountInTrg, caseSensitive, m_trgPhrs, keepContPhraseProb);
   }
   
-  protected void getOrderProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, long maxPhraseCountInCorpus, boolean caseSensitive, Set<Phrase> allPhrases, double keepContPhraseProb) throws Exception { 
+  protected void collectOrderProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, long maxPhraseCountInCorpus, boolean caseSensitive, Set<Phrase> allPhrases, double keepContPhraseProb) throws Exception { 
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);
-    (new PhraseOrderCollector(src, maxPhraseLength, caseSensitive, maxPhraseCountInCorpus, allPhrases, keepContPhraseProb)).collectProperty(accessor, phrases);      
+    (new PhraseOrderCollector(src, maxPhraseLength, caseSensitive, maxPhraseCountInCorpus, allPhrases, keepContPhraseProb)).collectProperty(accessor, phrases);
   }
 
-  protected void getContextAndTimeProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
+  protected void collectContextAndTimeProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
     
     LOG.info(" - Collecting context and time phrase properties for " + srcPhrases.size() + " source and " + trgPhrases.size() + " target phrases " + " ...");
     
@@ -231,8 +232,8 @@ public class PhrasePreparer {
     int contextWindowSize = Configurator.CONFIG.getInt("preprocessing.context.Window");
     boolean alignDistros = Configurator.CONFIG.getBoolean("preprocessing.time.Align");
 
-    Set<Integer> srcBins = getContextAndTimeProps(true, srcPhrases, maxPhraseLength, m_contextSrcEqs, contextWindowSize, caseSensitive);
-    Set<Integer> trgBins = getContextAndTimeProps(false, trgPhrases, maxPhraseLength, m_contextTrgEqs, contextWindowSize, caseSensitive);
+    Set<Integer> srcBins = collectContextAndTimeProps(true, srcPhrases, maxPhraseLength, m_contextSrcEqs, contextWindowSize, caseSensitive);
+    Set<Integer> trgBins = collectContextAndTimeProps(false, trgPhrases, maxPhraseLength, m_contextTrgEqs, contextWindowSize, caseSensitive);
     
     if (alignDistros) {
       LOG.info(" - Aligning temporal distributions...");
@@ -243,7 +244,7 @@ public class PhrasePreparer {
   /**
    * @return time bins for which counts were collected
    */
-  protected Set<Integer> getContextAndTimeProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, Set<EquivalenceClass> contextEqs, int contextWindowSize, boolean caseSensitive) throws Exception {
+  protected Set<Integer> collectContextAndTimeProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, Set<EquivalenceClass> contextEqs, int contextWindowSize, boolean caseSensitive) throws Exception {
 
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
     (new PhraseContextCollector(maxPhraseLength, caseSensitive, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, phrases);
@@ -338,8 +339,8 @@ public class PhrasePreparer {
     prepareTranslitDictionary(m_contextSrcEqs);
     filterContextEqs();
 
-    getContextAndTimeProps(m_srcPhrs, m_trgPhrs);
-    getOrderProps(m_srcPhrs, m_trgPhrs);
+    collectContextAndTimeProps(m_srcPhrs, m_trgPhrs);
+    collectOrderProps(m_srcPhrs, m_trgPhrs);
   }
   
   public void prepareForChunkFeaturesCollection() throws Exception {
@@ -360,7 +361,7 @@ public class PhrasePreparer {
   }
   
   public void collectPropsForFeaturesOnly(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception {    
-    getContextAndTimeProps(srcPhrases, trgPhrases); 
+    collectContextAndTimeProps(srcPhrases, trgPhrases); 
   }
   
   public void prepareForChunkFeaturesCollectionForAnni(int chunkSize) throws Exception {
@@ -432,7 +433,7 @@ public class PhrasePreparer {
   }
   
   public void collectPropsForOrderOnly(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception {    
-    getOrderProps(srcPhrases, trgPhrases); 
+    collectOrderProps(srcPhrases, trgPhrases); 
   }
   
   public Set<Phrase> getNextChunk(int chunkSize) {
@@ -598,7 +599,6 @@ public class PhrasePreparer {
     { eq.setProperty(commonType);
     }
   }
-
   
   public void prepareContextAndTimeProps(boolean src, Set<? extends EquivalenceClass> eqs, Scorer contextScorer, Scorer timeScorer, boolean mapToLSH) throws Exception {
     
@@ -609,14 +609,22 @@ public class PhrasePreparer {
     }
 
     if (mapToLSH) {
-      LOG.info(" - Mapping into LSH...");    
+      LOG.info(" - Mapping " + (src ? "source" : "target") + " context into LSH space...");    
       (new LSHContextCollector(true)).collectProperty(eqs);
+      LOG.info(" - Mapping " + (src ? "source" : "target") + " temporal into LSH space...");    
       (new LSHTimeDistributionCollector(true)).collectProperty(eqs);
 
       //String preProcDir = Configurator.CONFIG.getString("preprocessing.Path");
       //String ext = src ? ".src" : ".trg";
       //EqClassPersister.persistProperty(eqs, LSHContext.class.getName(), preProcDir + LSHContext.class.getSimpleName() + ext);
       //EqClassPersister.persistProperty(eqs, LSHTimeDistribution.class.getName(), preProcDir + LSHTimeDistribution.class.getSimpleName() + ext);
+    }
+  }
+  
+  public void prepareOrderProps(boolean src, Set<? extends EquivalenceClass> eqs, boolean mapToLSH) throws Exception {
+    if (mapToLSH) {
+      LOG.info(" - Mapping " + (src ? "source" : "target") + " ordering vectors into LSH space...");    
+      (new LSHPhraseContextCollector(true, m_phraseTable)).collectProperty(eqs);
     }
   }
 
