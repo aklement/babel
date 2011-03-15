@@ -17,6 +17,8 @@ import babel.ranking.scorers.context.DictScorer;
 import babel.ranking.scorers.context.FungS1Scorer;
 import babel.ranking.scorers.lsh.LSHScorer;
 import babel.ranking.scorers.timedistribution.TimeDistributionCosineScorer;
+import babel.reordering.scorers.LSHMonoScorer;
+import babel.reordering.scorers.MonoScorer;
 
 import babel.util.config.Configurator;
 import babel.util.dict.SimpleDictionary;
@@ -63,7 +65,8 @@ public class PhraseScorer
     String outReorderingTableM = Configurator.CONFIG.getString("output.ReorderingTableM");
     int numReorderingThreads = Configurator.CONFIG.getInt("preprocessing.phrases.reordering.ReorderingThreads");
     int chunkSize = (Configurator.CONFIG.containsKey("preprocessing.phrases.ChunkSize") && Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") > 0) ? Configurator.CONFIG.getInt("preprocessing.phrases.ChunkSize") : Integer.MAX_VALUE;
-
+    boolean approxOrder = Configurator.CONFIG.getBoolean("preprocessing.phrases.reordering.ApproxReordWithLSH");
+    
     LOG.info("--- Preparing for estimating reordering features " + (chunkSize != Integer.MAX_VALUE ? "in chunks of size " + chunkSize : "") + " ---");
     
     PhrasePreparer preparer = new PhrasePreparer();
@@ -72,8 +75,10 @@ public class PhraseScorer
     int chunkNum = 0;
     Set<Phrase> chunk, trgChunk;
     
-    OrderEstimator orderEstimator = new OrderEstimator(phraseTable, numReorderingThreads, preparer.getMaxTrgPhrCount());
-        
+    OrderEstimator orderEstimator = approxOrder ?
+      new OrderEstimator(numReorderingThreads, new LSHMonoScorer(), phraseTable, preparer.getMaxTrgPhrCount()) :
+      new OrderEstimator(numReorderingThreads, new MonoScorer(phraseTable), phraseTable, preparer.getMaxTrgPhrCount());
+
     // Split up the phrase table and process one chunk at a time
     while ((chunk = preparer.getNextChunk(chunkSize)) != null) {
 
@@ -83,7 +88,11 @@ public class PhraseScorer
       preparer.collectPropsForOrderOnly(chunk, trgChunk);
       preparer.pruneMostFrequentContext(true, chunk);
       preparer.pruneMostFrequentContext(false, trgChunk);
-         
+
+      // Pre-process ordering properties (for LSH)
+      preparer.prepareOrderProps(true, chunk, approxOrder);
+      preparer.prepareOrderProps(false, trgChunk, approxOrder);
+      
       LOG.info(" - Estimating reordering features for phrase table chunk " + (chunkNum-1) + "...");
 
       // Estimate reordering features
@@ -264,6 +273,7 @@ public class PhraseScorer
     boolean collectPhraseFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableP != null);
     boolean collectLexFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableL != null);
     boolean approxFeats = Configurator.CONFIG.getBoolean("preprocessing.phrases.features.ApproxFeatsWithLSH");
+    boolean approxOrder = Configurator.CONFIG.getBoolean("preprocessing.phrases.reordering.ApproxReordWithLSH");
           
     if (outPhraseTableBPL != null) {
       outPhraseTableBPL = outDir + "/" + outPhraseTableBPL; 
@@ -303,7 +313,7 @@ public class PhraseScorer
     if (approxFeats) {
       (new FeatureEstimator(phraseTable, numMonoScoringThreads,  new LSHScorer(LSHContext.class),  new LSHScorer(LSHTimeDistribution.class), translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);      
     } else {
-     (new FeatureEstimator(phraseTable, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);
+      (new FeatureEstimator(phraseTable, numMonoScoringThreads, contextScorer, timeScorer, translitDict, collectPhraseFeats, collectLexFeats)).estimateFeatures(srcPhrases);
     }
     
     // Save the new phrase tables
@@ -320,8 +330,16 @@ public class PhraseScorer
     preparer.pruneMostFrequentContext(true, srcPhrases);
     preparer.pruneMostFrequentContext(false, trgPhrases);
     
+    // Pre-process ordering properties (for LSH)
+    preparer.prepareOrderProps(true, srcPhrases, approxOrder);
+    preparer.prepareOrderProps(false, trgPhrases, approxOrder);
+    
     // Estimate reordering features
-    (new OrderEstimator(phraseTable, numReorderingThreads, preparer.getMaxTrgPhrCount())).estimateReordering(srcPhrases);
+    if (approxOrder) {
+      (new OrderEstimator(numReorderingThreads, new LSHMonoScorer(), phraseTable, preparer.getMaxTrgPhrCount())).estimateReordering(srcPhrases);
+    } else {
+      (new OrderEstimator(numReorderingThreads, new MonoScorer(phraseTable), phraseTable, preparer.getMaxTrgPhrCount())).estimateReordering(srcPhrases);
+    }
     
     // Save the reordering table
     phraseTable.saveReorderingTable(outDir + "/" + outReorderingTableM);    
