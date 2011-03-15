@@ -20,6 +20,7 @@ public class LSH {
  
   public LSH() {
     try {
+      m_hashes = Hash.getRandomHashes(NUM_BITS);
       m_pool = new double[POOL_SIZE];
       
       Random random = new Random();
@@ -28,6 +29,7 @@ public class LSH {
         m_pool[i] = random.nextGaussian();
       }
     } catch (Exception e) {
+      m_hashes = null;
       LOG.error("Failed to instantiate class", e);
     }
   }
@@ -41,8 +43,7 @@ public class LSH {
     for (String feature : features.keySet()) {
       
       for (int i = 0; i < NUM_BITS; i++) {
-        //sumArray[i] += features.get(feature) * m_pool[Hash.hash(feature, m_hashes[i], m_pool.length)];
-        sumArray[i] += features.get(feature) * m_pool[Hash.hash(i + feature, m_pool.length)];
+        sumArray[i] += features.get(feature) * m_pool[Hash.hash(feature, m_hashes[i], m_pool.length)];
       }
     }
     
@@ -75,4 +76,6 @@ public class LSH {
   
   /** Pool of random numbers */
   private double[] m_pool;
+  /** Hashes. */
+  private int[] m_hashes;
 }
