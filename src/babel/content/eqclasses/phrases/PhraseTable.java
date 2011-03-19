@@ -98,6 +98,24 @@ public class PhraseTable {
     this(phraseTableFile, numLines, DEFAULT_CHARSET, caseSensitive);
   }
   
+  public PhraseTable(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases, boolean caseSensitive) {
+    this(caseSensitive);
+    
+    Map<Phrase, PairProps> trgMap;
+    
+    for (Phrase srcPhrase : srcPhrases) {
+      for (Phrase trgPhrase : trgPhrases) {
+        
+        if (null == (trgMap = m_phraseMap.get(srcPhrase))) {
+          m_phraseMap.put(srcPhrase, trgMap = new HashMap<Phrase, PairProps>());          
+        }
+        
+        trgMap.put(trgPhrase, new PairProps(""));        
+        m_numPairs++;
+      }
+    }
+  }
+  
   public Set<Phrase> getAllSingleTokenSrcPhrases() {
     Set<Phrase> srcPhrases = new HashSet<Phrase>();
     
