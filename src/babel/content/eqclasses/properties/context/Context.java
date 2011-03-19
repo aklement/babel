@@ -3,6 +3,7 @@ package babel.content.eqclasses.properties.context;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -41,10 +42,22 @@ public class Context extends Property
   {
     return m_eq;
   }
+
+  public HashSet<Long> getContextualItemIds()
+  {
+    return new HashSet<Long>(m_neighborsMap.keySet());
+  }
   
   public Collection<ContextualItem> getContextualItems()
   {
     return new ArrayList<ContextualItem>(m_neighborsMap.values());
+  }
+  
+  /** Score of the contextual item with a given id, or 0 if the item is not in 
+   * context. */
+  public double getContextualItemScore(Long contItemId) {
+    ContextualItem contItem = m_neighborsMap.get(contItemId);
+    return (contItem == null) ? 0 : contItem.getScore();
   }
   
   public void clear()

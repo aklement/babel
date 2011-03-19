@@ -1,6 +1,7 @@
 package babel.ranking.scorers.context;
 
 import java.util.Collection;
+import java.util.HashSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -24,37 +25,26 @@ public abstract class DictScorer extends Scorer
   
   public double score(EquivalenceClass srcEq, EquivalenceClass trgEq)
   {
-    Context smContext = (Context)srcEq.getProperty(Context.class.getName());     
-    Context lgContext = (Context)trgEq.getProperty(Context.class.getName()); 
+    Context srcContext = (Context)srcEq.getProperty(Context.class.getName());     
+    Context trgContext = (Context)trgEq.getProperty(Context.class.getName()); 
 
-    if (smContext == null || lgContext == null || !smContext.areContItemsScored() || !lgContext.areContItemsScored())
+    if (srcContext == null || trgContext == null || !srcContext.areContItemsScored() || !trgContext.areContItemsScored())
     { throw new IllegalArgumentException("At least one of the classes has no or unscored context.");
-    }
-
-    if (lgContext.size() < smContext.size()) {
-      Context tmpContext = smContext;
-      smContext = lgContext;
-      lgContext = tmpContext;
     }
     
     double score = 0, score1 = 0, score2 = 0;
     double w2, w1;
     
-    ContextualItem lgCi;
+    HashSet<Long> unionContItemIds = srcContext.getContextualItemIds();
+    unionContItemIds.addAll(trgContext.getContextualItemIds());
     
-    for (ContextualItem smCi : smContext.getContextualItems())
-    {
-      w1 = smCi.getScore();
-      w2 = 0;
-      
-      if (null != (lgCi = lgContext.getContextualItem(smCi.getContextEqId())))
-      {
-        w2 = lgCi.getScore();
-      }
-      
-      score1 += w2 * w2;
-      score2 += w1 * w1;
-      score += w2 * w1;
+    for (Long contItemId : unionContItemIds) {
+      w1 = srcContext.getContextualItemScore(contItemId);
+      w2 = trgContext.getContextualItemScore(contItemId);
+
+      score1 += w1 * w1;
+      score2 += w2 * w2;
+      score += w1 * w2;
     }
     
     return ((score1 * score2) == 0) ? 0 : score / Math.sqrt(score1 * score2);        
