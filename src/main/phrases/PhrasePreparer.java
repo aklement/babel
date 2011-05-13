@@ -18,6 +18,7 @@ import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.corpora.accessors.CrawlCorpusAccessor;
 import babel.content.corpora.accessors.EuroParlCorpusAccessor;
 import babel.content.corpora.accessors.LexCorpusAccessor;
+import babel.content.corpora.accessors.WikiTempCorpusAccessor;
 
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.SimpleEquivalenceClass;
@@ -240,6 +241,51 @@ public class PhrasePreparer {
       alignDistributions(srcBins, trgBins, srcPhrases, trgPhrases);  
     }
   }
+  
+
+  /***
+   * @return Check that filenames in two wikitemp lists are the same
+   */
+  public boolean checkWikiTemp() throws Exception{
+	  WikiTempCorpusAccessor srcAccessor = getWikiTempAccessor(true);
+	  WikiTempCorpusAccessor trgAccessor = getWikiTempAccessor(false);
+	  
+	  String[] srcfiles = srcAccessor.getFileList().getFileNames();
+	  String[] trgfiles = trgAccessor.getFileList().getFileNames();
+	  
+	  String[] srcfilesFix = new String[srcfiles.length];
+	  int i=0;
+	  for (String s: srcfiles){
+		  srcfilesFix[i]=s.substring(0,((s.length())-3));
+		  i++;
+	  }
+
+	  String[] trgfilesFix = new String[trgfiles.length];
+	  i=0;
+	  for (String s: trgfiles){
+		  trgfilesFix[i]=s.substring(0,((s.length())-3));
+		  i++;
+	  }
+
+	  if (srcfilesFix.length!=trgfilesFix.length){
+		  return false;
+	  }
+
+	  
+	  i=0;
+	  while (i<srcfilesFix.length){
+		  if (!srcfilesFix[i].equals(trgfilesFix[i])){
+			  System.out.println("SOURCE FILES:"+srcfilesFix[i]);
+			  System.out.println("TARGET FILES:"+trgfilesFix[i]);
+			  return false;
+		  }
+		  i++;
+	  }
+	  
+	  return true;
+	  
+  }
+
   
   /**
    * @return time bins for which counts were collected
@@ -676,6 +722,9 @@ public class PhrasePreparer {
     else if ("wiki".equals(kind))
     { accessor = getWikiAccessor(src);
     }
+    else if ("wikitemp".equals(kind))
+    { accessor = getWikiTempAccessor(src);
+    }
     else if ("crawls".equals(kind))
     { accessor = getCrawlsAccessor(src);
     }
@@ -743,6 +792,15 @@ public class PhrasePreparer {
     String fileRegExp = src ? Configurator.CONFIG.getString("corpora.wiki.SrcRegExp") : Configurator.CONFIG.getString("corpora.wiki.TrgRegExp");
   
     return new LexCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
+  }
+  
+  protected WikiTempCorpusAccessor getWikiTempAccessor(boolean src){
+	    String path = Configurator.CONFIG.getString("corpora.wikitemp.Path");
+	    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.wikitemp.OneSentPerLine");
+	    String fileRegExp = src ? Configurator.CONFIG.getString("corpora.wikitemp.SrcRegExp") : Configurator.CONFIG.getString("corpora.wikitemp.TrgRegExp");
+
+	    return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
+
   }
 
   protected String appendSep(String str)

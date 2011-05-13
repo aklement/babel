@@ -123,6 +123,14 @@ public class PhraseScorer
     boolean collectLexFeats = (outPhraseTableBPL != null) || (outPhraseTablePL != null) || (outPhraseTableL != null);
     boolean approxFeats = Configurator.CONFIG.getBoolean("preprocessing.phrases.features.ApproxFeatsWithLSH");
       
+    ///If Wikipedia-Temporal features, time window MUST be 1
+    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    	if (windowSize!=1){
+    		windowSize=1;
+    		LOG.info("WARNING: Using Wikipedia 'temporal' estimates, set time window to size 1 ");
+    	}
+    }
+    
     if (outPhraseTableBPL != null) {
       outPhraseTableBPL = outDir + "/" + outPhraseTableBPL; 
     }
@@ -146,6 +154,14 @@ public class PhraseScorer
     PhraseTable phraseTable = preparer.getPhraseTable();
     int chunkNum = 0;
     Set<Phrase> chunk, srcChunkToProcess, trgChunkToProcess;
+    
+    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    	boolean wikiok = preparer.checkWikiTemp();
+    	if (wikiok==false){
+    		throw new Exception("Wikipedia files must match for 'temporal' scoring");
+    	}
+    }
+
     
     DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
@@ -210,6 +226,14 @@ public class PhraseScorer
     boolean collectLexFeats = (outPhraseTablePL != null) || (outPhraseTableL != null);
     boolean approxFeats = Configurator.CONFIG.getBoolean("preprocessing.phrases.features.ApproxFeatsWithLSH");
  
+    ///If Wikipedia-Temporal features, time window MUST be 1
+    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    	if (windowSize!=1){
+    		windowSize=1;
+    		LOG.info("WARNING: Using Wikipedia 'temporal' estimates, set time window to size 1 ");
+    	}
+    }
+    
     if (outPhraseTablePL != null) {
       outPhraseTablePL = outDir + "/" + outPhraseTablePL; 
     }
@@ -226,6 +250,14 @@ public class PhraseScorer
     preparer.prepareForChunkFeaturesCollectionForAnni(chunkSize);
     int chunkNum = 0;
     Set<Phrase> srcChunkToProcess, trgChunkToProcess;
+    
+
+    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    	boolean wikiok = preparer.checkWikiTemp();
+    	if (wikiok==false){
+    		throw new Exception("Wikipedia files must match for 'temporal' scoring");
+    	}
+    }       
     
     DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
@@ -275,6 +307,14 @@ public class PhraseScorer
     boolean approxFeats = Configurator.CONFIG.getBoolean("preprocessing.phrases.features.ApproxFeatsWithLSH");
     boolean approxOrder = Configurator.CONFIG.getBoolean("preprocessing.phrases.reordering.ApproxReordWithLSH");
           
+    ///If Wikipedia-Temporal features, time window MUST be 1
+    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    	if (windowSize!=1){
+    		windowSize=1;
+    		LOG.info("WARNING: Using Wikipedia 'temporal' estimates, set time window to size 1 ");
+    	}
+    }
+    
     if (outPhraseTableBPL != null) {
       outPhraseTableBPL = outDir + "/" + outPhraseTableBPL; 
     }
@@ -293,6 +333,13 @@ public class PhraseScorer
 
     PhrasePreparer preparer = new PhrasePreparer();    
     preparer.prepareForFeaturesAndOrderCollection();
+
+    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    	boolean wikiok = preparer.checkWikiTemp();
+    	if (wikiok==false){
+    		throw new Exception("Wikipedia files must match for 'temporal' scoring");
+    	}
+    }    
     
     PhraseTable phraseTable = preparer.getPhraseTable();    
     Set<Phrase> srcPhrases = phraseTable.getAllSrcPhrases();
