@@ -15,6 +15,12 @@
 		<TrgRegExp>.*\\.en\\.small</TrgRegExp>
 		<OneSentPerLine>false</OneSentPerLine>
 	</wiki>
+	<wikitemp>
+          <Path>/mnt/data/wiki/pagepairs/en-cy/pairs</Path>
+          <SrcRegExp>((?!(\.wiki\.|\.translated\.)).)*\\.es</SrcRegExp>
+          <TrgRegExp>((?!(\.wiki\.|\.translated\.)).)*\\.en</TrgRegExp>
+          <OneSentPerLine>false</OneSentPerLine>
+	</wikitemp>
 	<europarl>
 		<Path>/mnt/data/babel/Resources/EuroParl/ver.5/es-en/train.small</Path>
 		<SrcSubDir>es/</SrcSubDir>
