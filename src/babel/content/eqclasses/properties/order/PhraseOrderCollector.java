@@ -20,11 +20,13 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
 
   public static final Log LOG = LogFactory.getLog(PhrasePropertyCollector.class);
   
-  public PhraseOrderCollector(boolean src, int maxPhraseLength, boolean caseSensitive, long maxPhrCount, Set<? extends EquivalenceClass> allPhrases, double keepContPhraseProb) {    
+  public PhraseOrderCollector(boolean src, int maxPhraseLength, int maxToksBetween, boolean collectLongestOnly, boolean caseSensitive, long maxPhrCount, Set<? extends EquivalenceClass> allPhrases, double keepContPhraseProb) {    
     super(maxPhraseLength, caseSensitive);
     
     m_src = src;
     m_maxPhrCount = maxPhrCount;
+    m_maxToksBetween = maxToksBetween;
+    m_collectLongestOnly = collectLongestOnly;
     m_allPhrases = new GettableHashSet<EquivalenceClass>(allPhrases);
     m_keepContPhraseProb = keepContPhraseProb;
   }
@@ -90,19 +92,19 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
           for (IndexedPhrase contextIdxPhrase : sentPhrases) {
             if (idxPhrase.isAfter(contextIdxPhrase)) {
               
-              if ((beforePhrase == null) || (beforePhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
+              if ((beforePhrase == null) || !m_collectLongestOnly || (beforePhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
                 beforePhrase = contextIdxPhrase;
               }
             }
             else if (idxPhrase.isBefore(contextIdxPhrase)) {
               
-              if ((afterPhrase == null) || (afterPhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
+              if ((afterPhrase == null) || !m_collectLongestOnly || (afterPhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
                 afterPhrase = contextIdxPhrase;
               }              
             }
-            else if (!m_src && idxPhrase.isOutOfOrderButCloseEnough(contextIdxPhrase, m_maxPhraseLength)) {
+            else if (!m_src && idxPhrase.isOutOfOrderButCloseEnough(contextIdxPhrase, m_maxToksBetween)) {
               
-              if ((discontPhrase == null) || (discontPhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
+              if ((discontPhrase == null) || !m_collectLongestOnly || (discontPhrase.phrase.numTokens() < contextIdxPhrase.phrase.numTokens())) {
                 discontPhrase = contextIdxPhrase;
               }
             }
@@ -284,6 +286,8 @@ public class PhraseOrderCollector extends PhrasePropertyCollector {
   protected long m_maxPhrCount;
   protected GettableHashSet<EquivalenceClass> m_allPhrases;
   protected double m_keepContPhraseProb;
+  protected int m_maxToksBetween;
+  protected boolean m_collectLongestOnly;
   
   class IndexedPhrase {
     public IndexedPhrase(Phrase phrase, IdxPair idxPair, int ordDelimBefore, int ordDelimAfter) {

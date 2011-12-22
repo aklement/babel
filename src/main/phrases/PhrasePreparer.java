@@ -208,6 +208,8 @@ public class PhrasePreparer {
     LOG.info(" - Collecting phrase ordering properties for " + srcPhrases.size() + " source and " + trgPhrases.size() + " target phrases " + " ...");
     
     int maxPhraseLength = Configurator.CONFIG.getInt("preprocessing.phrases.MaxPhraseLength");
+    int maxToksBetween = Configurator.CONFIG.getInt("preprocessing.phrases.MaxToksBetween");
+    boolean collectLongestOnly = Configurator.CONFIG.getBoolean("preprocessing.phrases.CollectLongestOnly");
     boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
     double keepContPhraseProb = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.ContPhraseKeepProb") ? Configurator.CONFIG.getDouble("preprocessing.phrases.reordering.ContPhraseKeepProb") : 1.0;  
     
@@ -215,13 +217,13 @@ public class PhrasePreparer {
       LOG.warn(" - Keeping ALL contextual phrases at collection");
     }
     
-    collectOrderProps(true, srcPhrases, maxPhraseLength, m_maxPhrCountInSrc, caseSensitive, m_srcPhrs, keepContPhraseProb);
-    collectOrderProps(false, trgPhrases, maxPhraseLength, m_maxPhrCountInTrg, caseSensitive, m_trgPhrs, keepContPhraseProb);
+    collectOrderProps(true, srcPhrases, maxPhraseLength, maxToksBetween, collectLongestOnly, m_maxPhrCountInSrc, caseSensitive, m_srcPhrs, keepContPhraseProb);
+    collectOrderProps(false, trgPhrases, maxPhraseLength, maxToksBetween, collectLongestOnly, m_maxPhrCountInTrg, caseSensitive, m_trgPhrs, keepContPhraseProb);
   }
   
-  protected void collectOrderProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, long maxPhraseCountInCorpus, boolean caseSensitive, Set<Phrase> allPhrases, double keepContPhraseProb) throws Exception { 
+  protected void collectOrderProps(boolean src, Set<Phrase> phrases, int maxPhraseLength, int maxToksBetween, boolean collectLongestOnly, long maxPhraseCountInCorpus, boolean caseSensitive, Set<Phrase> allPhrases, double keepContPhraseProb) throws Exception { 
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);
-    (new PhraseOrderCollector(src, maxPhraseLength, caseSensitive, maxPhraseCountInCorpus, allPhrases, keepContPhraseProb)).collectProperty(accessor, phrases);
+    (new PhraseOrderCollector(src, maxPhraseLength, maxToksBetween, collectLongestOnly, caseSensitive, maxPhraseCountInCorpus, allPhrases, keepContPhraseProb)).collectProperty(accessor, phrases);
   }
 
   protected void collectContextAndTimeProps(Set<Phrase> srcPhrases, Set<Phrase> trgPhrases) throws Exception{
