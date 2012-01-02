@@ -26,6 +26,7 @@ public class WikiTempCorpusAccessor extends TemporalCorpusAccessor
     super(oneSentPerLine);
     
     resetFiles();
+    resetDays();
     
     m_files = new FileList(corpusDir, new RegExFileNameFilter(fileNameRegEx));
     m_encoding = charset;
@@ -43,7 +44,7 @@ public class WikiTempCorpusAccessor extends TemporalCorpusAccessor
     m_files.sort();
     
     LOG.info("Wikipedia Pages: "+(m_files.size()));
-
+    
     try
     { retReader = new InputStreamReader(new SequenceInputStream(m_files), m_encoding);
     }
@@ -99,7 +100,7 @@ public class WikiTempCorpusAccessor extends TemporalCorpusAccessor
     else if (hasNext = ((m_curFileNum + 1) < m_files.size()))
     { m_curFileNum++;
     }
-    
+        
     return hasNext;
   }
 
@@ -144,11 +145,7 @@ public InputStreamReader getCurDayReader() {
  * Return true if files left, false if not
  */
 public boolean nextDay() {
-	boolean success = true;
-	if (m_curFileNum>=m_files.size()){
-		success=false;
-	}
-	return success;
+	return nextFile();	
 }
 
 /***

@@ -155,16 +155,17 @@ public class PhraseScorer
     int chunkNum = 0;
     Set<Phrase> chunk, srcChunkToProcess, trgChunkToProcess;
     
-    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
-    	boolean wikiok = preparer.checkWikiTemp();
-    	if (wikiok==false){
-    		throw new Exception("Wikipedia files must match for 'temporal' scoring");
-    	}
-    }
+    //if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    //	boolean wikiok = preparer.checkWikiTemp();
+    //	if (wikiok==false){
+    //		throw new Exception("Wikipedia files must match for 'temporal' scoring");
+    //	}
+    //}
 
     
     DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
+    
     SimpleDictionary translitDict = preparer.getTranslitDict();
     Set<Phrase> singleTokenSrcPhrases = phraseTable.getAllSingleTokenSrcPhrases();
     Set<Phrase> singleTokenTrgPhrases = phraseTable.getAllSingleTokenTrgPhrases();
@@ -252,12 +253,12 @@ public class PhraseScorer
     Set<Phrase> srcChunkToProcess, trgChunkToProcess;
     
 
-    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
-    	boolean wikiok = preparer.checkWikiTemp();
-    	if (wikiok==false){
-    		throw new Exception("Wikipedia files must match for 'temporal' scoring");
-    	}
-    }       
+    //if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    //	boolean wikiok = preparer.checkWikiTemp();
+    //	if (wikiok==false){
+    //		throw new Exception("Wikipedia files must match for 'temporal' scoring");
+    //	}
+    //}       
     
     DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
@@ -334,12 +335,12 @@ public class PhraseScorer
     PhrasePreparer preparer = new PhrasePreparer();    
     preparer.prepareForFeaturesAndOrderCollection();
 
-    if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
-    	boolean wikiok = preparer.checkWikiTemp();
-    	if (wikiok==false){
-    		throw new Exception("Wikipedia files must match for 'temporal' scoring");
-    	}
-    }    
+    //if ("wikitemp".equals(Configurator.CONFIG.getString("preprocessing.input.Time"))){
+    //	boolean wikiok = preparer.checkWikiTemp();
+    //	if (wikiok==false){
+    //		throw new Exception("Wikipedia files must match for 'temporal' scoring");
+  	// }
+    //}    
     
     PhraseTable phraseTable = preparer.getPhraseTable();    
     Set<Phrase> srcPhrases = phraseTable.getAllSrcPhrases();
