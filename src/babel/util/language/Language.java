@@ -24,101 +24,109 @@ package babel.util.language;
  */
 public enum Language
 {
-  AUTO_DETECT(""),
-  AFRIKAANS("af"),
-  ALBANIAN("sq"),
-  AMHARIC("am"),
-  ARABIC("ar"),
+	AUTO_DETECT(""),
+  AFRIKAANS("af"), //Wikipedia - a01
+  ALBANIAN("sq"), //Have from previous crawls
+  AMHARIC("am"), //Have from previous crawls
+  ARABIC("ar"), //Have from previous crawls
   ARMENIAN("hy"),
-  AZERBAIJANI("az"),
-  BASQUE("eu"),
+  AZERBAIJANI("az"), //Have from previous crawls
+  BASQUE("eu"), //Wikipedia - a01
   BELARUSIAN("be"),
-  BENGALI("bn"),
-  BOSNIAN("bs"),
+  BENGALI("bn"), //Have from previous crawls
+  BOSNIAN("bs"), //Have from previous crawls
   BIHARI("bh"),
-  BULGARIAN("bg"),
-  BURMESE("my"),
+  BULGARIAN("bg"), //Have from previous crawls
+  BURMESE("my"), //Wikipedia - a05
   CATALAN("ca"),
   CHEROKEE("chr"),
-  CHINESE("zh"),
+  CHINESE("zh"), //Have from previous crawls
   CHINESE_SIMPLIFIED("zh-CN"),
   CHINESE_TRADITIONAL("zh-TW"),
-  CROATIAN("hr"),
-  CZECH("cs"),
-  DANISH("da"),
+  CROATIAN("hr"), //Have from previous crawls
+  CZECH("cs"), //Wikipydia extracted
+  DANISH("da"), //Wikipydia extracted
   DHIVEHI("dv"),
-  DUTCH("nl"),
-  ENGLISH("en"),
+  DUTCH("nl"), //Wikipydia extracted
+  ENGLISH("en"), //Have from previous crawls
   ESPERANTO("eo"),
-  ESTONIAN("et"),
-  FILIPINO("tl"),
-  FINNISH("fi"),
-  FRENCH("fr"),
-  GALICIAN("gl"),
-  GEORGIAN("ka"),
-  GERMAN("de"),
-  GREEK("el"),
+  ESTONIAN("et"), //Wikipydia extracted
+  FILIPINO("tl"), //Wikipedia - a03
+  FINNISH("fi"), //Wikipydia extracted
+  FRENCH("fr"), //Have from previous crawls
+  GALICIAN("gl"), //Have from previous crawls
+  GEORGIAN("ka"), //Wikipydia extracted
+  GERMAN("de"), //Have from previous crawls
+  GREEK("el"), //Have from previous crawls
   GUARANI("gn"),
   GUJARATI("gu"),
-  HEBREW("iw"),
-  HINDI("hi"),
-  HUNGARIAN("hu"),
+  HEBREW("he"), //Wikipydia extracted and LANG CODE CHANGED
+  //HEBREW("iw"),
+  HINDI("hi"), //Have from previous crawls
+  HUNGARIAN("hu"), //Wikipydia extracted
   ICELANDIC("is"),
-  INDONESIAN("id"),
+  INDONESIAN("id"), //Have from previous crawls
   INUKTITUT("iu"),
-  IRISH("ga"),
-  ITALIAN("it"),
-  JAPANESE("ja"),
+  IRISH("ga"), // Wikipedia - a03	
+  ITALIAN("it"), //Have from previous crawls
+  JAPANESE("ja"), //Wikipydia extracted
+  //Have Kapampangan Wikipedia - a03
   KANNADA("kn"),
-  KAZAKH("kk"),
+  KAZAKH("kk"), //Have from previous crawls
   KHMER("km"),
-  KOREAN("ko"),
-  KURDISH("ku"),
-  KYRGYZ("ky"),
+  KOREAN("ko"), //Wikipedia - a02
+  KURDISH("ku"), //Wikipedia - a02
+  KYRGYZ("ky"), //Have from previous crawls
+  LATIN("la"), //Wikipedia - a02 - wasn't listed before
   LAOTHIAN("lo"),
-  LATVIAN("lv"),
-  LITHUANIAN("lt"),
-  MACEDONIAN("mk"),
-  MALAY("ms"),
-  MALAYALAM("ml"),
-  MALTESE("mt"),
+  LATVIAN("lv"), //Have from previous crawls
+  LITHUANIAN("lt"), //Wikipydia extracted
+  MACEDONIAN("mk"), //Have from previous crawls
+  MALAY("ms"), //Have from previous crawls
+  MALAYALAM("ml"), //Wikipydia extracted
+  MALTESE("mt"),  //Wikipedia - a05
   MARATHI("mr"),
-  MONGOLIAN("mn"),
-  NEPALI("ne"),
-  NORWEGIAN("no"),
+  MONGOLIAN("mn"), //Wikipedia - a05
+  NEPALI("ne"), //Have from previous crawls
+  NORWEGIAN("no"), //Wikipydia extracted
   ORIYA("or"),
-  PASHTO("ps"),
-  PERSIAN("fa"),
-  POLISH("pl"),
-  PORTUGUESE("pt"),
-  PUNJABI("pa"),
-  ROMANIAN("ro"),
-  RUSSIAN("ru"),
+  PASHTO("ps"), //Have from previous crawls
+  PERSIAN("fa"), //Have from previous crawls
+  POLISH("pl"), //Have from previous crawls
+  PORTUGUESE("pt"), //Have from previous crawls
+  PUNJABI("pa"), //Wikipedia - a05
+  ROMANIAN("ro"), //Have from previous crawls
+  RUSSIAN("ru"), //Have from previous crawls
   SANSKRIT("sa"),
-  SERBIAN("sr"),
+  SERBIAN("sr"), //Have from previous crawls
   SINDHI("sd"),
   SINHALESE("si"),
-  SLOVAK("sk"),
-  SLOVENIAN("sl"),
-  SOMALI("so"),
-  SPANISH("es"),
-  SWAHILI("sw"),
-  SWEDISH("sv"),
+  SLOVAK("sk"), //Have from previous crawls
+  SLOVENIAN("sl"), //Wikipydia extracted
+  SOMALI("so"), //Have from previous crawls
+  SPANISH("es"), //Have from previous crawls
+  SWAHILI("sw"), //Have from previous crawls
+  SWEDISH("sv"), //Wikipydia extracted
   TAJIK("tg"),
-  TAMIL("ta"),
-  TAGALOG("tl"),
-  TELUGU("te"),
-  THAI("th"),
-  TIBETAN("bo"),
-  TURKISH("tr"),
-  UKRANIAN("uk"),
-  URDU("ur"),
-  UZBEK("uz"),
-  UIGHUR("ug"),
-  VIETNAMESE("vi"),
-  WELSH("cy"),
+  TAMIL("ta"), //Have from previous crawls
+  TATAR("tt"), //Wikipedia - a03 - wasn't listed before
+  TIGRINYA("ti"), //Wikipedia - a05 - wasn't listed before
+  TAGALOG("tl"), //Wikipedia - a03
+  TELUGU("te"), //Wikipydia extracted
+  THAI("th"), //Wikipedia - a05
+  TIBETAN("bo"), //Wikipedia - a05
+  TURKMEN("tk"), //Wikipedia - a02 - wasn't listed before
+  TURKISH("tr"), //Have from previous crawls
+  UKRANIAN("uk"), //Have from previous crawls
+  URDU("ur"), //Have from previous crawls
+  UZBEK("uz"), //Havefrom previous crawls
+  UIGHUR("ug"), //Wikipedia - a02
+  VIETNAMESE("vi"), //Wikipydia extracted
+  WELSH("cy"), //Have from previous crawls
   YIDDISH("yi");
-  
+	  
+	
+	
   /**
    * Enum constructor.
    * @param pLanguage The language identifier.
