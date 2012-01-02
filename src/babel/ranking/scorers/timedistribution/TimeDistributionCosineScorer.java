@@ -45,7 +45,7 @@ public class TimeDistributionCosineScorer extends Scorer
     double result = 0.0;
     HashMap<Integer, Double> oneBins = distroOne.getBins();
     HashMap<Integer, Double> twoBins = distroTwo.getBins(); 
- 
+
     // Get the intersection of keys
     HashSet<Integer> keys = new HashSet<Integer>(oneBins.keySet());
     keys.retainAll(twoBins.keySet());
@@ -58,7 +58,13 @@ public class TimeDistributionCosineScorer extends Scorer
     
     // Compute whole coefficient
     double denom = Math.sqrt(distroOne.getSumSquares()) * Math.sqrt(distroTwo.getSumSquares());
+
+    //System.out.println(oneEq.getStem()+" "+twoEq.getStem()+" "+result+" "+denom);
+    //System.out.println(distroOne.toString());
+    //System.out.println(distroTwo.toString());
+
     result = (denom == 0.0) ? 0.0 : (result / denom);
+    
     
     return result;
 	}
@@ -82,6 +88,8 @@ public class TimeDistributionCosineScorer extends Scorer
     
     distro.reBin(m_windowSize, m_slidingWindow);
     distro.normalize();
+    
+    //System.out.println("Time distro for "+eq.getStem()+": "+distro.toString());
   }
   
   protected boolean m_slidingWindow;
