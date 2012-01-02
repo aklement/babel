@@ -58,7 +58,12 @@ public class LangAndTimeExtractor extends PrepStep
     job.setOutputFormat(SequenceFileOutputFormat.class);
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(Page.class);
-
+    
+    //ANNI EDIT
+    job.setNumMapTasks(2);
+    job.setNumReduceTasks(2);
+    //END ANNI EDIT
+    
     FileInputFormat.addInputPath(job, new Path(crawlDir, pagesSubDir));
     
     Path outDir = new Path(new Path(crawlDir, PAGES_SUBDIR), "pages.langidtime." + getCurTimeStamp());    
