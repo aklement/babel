@@ -275,6 +275,7 @@ public class PhrasePreparer {
 	  i=0;
 	  while (i<srcfilesFix.length){
 		  if (!srcfilesFix[i].equals(trgfilesFix[i])){
+			  
 			  System.out.println("SOURCE FILES:"+srcfilesFix[i]);
 			  System.out.println("TARGET FILES:"+trgfilesFix[i]);
 			  return false;
