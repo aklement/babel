@@ -212,6 +212,9 @@ public class PhrasePreparer {
     boolean collectLongestOnly = Configurator.CONFIG.getBoolean("preprocessing.phrases.CollectLongestOnly");
     boolean caseSensitive = Configurator.CONFIG.getBoolean("preprocessing.phrases.CaseSensitive");
     double keepContPhraseProb = Configurator.CONFIG.containsKey("preprocessing.phrases.reordering.ContPhraseKeepProb") ? Configurator.CONFIG.getDouble("preprocessing.phrases.reordering.ContPhraseKeepProb") : 1.0;  
+
+    LOG.info("Maximum number of tokens between phrases for reordering scoring: "+maxToksBetween);
+    
     
     if (keepContPhraseProb == 1.0) {
       LOG.warn(" - Keeping ALL contextual phrases at collection");
