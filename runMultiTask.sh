@@ -1,1 +1,1 @@
-java -d64 -Dfile.encoding=utf8 -DCONFIG=/Users/anni/Documents/EclipseWorkspace/babel/babelMT.xml -classpath $PATH:/Users/anni/Documents/EclipseWorkspace/babel/bin/:/Users/anni/Projects/babel/lib/* main.multitask.monoLearn
+java -d64 -Dfile.encoding=utf8 -DCONFIG=/Users/anni/Projects/babelMultiTask/babelMT.xml -classpath $PATH:/Users/anni/Projects/babelMultiTask/bin/:/Users/anni/Projects/babelMultiTask/lib/* main.multitask.monoLearn

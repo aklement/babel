@@ -12,7 +12,15 @@
 	</stopwords>
 </resources>
 <preprocessing>
-	<Path>/Users/anni/Documents/EclipseWorkspace/babel/preprocessing/</Path>
+	<Path>/Users/anni/Projects/babelMultiTask/preprocessing/</Path>
+        <learnParameters>
+          <initialBias>10</initialBias>
+          <learningRate>0.1</learningRate>
+          <wReg>0.0001</wReg>
+          <cReg>0.0001</cReg>
+          <windowSize>1</windowSize>
+          <cDimension>250</cDimension>
+        </learnParameters>
         <input>
                 <Context>wiki</Context>
         </input>
