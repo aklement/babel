@@ -21,7 +21,9 @@ public class FungS1Scorer extends DictScorer
   
   protected double scoreContItem(ContextualItem contItem, EqType type)
   {    
+	//Number of times saw this context with the word type
     double tf = contItem.getContextCount();
+    //Maximum number of times any context occurs (with any word) / total number of times this context appears in the corpus
     double idf = Math.log((type.equals(Type.EqType.SOURCE) ? m_srcMaxCount : m_trgMaxCount) / contItem.getCorpusCount()) + 1.0;
     
     return tf * idf;    

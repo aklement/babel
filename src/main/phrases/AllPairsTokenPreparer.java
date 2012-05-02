@@ -18,6 +18,7 @@ import babel.content.corpora.accessors.CorpusAccessor;
 import babel.content.corpora.accessors.CrawlCorpusAccessor;
 import babel.content.corpora.accessors.EuroParlCorpusAccessor;
 import babel.content.corpora.accessors.LexCorpusAccessor;
+import babel.content.corpora.accessors.WikiTempCorpusAccessor;
 import babel.content.eqclasses.EquivalenceClass;
 import babel.content.eqclasses.SimpleEquivalenceClass;
 import babel.content.eqclasses.collectors.EquivalenceClassCollector;
@@ -430,6 +431,10 @@ public class AllPairsTokenPreparer {
     else if ("wiki".equals(kind))
     { accessor = getWikiAccessor(src);
     }
+    else if ("wikitemp".equals(kind))
+    { accessor = getWikiTempAccessor(src);
+    }
+    
     else if ("crawls".equals(kind))
     { accessor = getCrawlsAccessor(src);
     }
@@ -499,6 +504,15 @@ public class AllPairsTokenPreparer {
     return new LexCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
   }
 
+  protected WikiTempCorpusAccessor getWikiTempAccessor(boolean src){
+	    String path = Configurator.CONFIG.getString("corpora.wikitemp.Path");
+	    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.wikitemp.OneSentPerLine");
+	    String fileRegExp = src ? Configurator.CONFIG.getString("corpora.wikitemp.SrcRegExp") : Configurator.CONFIG.getString("corpora.wikitemp.TrgRegExp");
+
+	    return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
+
+}  
+  
   protected String appendSep(String str)
   {
     String ret = (str == null) ? null : str.trim();

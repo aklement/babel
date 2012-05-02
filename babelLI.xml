@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+<corpora>
+        <wikitemp>
+	  <Path>/Users/anni/Resources/Wikipedia/wikiTest/z/</Path>
+          <SrcRegExp>((?!(\.wiki\.|\.translated\.)).)*\\.es</SrcRegExp>
+          <TrgRegExp>((?!(\.wiki\.|\.translated\.)).)*\\.en</TrgRegExp>
+	  <OneSentPerLine>true</OneSentPerLine>
+	</wikitemp>
+</corpora>
+<resources>
+        <dictionary>
+                <Path>/Users/anni/Resources/Dictionaries/</Path>
+                <Dictionary>frozen_span_dict.esen</Dictionary>
+        </dictionary>
+	<stopwords>
+		<Path>/mnt/data/babel/Resources/StopWordLists/</Path>
+	</stopwords>
+	<phrases>
+		<SrcPhraseFile>/Users/anni/Projects/unsup_translation/babelClean/preprocessing/source.phrases</SrcPhraseFile>
+		<TrgPhraseFile>/Users/anni/Projects/unsup_translation/babelClean/preprocessing/target.phrases</TrgPhraseFile>
+	</phrases>
+</resources>
+<preprocessing>
+	<Path>/Users/anni/Projects/unsup_translation/babelClean/preprocessing/</Path>
+	<time>
+	  <Align>false</Align>
+	</time>
+        <input>
+                <Context>wikitemp</Context>
+		<Time>wikitemp</Time>
+        </input>
+	<FilterRomanTrg>false</FilterRomanTrg>
+	<context>
+		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
+		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
+		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
+		<PruneEqIfOccursFewerThan>1</PruneEqIfOccursFewerThan>
+		<PruneContextToSize>-1</PruneContextToSize>
+		<Window>2</Window>
+	</context>
+	<candidates>
+		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
+		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
+		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
+		<PruneIfOccursFewerThan>5</PruneIfOccursFewerThan>
+		<PruneMostFrequentSrc>-1</PruneMostFrequentSrc>
+		<PruneMostFrequentTrg>-1</PruneMostFrequentTrg>
+	</candidates>
+	<phrases>
+		<MaxPhraseLength>3</MaxPhraseLength>
+		<CaseSensitive>true</CaseSensitive>
+		<MaxToksBetween>3</MaxToksBetween>
+		<CollectLongestOnly>true</CollectLongestOnly>
+		<features>
+		  <MonoScoringThreads>1</MonoScoringThreads>
+		  <ApproxFeatsWithLSH>false</ApproxFeatsWithLSH>
+		</features>
+	</phrases>
+</preprocessing>
+<output>
+    <Path>./output/</Path>
+    <PhraseTableP>lexinductout</PhraseTableP>
+</output>
+<experiments>
+	<time>
+		<SlidingWindow>false</SlidingWindow>
+		<WindowSize>1</WindowSize>
+	</time>
+	<RandomSource>false</RandomSource>
+	<NumSource>200</NumSource>
+	<NumTranslationsToAddPerSource>500</NumTranslationsToAddPerSource>
+	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
+	<NumRankingThreads>4</NumRankingThreads>	
+	<DoTime>true</DoTime>
+	<DoContext>true</DoContext>
+	<DoEditDistance>false</DoEditDistance>
+	<DoAggregate>true</DoAggregate>
+</experiments>
+</configuration>
