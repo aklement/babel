@@ -320,7 +320,7 @@ public class InductPreparer {
     
     // Collect context properties
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
-    (new ContextCollector(true, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, eqClasses); 
+    (new ContextCollector(true, false, contextWindowSize, contextWindowSize, contextEqs)).collectProperty(accessor, eqClasses); 
     
     // Collect time properties
     accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), src);

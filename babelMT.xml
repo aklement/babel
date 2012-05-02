@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+<corpora>
+        <wiki>
+	  <Path>/Users/anni/Data/WikiSample/en/</Path>
+	  <OneSentPerLine>true</OneSentPerLine>
+	</wiki>
+</corpora>
+<resources>
+	<stopwords>
+		<Path>/mnt/data/babel/Resources/StopWordLists/</Path>
+	</stopwords>
+</resources>
+<preprocessing>
+	<Path>/Users/anni/Documents/EclipseWorkspace/babel/preprocessing/</Path>
+        <input>
+                <Context>wiki</Context>
+        </input>
+	<FilterRomanTrg>false</FilterRomanTrg>
+	<context>
+		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
+		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
+		<PruneEqIfOccursFewerThan>1</PruneEqIfOccursFewerThan>
+		<PruneContextToSize>-1</PruneContextToSize>
+		<Window>2</Window>
+	</context>
+	<candidates>
+		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
+		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
+		<PruneIfOccursFewerThan>5</PruneIfOccursFewerThan>
+		<PruneMostFrequentSrc>-1</PruneMostFrequentSrc>
+		<PruneMostFrequentTrg>-1</PruneMostFrequentTrg>
+	</candidates>
+	<phrases>
+		<MaxPhraseLength>3</MaxPhraseLength>
+		<CaseSensitive>true</CaseSensitive>
+		<MaxToksBetween>3</MaxToksBetween>
+		<CollectLongestOnly>true</CollectLongestOnly>
+	</phrases>
+</preprocessing>
+<output>
+	<Path>./output/</Path>
+    <PhraseTable>phrase-table-mono</PhraseTable> 
+    <ReorderingTable>reordering-table-mono</ReorderingTable> 
+</output>
+<experiments>
+	<time>
+		<SlidingWindow>false</SlidingWindow>
+		<WindowSize>1</WindowSize>
+	</time>
+	<RandomSource>false</RandomSource>
+	<NumSource>200</NumSource>
+	<NumTranslationsToAddPerSource>500</NumTranslationsToAddPerSource>
+	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
+	<NumRankingThreads>4</NumRankingThreads>	
+	<DoTime>true</DoTime>
+	<DoContext>true</DoContext>
+	<DoEditDistance>false</DoEditDistance>
+	<DoAggregate>true</DoAggregate>
+</experiments>
+</configuration>

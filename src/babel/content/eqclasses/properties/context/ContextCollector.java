@@ -20,20 +20,22 @@ public class ContextCollector extends PropertyCollector
 {
   public static final Log LOG = LogFactory.getLog(ContextCollector.class);
 
-  public ContextCollector(boolean caseSensitive, int leftSize, int rightSize, Set<EquivalenceClass> contextEqs) throws Exception
+  public ContextCollector(boolean caseSensitive, boolean posSensitive, int leftSize, int rightSize, Set<EquivalenceClass> contextEqs) throws Exception
   {
-    super(caseSensitive);
+	  super(caseSensitive);
     
     m_leftSize = leftSize;
     m_rightSize = rightSize;
+    //Map from context eq words to eq object itself. Context eqs here already have window position attached is pos sensitive
     m_allContextEqsMap = new HashMap<String, EquivalenceClass>(contextEqs.size());
+    m_positionSensitive = posSensitive;
     
     for (EquivalenceClass eq : contextEqs)
     {
       for (String word : eq.getAllWords())
       { 
-        assert m_allContextEqsMap.get(word) == null;
-        m_allContextEqsMap.put(word, eq);
+    		assert m_allContextEqsMap.get(word) == null;
+    		m_allContextEqsMap.put(word, eq);
       }
     }
   }
@@ -90,7 +92,15 @@ public class ContextCollector extends PropertyCollector
               if (contextIdx != numToken)
               { 
                 // Add current word to the current equivalence class context
-                fountEqContext.addContextWord(m_caseSensitive, m_allContextEqsMap, curSentTokens[contextIdx]);
+            	if (!m_positionSensitive){
+            		fountEqContext.addContextWord(m_caseSensitive, m_allContextEqsMap, curSentTokens[contextIdx]);
+            	}
+            	else{
+                    int distAway=contextIdx-numToken;
+                    String contextword = curSentTokens[contextIdx]+"|s:"+distAway;
+                    //LOG.info("Adding "+contextword+" as context for: "+curSentTokens[numToken]);
+                    fountEqContext.addContextWord(m_caseSensitive, m_allContextEqsMap, contextword);
+            	}
               }
             }
           }
@@ -122,4 +132,5 @@ public class ContextCollector extends PropertyCollector
   protected HashMap<String, EquivalenceClass> m_allContextEqsMap;
   protected int m_leftSize;
   protected int m_rightSize;
+  protected boolean m_positionSensitive;
 }

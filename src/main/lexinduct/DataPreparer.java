@@ -327,7 +327,7 @@ public class DataPreparer
     
     // Collect properties
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);    
-    (new ContextCollector(false, contextWindowSize, contextWindowSize, filtContextEqs)).collectProperty(accessor, eqClasses);    
+    (new ContextCollector(false, false, contextWindowSize, contextWindowSize, filtContextEqs)).collectProperty(accessor, eqClasses);    
 
     accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Time"), src);
     TimeDistributionCollector distCollector = new TimeDistributionCollector(false);

@@ -93,6 +93,8 @@
 	<phrases>
 		<MaxPhraseLength>3</MaxPhraseLength>
 		<CaseSensitive>true</CaseSensitive>
+		<MaxToksBetween>3</MaxToksBetween>
+		<CollectLongestOnly>true</CollectLongestOnly>
 	</phrases>
 	<time>
 		<Align>false</Align>
