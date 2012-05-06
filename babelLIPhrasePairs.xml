@@ -13,12 +13,15 @@
                 <Path>/Users/anni/Resources/Dictionaries/</Path>
                 <Dictionary>frozen_span_dict.esen</Dictionary>
         </dictionary>
+	<stopwords>
+		<Path>/mnt/data/babel/Resources/StopWordLists/</Path>
+	</stopwords>
+	<phrases>
+		<SrcPhraseFile>/Users/anni/Projects/unsup_translation/babelClean/preprocessing/source.phrases</SrcPhraseFile>
+		<TrgPhraseFile>/Users/anni/Projects/unsup_translation/babelClean/preprocessing/target.phrases</TrgPhraseFile>
+	</phrases>
 </resources>
 <preprocessing>
-        <phrases>
-	  <MaxPhraseLength>1</MaxPhraseLength>
-	  <CaseSensitive>true</CaseSensitive>
-	</phrases>
 	<Path>/Users/anni/Projects/unsup_translation/babelClean/preprocessing/</Path>
 	<time>
 	  <Align>false</Align>
@@ -32,7 +35,7 @@
 		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
 		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
 		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
-		<PruneEqIfOccursFewerThan>5</PruneEqIfOccursFewerThan>
+		<PruneEqIfOccursFewerThan>1</PruneEqIfOccursFewerThan>
 		<PruneContextToSize>-1</PruneContextToSize>
 		<Window>2</Window>
 	</context>
@@ -40,10 +43,20 @@
 		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
 		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
 		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
-		<PruneIfOccursFewerThan>0</PruneIfOccursFewerThan>
+		<PruneIfOccursFewerThan>1</PruneIfOccursFewerThan>
 		<PruneMostFrequentSrc>-1</PruneMostFrequentSrc>
 		<PruneMostFrequentTrg>-1</PruneMostFrequentTrg>
 	</candidates>
+	<phrases>
+		<MaxPhraseLength>3</MaxPhraseLength>
+		<CaseSensitive>true</CaseSensitive>
+		<MaxToksBetween>3</MaxToksBetween>
+		<CollectLongestOnly>true</CollectLongestOnly>
+		<features>
+		  <MonoScoringThreads>1</MonoScoringThreads>
+		  <ApproxFeatsWithLSH>false</ApproxFeatsWithLSH>
+		</features>
+	</phrases>
 </preprocessing>
 <output>
     <Path>./output/</Path>
@@ -52,18 +65,16 @@
 <experiments>
 	<time>
 		<SlidingWindow>false</SlidingWindow>
-		<WindowSize>3</WindowSize>
+		<WindowSize>1</WindowSize>
 	</time>
 	<RandomSource>false</RandomSource>
-	<NumSource>3000</NumSource>
-	<NumSourceBins>10</NumSourceBins>
+	<NumSource>-1</NumSource>
 	<NumTranslationsToAddPerSource>500</NumTranslationsToAddPerSource>
 	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
-	<DictionaryAllowSeedTestOverlap>true</DictionaryAllowSeedTestOverlap>
 	<NumRankingThreads>1</NumRankingThreads>	
 	<DoTime>true</DoTime>
 	<DoContext>true</DoContext>
-	<DoEditDistance>true</DoEditDistance>
+	<DoEditDistance>false</DoEditDistance>
 	<DoAggregate>true</DoAggregate>
 </experiments>
 </configuration>

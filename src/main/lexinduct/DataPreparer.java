@@ -141,6 +141,8 @@ public class DataPreparer
       LOG.info(" - Pruned candidate source classes: " + m_srcEqs.size());
       LOG.info(" - Pruned candidate target classes: " + m_trgEqs.size());
       
+      //m_contextSrcEqs and m_contextTrgEqs for seed dictionary
+      //m_srcEqs and m_trgEqs for test dictionary
       prepareDictsAndSrcEqsToInduct(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
       
       LOG.info(" - Collecting candidate properties...");
@@ -341,6 +343,7 @@ public class DataPreparer
     return distCollector.binsCollected();
   }
   
+  //Removes days not in common between src and trg; usually done already in corpora preprocessing
   protected void alignDistributions(Set<Integer> srcBins, Set<Integer> trgBins, Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs)
   {
     HashSet<Integer> toRemove = new HashSet<Integer>(srcBins);
@@ -610,6 +613,7 @@ public class DataPreparer
     String dictDir = Configurator.CONFIG.getString("resources.dictionary.Path");
     int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
     SimpleDictionary entireDict;
+    boolean allowSeedTestOverlap = Configurator.CONFIG.containsKey("experiments.DictionaryAllowSeedTestOverlap") ? Configurator.CONFIG.getBoolean("experiments.DictionaryAllowSeedTestOverlap") : false;
     
     LOG.info("Reading/preparing dictionaries ...");
     
@@ -632,7 +636,11 @@ public class DataPreparer
     
     m_srcEqsToInduct = selectSrcTokensToInduct(m_testDict, srcEqs); 
 
-    m_seedDict.removeAllSrc(map1To2(m_seedDict.getAllSrc(), m_srcEqsToInduct));
+    //Remove src phrases to induce from seed dictionary if overlap is not allowed (default, unless experiments.DictionaryAllowSeedTestOverap set to true
+    if (!allowSeedTestOverlap){
+    	LOG.info("Removing overlap between seed dictionary and src phrases to induce...");
+    	m_seedDict.removeAllSrc(map1To2(m_seedDict.getAllSrc(), m_srcEqsToInduct));
+    }
     m_testDict.retainAllSrc(m_srcEqsToInduct);
     
     LOG.info("Seed dictionary: " + m_seedDict.toString());

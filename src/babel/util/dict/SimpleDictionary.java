@@ -167,7 +167,6 @@ public class SimpleDictionary
         transSet.add(trgTok);
       }
     }
-    
     reader.close();
   }
   
