@@ -615,7 +615,7 @@ public class DataPreparer
     SimpleDictionary entireDict;
     boolean allowSeedTestOverlap = Configurator.CONFIG.containsKey("experiments.DictionaryAllowSeedTestOverlap") ? Configurator.CONFIG.getBoolean("experiments.DictionaryAllowSeedTestOverlap") : false;
     
-    LOG.info("Reading/preparing dictionaries ...");
+    LOG.info("Reading/preparing seed dictionaries ...");
     
     if (Configurator.CONFIG.containsKey("resources.dictionary.Dictionary")) {
       String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
@@ -629,7 +629,8 @@ public class DataPreparer
     entireDict.pruneCounts(ridDictNumTrans);
     
     m_seedDict = new Dictionary(srcContEqs, trgContEqs, entireDict, "Seed dictionary");
-    m_testDict = new Dictionary(srcEqs, trgEqs, entireDict, "Test dictionary");
+    //ANNI update: test dictionary: answers don't need to be in trg context classes
+    m_testDict = new Dictionary(srcEqs, entireDict, "Test dictionary");
     
     LOG.info("Initial seed dictionary: " + m_seedDict.toString());
     LOG.info("Initial test dictionary: " + m_testDict.toString());
