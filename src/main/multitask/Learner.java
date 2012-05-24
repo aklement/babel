@@ -26,21 +26,33 @@ public class Learner {
 	
 	public void learnStart(int dims, Set<EquivalenceClass> allEqs, ArrayList<Integer> sPositions, int windowSize, double numToks, double learningRate, double initialBias, double wReg, double cReg){
 
-		  m_CDimension=dims;
+		//dimensionality of C
+		m_CDimension=dims;
 		Random r = new Random();
+		//relative position parameter
 		m_W = new HashMap<EquivalenceClass,HashMap<Integer,ArrayList<Double>>> ();
+		//word vector representations
 		m_C = new HashMap<EquivalenceClass,ArrayList<Double>>();
+		//List of s positions (positive and negative)
 		m_SPositions = sPositions;
+		//should be half the size of sPositions list (e.g. s=[-2,-1,1,2]; m_rightSize=2)
 		m_rightSize = windowSize;
 		m_leftSize=windowSize;
+		//n, same for both updates
 		m_LearningRate = learningRate;
+		//lambda_w, regularization parameter
 		m_regW = wReg;
+		//lambda_c, regularization parameter
 		m_regC = cReg;
+		//number of tokens in training data
 		m_numTokens = numToks;
-		m_InitialBias = initialBias;
+		//initial bias value - what is this???
+		//m_InitialBias = initialBias;
+		m_InitialBias = 0.0;
+		//unsure what this does?
 		m_Bias = new HashMap<EquivalenceClass,Double>();
 		
-		//Initialize W parameters
+		//Initialize W relative position parameters with a number drawn from a Gaussian, divided by 1000
 		for (EquivalenceClass eq : allEqs){
 			assert m_W.get(eq) == null;
 			HashMap<Integer,ArrayList<Double>> newHM = new HashMap<Integer,ArrayList<Double>>();
@@ -55,7 +67,7 @@ public class Learner {
 			m_W.put(eq, newHM);
 		}
 		
-		//Initialize C parameters
+		//Initialize C word vector representation 
 		for (EquivalenceClass eq : allEqs){
 			assert m_C.get(eq)==null;
 			ArrayList<Double> cvector = new ArrayList<Double>();
@@ -74,14 +86,12 @@ public class Learner {
 		for (EquivalenceClass eq : m_C.keySet()){
 			if (eq!=seenWordEQ){
 				HashMap<Integer, ArrayList<Double>> eqsW = m_W.get(eq);
-				for (Integer s : m_SPositions){
-					for (int cdim=0; cdim<m_CDimension; cdim++){
-						oldval = eqsW.get(s).get(cdim);
-						cvalforHist=histwordC.get(cdim);
-						regval=(m_regW*oldval)/m_numTokens;
-						updateval = m_LearningRate * ((cvalforHist*(-probability))-regval);
-						m_W.get(eq).get(s).set(cdim, (oldval+updateval));
-					}
+				for (int cdim=0; cdim<m_CDimension; cdim++){
+					oldval = eqsW.get(position).get(cdim);
+					cvalforHist=histwordC.get(cdim);
+					regval=(m_regW*oldval)/m_numTokens;
+					updateval = m_LearningRate * ((cvalforHist*(-probability))-regval);
+					m_W.get(eq).get(position).set(cdim, (oldval+updateval));
 				}
 			}
 		}
@@ -112,8 +122,8 @@ public class Learner {
 			if (eq!=seenWordEQ){
 				for (int cdim=0; cdim<m_CDimension; cdim++){
 					myoldval=m_C.get(eq).get(cdim);
-					regval = m_LearningRate*(m_regC*myoldval)/m_numTokens;
-					m_C.get(eq).set(cdim, myoldval+regval);
+					regval = m_LearningRate*((m_regC*myoldval)/m_numTokens);
+					m_C.get(eq).set(cdim, myoldval-regval);
 				}
 			
 			}
@@ -130,21 +140,24 @@ public class Learner {
 			//Calculate update value
 			updateval = 0.0;
 			curcval = m_C.get(seenWordEQ).get(i);
+			//sum over positions, difference between my m_W and expected m_W
 			for (Integer sPos : m_SPositions){
 				mycurval = m_W.get(seenWordEQ).get(sPos).get(i);
 				expectedval = expectedW.get(sPos).get(i);
 				//System.out.println("mycurval: "+mycurval);
 				//System.out.println("Expected W val: "+expectedval);
-				Double regval = (m_regC*mycurval)/m_numTokens;
-				updateval += mycurval - expectedval-regval;
+				updateval += mycurval - expectedval;
 			}
+			//subtract reg. term
+			Double regval = (m_regC*curcval)/m_numTokens;
+			updateval -= regval;
 			//Now do the update to C-dimension i
 			//System.out.println("C update value: "+updateval);
 			m_C.get(seenWordEQ).set(i, curcval+(m_LearningRate*updateval));
 		}
 	}
 	
-	//Get model's current expected W for a given history
+	//Get model's current expected W for a given history, given denominator
 	protected HashMap<Integer,ArrayList<Double>> getExpectedW(HashMap<Integer, EquivalenceClass> pairedHistory, Double normalizer){
 		HashMap<Integer,ArrayList<Double>> expectedW = new HashMap<Integer,ArrayList<Double>>();
 		//First initialize empty HashMap
@@ -157,6 +170,7 @@ public class Learner {
 		}
 		//Loop over all x' in all eqs:
 		for (EquivalenceClass eq : m_C.keySet()){
+			//Get probability of that word in the context; returned in non-log space
 			Double myprob = getProbWordGivenHistory(pairedHistory, eq, normalizer);
 			//for each position in w_eq
 			for (Integer s : m_SPositions){
@@ -184,6 +198,7 @@ public class Learner {
 		Double denominator = 0.0;
 		//System.out.println(pairedHistory);
 		boolean first=true;
+		//Loop through all v
 		for (EquivalenceClass alleq : m_C.keySet()){
 			//System.out.println(alleq.getStem());
 			Double sumForWord = m_Bias.get(alleq);
@@ -290,9 +305,9 @@ public class Learner {
 	    String[] curSentTokens;
 	    EquivalenceClass foundEq;
 	    int min, max, numlines,hundredslines;
+	    //Populate hashmap: lookup string, return equivalence class
 	    // TODO: Very inefficient - think of something better
 	    HashMap<String, EquivalenceClass> eqsMap = new HashMap<String, EquivalenceClass>(m_C.size());
-	 
 	    for (EquivalenceClass eq : m_C.keySet())
 	    {
 	      for (String word : eq.getAllWords())
@@ -302,24 +317,26 @@ public class Learner {
 	      }
 	    }
 	    
+	    //keep up with the number of lines and hundreds of lines (for progress printing)
 	    numlines=0;
 	    hundredslines=0;
 	    while ((curLine = reader.readLine()) != null)
 	    {
-	    numlines+=1;
-	    if (numlines==100){
-	    	hundredslines+=1;
-	    	System.out.print(".");
-	    	numlines=0;
-	    }
+	      numlines+=1;
+	      if (numlines==100){
+	    	  hundredslines+=1;
+	    	  System.out.print(".");
+	    	  numlines=0;
+  	      }
 	      
 	      // Split into likely sentences
 	      curSents = sentSplit(curLine, accessor.isOneSentencePerLine());
-	        
-	      // Within each sentence, split into words
+	      //Loop through sentences
 	      for (int numSent = 0; numSent < curSents.length; numSent++ )
 	      {
+		    // Within each sentence, split into words
 	        curSentTokens = curSents[numSent].split(WORD_DELIM_REGEX);
+	        //Loop through tokens in sentence
 	        for (int numToken = 0; numToken < curSentTokens.length; numToken++)
 	        {         
 	          // Look for the word's equivalence class
@@ -328,26 +345,26 @@ public class Learner {
 	   
 	        	//System.out.println("Updating based on seen word: "+curSentTokens[numToken]);
 	        	  
-	            // A window around the word
+	            // A window around the word (without going into negative indices or longer-than-string indices)
 	            min = Math.max(0, numToken - m_leftSize);
 	            max = Math.min(numToken + m_rightSize + 1, curSentTokens.length);
 	            
-	            // Consider all words in the contextual window (except for the word itself). Keep track of pairs of 
-	            // 'histories' and positions
+	            // Consider all words in the contextual window (except for the word itself). 
+	            // Keep track of pairs of 'histories' and positions (lookup position, find equivalence class for corresponding word)
 	            HashMap<Integer,EquivalenceClass> pairedHistory = new HashMap<Integer,EquivalenceClass>();
 	            for (int contextIdx = min; contextIdx < max; contextIdx++)
-	            {
-	            
-	            if (contextIdx != numToken)
-	              { 
+	              {	            
+	              if (contextIdx != numToken)
+	                { 
 	            	EquivalenceClass historyword = eqsMap.get(EquivalenceClass.getWordOfAppropriateForm(curSentTokens[contextIdx], m_caseSensitive));
 	            	if (historyword!=null){
+	            		//s value is seen token's position minus in-window token's position
 	            		int sPos=contextIdx-numToken;
 	            		pairedHistory.put(sPos, historyword);
 	            	}
 	                //LOG.info("Adding "+contextword+" as context for: "+curSentTokens[numToken]);
 	            	}
-	              }
+	            }
 	            Double normalizer = getProbDenominator(pairedHistory);
         		Double numerator = getNumerator(pairedHistory,foundEq,normalizer);
         		Double probWgH = Math.exp(numerator-normalizer);

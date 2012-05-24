@@ -16,16 +16,14 @@ public class monoLearn {
 		  LOG.info("\n" + Configurator.getConfigDescriptor());
 		  monoLearn monolearner = new monoLearn();
 		  boolean learnTrgOnly = true;
-		  monolearner.learn(learnTrgOnly);
-		  
-		  
+		  monolearner.learn(learnTrgOnly);  
 	  }
 
 	  protected void learn(boolean learnTrgOnly) throws Exception{
 		  //Collect context properties: position sensitive and target language only
 		  MTDataPreparer preparer = new MTDataPreparer();
 		  preparer.prepare(learnTrgOnly);
-		  double trgTokens = preparer.getNumTrgTokens();
+		  double numTrgTokens = preparer.getNumTrgTokens();
 
 		  double initialBias = Configurator.CONFIG.getDouble("preprocessing.learnParameters.initialBias");
 		  double learningRate = Configurator.CONFIG.getDouble("preprocessing.learnParameters.learningRate");
@@ -41,7 +39,7 @@ public class monoLearn {
 			  positions.add(-1*i);
 			  positions.add(1*i);
 		  }
-		  learner.learnStart(cDimension, preparer.m_trgEqs, positions,windowsize,trgTokens, learningRate, initialBias, wreg, creg);
+		  learner.learnStart(cDimension, preparer.m_trgEqs, positions,windowsize,numTrgTokens, learningRate, initialBias, wreg, creg);
 		  learner.learnFromData();
 		  
 	  }
