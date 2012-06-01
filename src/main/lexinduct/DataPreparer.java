@@ -105,6 +105,7 @@ public class DataPreparer
       LOG.info(" - Candidate target classes: " + m_trgEqs.size());
       
       prepareDictsAndSrcEqsToInduct(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
+      prepareTranslitDictionary(m_contextSrcEqs);
       
       LOG.info(" - Reading source and target properties...");
       readProps(true, m_srcEqs, SRC_PROP_EXT);
@@ -144,6 +145,8 @@ public class DataPreparer
       //m_contextSrcEqs and m_contextTrgEqs for seed dictionary
       //m_srcEqs and m_trgEqs for test dictionary
       prepareDictsAndSrcEqsToInduct(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
+      prepareTranslitDictionary(m_contextSrcEqs);
+      
       
       LOG.info(" - Collecting candidate properties...");
       Set<Integer> srcBins = collectProps(true, m_srcEqs, m_contextSrcEqs, m_seedDict);
@@ -223,6 +226,10 @@ public class DataPreparer
   { return m_maxTokCountInTrg; 
   }
   
+  public SimpleDictionary getTranslitDict() {
+	    return m_translitDict;
+	  }
+  
   protected Set<EquivalenceClass> readEqClasses(boolean src, Class<? extends EquivalenceClass> eqClsssClass, String eqfileName, String propFileExtension) throws Exception
   {
     // Read init classes
@@ -264,6 +271,32 @@ public class DataPreparer
     return eqClasses;
   }
 
+  protected void prepareTranslitDictionary(Set<EquivalenceClass> srcContEqs) throws Exception {
+      
+	    LOG.info(" - Reading/preparing transliteration dictionary ...");
+	    
+	    String dictDir = Configurator.CONFIG.containsKey("resources.translit.Path") ? Configurator.CONFIG.getString("resources.translit.Path") : null;
+
+	    if ((dictDir == null) || (dictDir.trim().length() == 0)) {
+	      
+	      LOG.info(" - No transliteration dictionary specified");
+	      
+	    } else {
+	      
+	      if (Configurator.CONFIG.containsKey("resources.translit.Dictionary")) {
+	        String dictFileName = Configurator.CONFIG.getString("resources.translit.Dictionary");
+	        m_translitDict = new SimpleDictionary(dictDir + dictFileName, "Translit");
+	      } else {
+	        String srcDictFileName = Configurator.CONFIG.getString("resources.translit.SrcName");
+	        String trgDictFileName = Configurator.CONFIG.getString("resources.translit.TrgName");      
+	        m_translitDict = new SimpleDictionary(new DictHalves(dictDir + srcDictFileName, dictDir + trgDictFileName) , "TranslitDictionary");
+	      }
+	        
+	      LOG.info(" - Transliteration dictionary: " + m_translitDict.toString()); 
+	    }
+	  }
+  
+  
   protected Set<EquivalenceClass> constructEqClasses(boolean src, Set<EquivalenceClass> allEqs, Class<? extends EquivalenceClass> eqClassClass) throws Exception
   {    
     HashMap<String, EquivalenceClass> eqsMap = new HashMap<String, EquivalenceClass>();
@@ -755,6 +788,7 @@ public class DataPreparer
 
   protected Dictionary m_seedDict;
   protected Dictionary m_testDict;
+  protected SimpleDictionary m_translitDict = null;  
   protected Set<EquivalenceClass> m_contextSrcEqs;
   protected Set<EquivalenceClass> m_contextTrgEqs;
   protected Set<EquivalenceClass> m_srcEqs;

@@ -26,9 +26,11 @@ import babel.ranking.scorers.timedistribution.TimeDistributionCosineScorer;
 import babel.ranking.scorers.context.DictScorer;
 import babel.ranking.scorers.context.FungS1Scorer;
 import babel.ranking.scorers.edit.EditDistanceScorer;
+import babel.ranking.scorers.edit.EditDistanceTranslitScorer;
 
 import babel.util.config.Configurator;
 import babel.util.dict.Dictionary;
+import babel.util.dict.SimpleDictionary;
 
 public class NBestCollector
 {
@@ -42,7 +44,7 @@ public class NBestCollector
     NBestCollector collector = new NBestCollector();
     
     collector.runTwoLanguages();
-    //collector.runSingleLanguage();
+        //collector.runSingleLanguage();
   }
   
   protected void runTwoLanguages() throws Exception
@@ -69,8 +71,14 @@ public class NBestCollector
     // Setup scorers
     DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
-    Scorer editScorer = new EditDistanceScorer();
-
+    SimpleDictionary translitDict = preparer.getTranslitDict();
+    Scorer editScorer;
+    if (translitDict==null){
+    	editScorer = new EditDistanceScorer();
+    }
+    else{
+    	editScorer = new EditDistanceTranslitScorer(translitDict);
+    }
     // Pre-process properties (i.e. project contexts, normalizes distributions)
     preparer.prepareProperties(true, srcSubset, contextScorer, timeScorer);
     preparer.prepareProperties(false, preparer.getTrgEqs(), contextScorer, timeScorer);
@@ -102,7 +110,8 @@ public class NBestCollector
       cands = rank(editScorer, srcSubset, trgSet, maxNumTrgPerSrc, numThreads);
       evaluate(cands, preparer.getTestDict(), outDir + "edit.eval");
       EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "edit.scored");
-      allCands.add(cands);
+      allCands.add(cands);    
+    
     }
     
     if (doAggregate)

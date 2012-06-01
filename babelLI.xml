@@ -2,7 +2,7 @@
 <configuration>
 <corpora>
         <wikitemp>
-	  <Path>/Users/anni/Resources/Wikipedia/wikiTest/z/</Path>
+	  <Path>/Users/anni/Resources/Wikipedia/wikiTest/ztiny/</Path>
           <SrcRegExp>((?!(\.wiki\.|\.translated\.)).)*\\.es</SrcRegExp>
           <TrgRegExp>((?!(\.wiki\.|\.translated\.)).)*\\.en</TrgRegExp>
 	  <OneSentPerLine>true</OneSentPerLine>
@@ -13,13 +13,17 @@
                 <Path>/Users/anni/Resources/Dictionaries/</Path>
                 <Dictionary>frozen_span_dict.esen</Dictionary>
         </dictionary>
+	<translit>
+	  <Path>./tdict/</Path>
+	  <Dictionary>es.temp</Dictionary>
+	 </translit>
 </resources>
 <preprocessing>
         <phrases>
 	  <MaxPhraseLength>1</MaxPhraseLength>
 	  <CaseSensitive>true</CaseSensitive>
 	</phrases>
-	<Path>/Users/anni/Projects/unsup_translation/babelClean/preprocessing/</Path>
+	<Path>./preprocessing/</Path>
 	<time>
 	  <Align>false</Align>
 	</time>
@@ -32,7 +36,7 @@
 		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
 		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
 		<PruneEqIfOccursMoreThan>-1</PruneEqIfOccursMoreThan>
-		<PruneEqIfOccursFewerThan>5</PruneEqIfOccursFewerThan>
+		<PruneEqIfOccursFewerThan>-1</PruneEqIfOccursFewerThan>
 		<PruneContextToSize>-1</PruneContextToSize>
 		<Window>2</Window>
 	</context>
@@ -40,7 +44,7 @@
 		<TrgEqClass>babel.content.eqclasses.SimpleEquivalenceClass</TrgEqClass>
 		<SrcEqClass>babel.content.eqclasses.SimpleEquivalenceClass</SrcEqClass>
 		<PruneIfOccursMoreThan>-1</PruneIfOccursMoreThan>
-		<PruneIfOccursFewerThan>0</PruneIfOccursFewerThan>
+		<PruneIfOccursFewerThan>-1</PruneIfOccursFewerThan>
 		<PruneMostFrequentSrc>-1</PruneMostFrequentSrc>
 		<PruneMostFrequentTrg>-1</PruneMostFrequentTrg>
 	</candidates>
