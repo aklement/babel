@@ -22,9 +22,11 @@ import babel.ranking.scorers.Scorer;
 import babel.ranking.scorers.context.DictScorer;
 import babel.ranking.scorers.context.FungS1Scorer;
 import babel.ranking.scorers.edit.EditDistanceScorer;
+import babel.ranking.scorers.edit.EditDistanceTranslitScorer;
 import babel.ranking.scorers.timedistribution.TimeDistributionCosineScorer;
 import babel.util.config.Configurator;
 import babel.util.dict.Dictionary;
+import babel.util.dict.SimpleDictionary;
 
 public class FreqBinInductor {
 
@@ -62,10 +64,19 @@ public class FreqBinInductor {
     Set<EquivalenceClass> trgSet = preparer.getTrgEqs();
     
     // Setup scorers
-    DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
+    DictScorer contextScorer = new FungS1Scorer(preparer.getProjDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
-    Scorer editScorer = new EditDistanceScorer();
 
+    SimpleDictionary translitDict = preparer.getTranslitDict();
+    Scorer editScorer;
+    if (translitDict==null){
+    	editScorer = new EditDistanceScorer();
+    }
+    else{
+    	editScorer = new EditDistanceTranslitScorer(translitDict);
+    }
+    
+    
     // Collect and pre-process properties (i.e. project contexts, normalizes distributions)
     preparer.collectContextAndTimeProps(srcSubset, trgSet);
     preparer.prepareContextAndTimeProps(true, srcSubset, contextScorer, timeScorer, false);

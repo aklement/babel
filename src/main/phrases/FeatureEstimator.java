@@ -261,6 +261,9 @@ public class FeatureEstimator {
         alignedToks++;
       }
       
+      if (i>(trgWords.length-1)){
+    	  System.out.println("PROBLEM IN PT: "+srcPhrase.toString()+" ||| "+trgPhrase.toString());
+      }
       trgTok = m_trgToks.get(trgWords[i]);
       
       if (trgTok != null && aligns[i] != null) {

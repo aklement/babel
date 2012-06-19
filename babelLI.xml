@@ -13,6 +13,10 @@
                 <Path>/Users/anni/Resources/Dictionaries/</Path>
                 <Dictionary>frozen_span_dict.esen</Dictionary>
         </dictionary>
+	<projdictionary>
+                <Path>/Users/anni/Resources/Dictionaries/</Path>
+                <Dictionary>frozen_span_dict.esen</Dictionary>	  
+	</projdictionary>
 	<translit>
 	  <Path>./tdict/</Path>
 	  <Dictionary>es.temp</Dictionary>
@@ -63,6 +67,7 @@
 	<NumSourceBins>10</NumSourceBins>
 	<NumTranslationsToAddPerSource>500</NumTranslationsToAddPerSource>
 	<DictionaryPruneNumTranslations>-1</DictionaryPruneNumTranslations>
+	<ProjDictionaryPruneNumTranslations>-1</ProjDictionaryPruneNumTranslations>
 	<DictionaryAllowSeedTestOverlap>true</DictionaryAllowSeedTestOverlap>
 	<NumRankingThreads>1</NumRankingThreads>	
 	<DoTime>true</DoTime>

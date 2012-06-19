@@ -63,8 +63,13 @@ public class FreqBinInductPreparer {
   
   public void prepare() throws Exception {
   
+	//Collect equivalence classes based on monolingual corpus
     collectContextEqs();
+    //Prepare dictionary for EVALUATION
     prepareSeedDictionary(m_contextSrcEqs, m_contextTrgEqs);
+    //Prepare dictionary for PROJECTION
+    prepareProjDictionary(m_contextSrcEqs, m_contextTrgEqs);
+    //Loads transliteration dictionary, if there is one
     prepareTranslitDictionary(m_contextSrcEqs);
     selectSrcCandidatesByNum();
     //selectSrcCandidatesByFreq();
@@ -88,6 +93,10 @@ public class FreqBinInductPreparer {
     return m_seedDict;
   }
 
+  public Dictionary getProjDict() {
+	    return m_projDict;
+	  }
+  
   public SimpleDictionary getTranslitDict() {
     return m_translitDict;
   }
@@ -403,6 +412,12 @@ public class FreqBinInductPreparer {
     return filtTrgEqs;
   }
   
+  /***
+   * Prepoares dictionary for evaluation (projection dictionary separate)
+   * @param srcContEqs
+   * @param trgContEqs
+   * @throws Exception
+   */
   protected void prepareSeedDictionary(Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs) throws Exception {
     
     String dictDir = Configurator.CONFIG.getString("resources.dictionary.Path");
@@ -427,6 +442,37 @@ public class FreqBinInductPreparer {
     LOG.info(" - Seed dictionary: " + m_seedDict.toString()); 
   }
 
+  /***
+   * Given set of src Cont eqs and trg Cont eqs that appear in monolingual data, save a dictionary that contains translations between the two
+   * @param srcContEqs
+   * @param trgContEqs
+   * @throws Exception
+   */
+  protected void prepareProjDictionary(Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs) throws Exception {
+	    
+	    String dictDir = Configurator.CONFIG.getString("resources.projdictionary.Path");
+	    int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.ProjDictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
+	    SimpleDictionary simpProjDict;
+	    
+	    LOG.info(" - Reading/preparing seed dictionary ...");
+	    
+	    if (Configurator.CONFIG.containsKey("resources.projdictionary.Dictionary")) {
+	      String dictFileName = Configurator.CONFIG.getString("resources.projdictionary.Dictionary");
+	      simpProjDict = new SimpleDictionary(dictDir + dictFileName, "ProjectionDictionary");
+	    } else {
+	      String srcDictFileName = Configurator.CONFIG.getString("resources.projdictionary.SrcName");
+	      String trgDictFileName = Configurator.CONFIG.getString("resources.projdictionary.TrgName");      
+	      simpProjDict = new SimpleDictionary(new DictHalves(dictDir + srcDictFileName, dictDir + trgDictFileName) , "ProjectionDictionary");
+	    }
+
+	    simpProjDict.pruneCounts(ridDictNumTrans);
+	    
+	    m_projDict = new Dictionary(srcContEqs, trgContEqs, simpProjDict, "ProjDictionary");
+	    
+	    LOG.info(" - Seed dictionary: " + m_seedDict.toString()); 
+	  }
+  
+  
   protected void prepareTranslitDictionary(Set<EquivalenceClass> srcContEqs) throws Exception {
         
     LOG.info(" - Reading/preparing transliteration dictionary ...");
@@ -664,6 +710,7 @@ public class FreqBinInductPreparer {
   }
   
   protected Dictionary m_seedDict = null;
+  protected Dictionary m_projDict = null;
   protected SimpleDictionary m_translitDict = null;
 
   protected List<Set<EquivalenceClass>> m_binnedSrcEqs = null;
