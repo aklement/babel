@@ -62,6 +62,10 @@ public class FreqBinInductor {
     // Select a subset of src classes to actually induct
     Set<EquivalenceClass> srcSubset = preparer.getSrcEqsToInduct();   
     Set<EquivalenceClass> trgSet = preparer.getTrgEqs();
+
+    // Get contextual src and trg classes 
+    Set<EquivalenceClass> srcContextSet = preparer.getSrcContextEqs();
+    Set<EquivalenceClass> trgContextSet = preparer.getTrgContextEqs();
     
     // Setup scorers
     DictScorer contextScorer = new FungS1Scorer(preparer.getProjDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());

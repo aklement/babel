@@ -75,6 +75,7 @@ public class FreqBinInductPreparer {
     //selectSrcCandidatesByFreq();
     selectTrgCandidates();
     filterContextEqs();
+    LOG.info("Done with initial prep. Num src context eqs: "+m_contextSrcEqs.size()+" Num trg context eqs: "+m_contextTrgEqs.size());
   }
   
   public Set<EquivalenceClass> getSrcEqsToInduct() {
@@ -88,7 +89,15 @@ public class FreqBinInductPreparer {
   public Set<EquivalenceClass> getTrgEqs() {
     return m_trgEqs;
   }
+ 
+  public Set<EquivalenceClass> getSrcContextEqs() {
+	  return m_contextSrcEqs;
+  }
   
+  public Set<EquivalenceClass> getTrgContextEqs(){
+	  return m_contextTrgEqs;
+  }
+   
   public Dictionary getSeedDict() {
     return m_seedDict;
   }
