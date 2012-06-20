@@ -63,6 +63,7 @@ public class FreqBinInductPreparer {
   
   public void prepare() throws Exception {
   
+	LOG.info("PREPARING DATA FOR FREQ_BIN_INDUCT");
 	//Collect equivalence classes based on monolingual corpus
     collectContextEqs();
     //Prepare dictionary for EVALUATION
@@ -355,9 +356,10 @@ public class FreqBinInductPreparer {
   
   protected Set<EquivalenceClass> filterContextEqs(boolean src, Set<EquivalenceClass> eqs, int pruneContEqIfOccursFewerThan, int pruneContEqIfOccursMoreThan) throws Exception {
 
-    LOG.info(" - Filtering " + (src ? "source" : "target") + " contextual words: keeping those in dict [" + m_seedDict.toString() + "] and occuring (" + pruneContEqIfOccursFewerThan + "," + pruneContEqIfOccursMoreThan + ") times...");
+    //LOG.info(" - Filtering " + (src ? "source" : "target") + " contextual words: keeping those in dict [" + m_seedDict.toString() + "] and occuring (" + pruneContEqIfOccursFewerThan + "," + pruneContEqIfOccursMoreThan + ") times...");
+	LOG.info(" - Filtering " + (src ? "source" : "target") + " contextual words: keeping those in dict [" + m_projDict.toString() + "] and occuring (" + pruneContEqIfOccursFewerThan + "," + pruneContEqIfOccursMoreThan + ") times...");
     LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
-    filters.add(new DictionaryFilter(m_seedDict, true, src)); 
+    filters.add(new DictionaryFilter(m_projDict, true, src)); 
     filters.add(new NumOccurencesFilter(pruneContEqIfOccursFewerThan, true));
     filters.add(new NumOccurencesFilter(pruneContEqIfOccursMoreThan, false));
 
@@ -478,7 +480,7 @@ public class FreqBinInductPreparer {
 	    
 	    m_projDict = new Dictionary(srcContEqs, trgContEqs, simpProjDict, "ProjDictionary");
 	    
-	    LOG.info(" - Seed dictionary: " + m_seedDict.toString()); 
+	    LOG.info(" - Projection dictionary: " + m_projDict.toString()); 
 	  }
   
   

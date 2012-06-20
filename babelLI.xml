@@ -2,7 +2,7 @@
 <configuration>
 <corpora>
         <wikitemp>
-	  <Path>/Users/anni/Resources/Wikipedia/wikiTest/ztiny/</Path>
+	  <Path>/Users/anni/Resources/Wikipedia/wikiTest/z/</Path>
           <SrcRegExp>((?!(\.wiki\.|\.translated\.)).)*\\.es</SrcRegExp>
           <TrgRegExp>((?!(\.wiki\.|\.translated\.)).)*\\.en</TrgRegExp>
 	  <OneSentPerLine>true</OneSentPerLine>
@@ -11,7 +11,7 @@
 <resources>
         <dictionary>
                 <Path>/Users/anni/Resources/Dictionaries/</Path>
-                <Dictionary>frozen_span_dict.esen</Dictionary>
+                <Dictionary>frozen_span_dict.esen.eval</Dictionary>
         </dictionary>
 	<projdictionary>
                 <Path>/Users/anni/Resources/Dictionaries/</Path>
