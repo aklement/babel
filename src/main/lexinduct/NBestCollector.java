@@ -69,7 +69,7 @@ public class NBestCollector
     Set<EquivalenceClass> trgSet = preparer.getTrgEqs();
     
     // Setup scorers
-    DictScorer contextScorer = new FungS1Scorer(preparer.getSeedDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
+    DictScorer contextScorer = new FungS1Scorer(preparer.getProjDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
     SimpleDictionary translitDict = preparer.getTranslitDict();
     Scorer editScorer;
@@ -90,8 +90,8 @@ public class NBestCollector
     {
       LOG.info("Ranking candidates using time...");  
       cands = rank(timeScorer, srcSubset, trgSet, maxNumTrgPerSrc, numThreads);
-      evaluate(cands, preparer.getTestDict(), outDir + "time.eval");
-      EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "time.scored");                
+      evaluate(cands, preparer.getSeedDict(), outDir + "time.eval");
+      EquivClassCandRanking.dumpToFile(preparer.getSeedDict(), cands, outDir + "time.scored");                
       allCands.add(cands);
     }
     
@@ -99,8 +99,8 @@ public class NBestCollector
     {
       LOG.info("Ranking candidates using context...");
       cands = rank(contextScorer, srcSubset, trgSet, maxNumTrgPerSrc, 0.0, numThreads);
-      evaluate(cands, preparer.getTestDict(), outDir + "context.eval");
-      EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "context.scored");   
+      evaluate(cands, preparer.getSeedDict(), outDir + "context.eval");
+      EquivClassCandRanking.dumpToFile(preparer.getSeedDict(), cands, outDir + "context.scored");   
       allCands.add(cands);
     }
     
@@ -108,8 +108,8 @@ public class NBestCollector
     {
       LOG.info("Ranking candidates using edit distance...");  
       cands = rank(editScorer, srcSubset, trgSet, maxNumTrgPerSrc, numThreads);
-      evaluate(cands, preparer.getTestDict(), outDir + "edit.eval");
-      EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "edit.scored");
+      evaluate(cands, preparer.getSeedDict(), outDir + "edit.eval");
+      EquivClassCandRanking.dumpToFile(preparer.getSeedDict(), cands, outDir + "edit.scored");
       allCands.add(cands);    
     
     }
@@ -119,8 +119,8 @@ public class NBestCollector
       LOG.info("Aggregating (MRR) all rankings...");  
       MRRAggregator aggregator = new MRRAggregator();
       cands =  aggregator.aggregate(allCands);
-      evaluate(cands, preparer.getTestDict(), outDir + "aggmrr.eval");
-      EquivClassCandRanking.dumpToFile(preparer.getTestDict(), cands, outDir + "aggmrr.scored");; 
+      evaluate(cands, preparer.getSeedDict(), outDir + "aggmrr.eval");
+      EquivClassCandRanking.dumpToFile(preparer.getSeedDict(), cands, outDir + "aggmrr.scored");; 
     }
     
     LOG.info("--- Done ---");

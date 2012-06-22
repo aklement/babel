@@ -106,6 +106,8 @@ public class DataPreparer
       
       prepareDictsAndSrcEqsToInduct(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
       prepareTranslitDictionary(m_contextSrcEqs);
+      //Prepare dictionary for PROJECTION
+      prepareProjDictionary(m_contextSrcEqs, m_contextTrgEqs);
       
       LOG.info(" - Reading source and target properties...");
       readProps(true, m_srcEqs, SRC_PROP_EXT);
@@ -146,11 +148,13 @@ public class DataPreparer
       //m_srcEqs and m_trgEqs for test dictionary
       prepareDictsAndSrcEqsToInduct(m_contextSrcEqs, m_contextTrgEqs, m_srcEqs, m_trgEqs);
       prepareTranslitDictionary(m_contextSrcEqs);
+      //Prepare dictionary for PROJECTION
+      prepareProjDictionary(m_contextSrcEqs, m_contextTrgEqs);
       
       
       LOG.info(" - Collecting candidate properties...");
-      Set<Integer> srcBins = collectProps(true, m_srcEqs, m_contextSrcEqs, m_seedDict);
-      Set<Integer> trgBins = collectProps(false, m_trgEqs, m_contextTrgEqs, m_seedDict);
+      Set<Integer> srcBins = collectProps(true, m_srcEqs, m_contextSrcEqs, m_projDict);
+      Set<Integer> trgBins = collectProps(false, m_trgEqs, m_contextTrgEqs, m_projDict);
 
       if (alignDistros)
       {
@@ -193,11 +197,7 @@ public class DataPreparer
   public Dictionary getSeedDict()
   { return m_seedDict;
   }
-  
-  public Dictionary getTestDict() 
-  { return m_testDict;
-  }
-  
+    
   public Set<EquivalenceClass> getSrcEqs()
   { return m_srcEqs;
   }
@@ -228,6 +228,10 @@ public class DataPreparer
   
   public SimpleDictionary getTranslitDict() {
 	    return m_translitDict;
+	  }
+
+  public Dictionary getProjDict() {
+	    return m_projDict;
 	  }
   
   protected Set<EquivalenceClass> readEqClasses(boolean src, Class<? extends EquivalenceClass> eqClsssClass, String eqfileName, String propFileExtension) throws Exception
@@ -296,6 +300,36 @@ public class DataPreparer
 	    }
 	  }
   
+  
+  /***
+   * Given set of src Cont eqs and trg Cont eqs that appear in monolingual data, save a dictionary that contains translations between the two
+   * @param srcContEqs
+   * @param trgContEqs
+   * @throws Exception
+   */
+  protected void prepareProjDictionary(Set<EquivalenceClass> srcContEqs, Set<EquivalenceClass> trgContEqs) throws Exception {
+	    
+	    String dictDir = Configurator.CONFIG.getString("resources.projdictionary.Path");
+	    int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.ProjDictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
+	    SimpleDictionary simpProjDict;
+	    
+	    LOG.info(" - Reading/preparing seed dictionary ...");
+	    
+	    if (Configurator.CONFIG.containsKey("resources.projdictionary.Dictionary")) {
+	      String dictFileName = Configurator.CONFIG.getString("resources.projdictionary.Dictionary");
+	      simpProjDict = new SimpleDictionary(dictDir + dictFileName, "ProjectionDictionary");
+	    } else {
+	      String srcDictFileName = Configurator.CONFIG.getString("resources.projdictionary.SrcName");
+	      String trgDictFileName = Configurator.CONFIG.getString("resources.projdictionary.TrgName");      
+	      simpProjDict = new SimpleDictionary(new DictHalves(dictDir + srcDictFileName, dictDir + trgDictFileName) , "ProjectionDictionary");
+	    }
+
+	    simpProjDict.pruneCounts(ridDictNumTrans);
+	    
+	    m_projDict = new Dictionary(srcContEqs, trgContEqs, simpProjDict, "ProjDictionary");
+	    
+	    LOG.info(" - Projection dictionary: " + m_projDict.toString()); 
+	  }
   
   protected Set<EquivalenceClass> constructEqClasses(boolean src, Set<EquivalenceClass> allEqs, Class<? extends EquivalenceClass> eqClassClass) throws Exception
   {    
@@ -646,7 +680,7 @@ public class DataPreparer
     String dictDir = Configurator.CONFIG.getString("resources.dictionary.Path");
     int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
     SimpleDictionary entireDict;
-    boolean allowSeedTestOverlap = Configurator.CONFIG.containsKey("experiments.DictionaryAllowSeedTestOverlap") ? Configurator.CONFIG.getBoolean("experiments.DictionaryAllowSeedTestOverlap") : false;
+    //boolean allowSeedTestOverlap = Configurator.CONFIG.containsKey("experiments.DictionaryAllowSeedTestOverlap") ? Configurator.CONFIG.getBoolean("experiments.DictionaryAllowSeedTestOverlap") : false;
     
     LOG.info("Reading/preparing seed dictionaries ...");
     
@@ -661,24 +695,16 @@ public class DataPreparer
         
     entireDict.pruneCounts(ridDictNumTrans);
     
-    m_seedDict = new Dictionary(srcContEqs, trgContEqs, entireDict, "Seed dictionary");
     //ANNI update: test dictionary: answers don't need to be in trg context classes
-    m_testDict = new Dictionary(srcEqs, entireDict, "Test dictionary");
+    m_seedDict = new Dictionary(srcEqs, entireDict, "Seed dictionary");
     
     LOG.info("Initial seed dictionary: " + m_seedDict.toString());
-    LOG.info("Initial test dictionary: " + m_testDict.toString());
     
-    m_srcEqsToInduct = selectSrcTokensToInduct(m_testDict, srcEqs); 
+    m_srcEqsToInduct = selectSrcTokensToInduct(m_seedDict, srcEqs); 
 
-    //Remove src phrases to induce from seed dictionary if overlap is not allowed (default, unless experiments.DictionaryAllowSeedTestOverap set to true
-    if (!allowSeedTestOverlap){
-    	LOG.info("Removing overlap between seed dictionary and src phrases to induce...");
-    	m_seedDict.removeAllSrc(map1To2(m_seedDict.getAllSrc(), m_srcEqsToInduct));
-    }
-    m_testDict.retainAllSrc(m_srcEqsToInduct);
+    m_seedDict.retainAllSrc(m_srcEqsToInduct);
     
     LOG.info("Seed dictionary: " + m_seedDict.toString());
-    LOG.info("Test dictionary: " + m_testDict.toString());     
   }
   
   protected Set<EquivalenceClass> map1To2(Set<EquivalenceClass> all2, Set<EquivalenceClass> some1)
@@ -770,7 +796,7 @@ public class DataPreparer
     
     writer.close();
     
-    LOG.info("Selected " + srcSubset.size() + (randomSrc ? " random " : " most frequent ") +  "test dictionary source classes (see " + outDir + SRC_TO_INDUCT + ").");
+    LOG.info("Selected " + srcSubset.size() + (randomSrc ? " random " : " most frequent ") +  "seed dictionary source classes (see " + outDir + SRC_TO_INDUCT + ").");
 
     return srcSubset;   
   }
@@ -787,7 +813,8 @@ public class DataPreparer
   }
 
   protected Dictionary m_seedDict;
-  protected Dictionary m_testDict;
+  protected Dictionary m_projDict = null;
+
   protected SimpleDictionary m_translitDict = null;  
   protected Set<EquivalenceClass> m_contextSrcEqs;
   protected Set<EquivalenceClass> m_contextTrgEqs;

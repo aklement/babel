@@ -155,16 +155,17 @@ public class SimpleDictionary
     while (null != (line = reader.readLine()))
     {
       toks = line.split("\\s");
-      srcTok = toks[0].toLowerCase();
-      trgTok = toks[1].toLowerCase();
+      if (toks.length>1){
+        srcTok = toks[0].toLowerCase();
+        trgTok = toks[1].toLowerCase();
       
-      if (isToken(srcTok) && isToken(trgTok))
-      {
-        if (null == (transSet = hash.get(srcTok)))
-        { hash.put(srcTok, transSet = new HashSet<String>());
+        if (isToken(srcTok) && isToken(trgTok))
+        {
+          if (null == (transSet = hash.get(srcTok)))
+          { hash.put(srcTok, transSet = new HashSet<String>());
+          }
+          transSet.add(trgTok);
         }
-
-        transSet.add(trgTok);
       }
     }
     reader.close();
