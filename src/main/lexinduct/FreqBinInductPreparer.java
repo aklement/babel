@@ -435,7 +435,7 @@ public class FreqBinInductPreparer {
     int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
     SimpleDictionary simpSeedDict;
     
-    LOG.info(" - Reading/preparing seed dictionary ...");
+    LOG.info(" - Reading/preparing test dictionary ...");
     
     if (Configurator.CONFIG.containsKey("resources.dictionary.Dictionary")) {
       String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
@@ -450,7 +450,7 @@ public class FreqBinInductPreparer {
     
     m_seedDict = new Dictionary(srcContEqs, trgContEqs, simpSeedDict, "SeedDictionary");
     
-    LOG.info(" - Seed dictionary: " + m_seedDict.toString()); 
+    LOG.info(" - Test dictionary: " + m_seedDict.toString()); 
   }
 
   /***

@@ -313,7 +313,7 @@ public class DataPreparer
 	    int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.ProjDictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
 	    SimpleDictionary simpProjDict;
 	    
-	    LOG.info(" - Reading/preparing seed dictionary ...");
+	    LOG.info(" - Reading/preparing projection dictionary ...");
 	    
 	    if (Configurator.CONFIG.containsKey("resources.projdictionary.Dictionary")) {
 	      String dictFileName = Configurator.CONFIG.getString("resources.projdictionary.Dictionary");
@@ -682,7 +682,7 @@ public class DataPreparer
     SimpleDictionary entireDict;
     //boolean allowSeedTestOverlap = Configurator.CONFIG.containsKey("experiments.DictionaryAllowSeedTestOverlap") ? Configurator.CONFIG.getBoolean("experiments.DictionaryAllowSeedTestOverlap") : false;
     
-    LOG.info("Reading/preparing seed dictionaries ...");
+    LOG.info("Reading/preparing test dictionaries ...");
     
     if (Configurator.CONFIG.containsKey("resources.dictionary.Dictionary")) {
       String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
@@ -698,13 +698,13 @@ public class DataPreparer
     //ANNI update: test dictionary: answers don't need to be in trg context classes
     m_seedDict = new Dictionary(srcEqs, entireDict, "Seed dictionary");
     
-    LOG.info("Initial seed dictionary: " + m_seedDict.toString());
+    LOG.info("Initial test dictionary: " + m_seedDict.toString());
     
     m_srcEqsToInduct = selectSrcTokensToInduct(m_seedDict, srcEqs); 
 
     m_seedDict.retainAllSrc(m_srcEqsToInduct);
     
-    LOG.info("Seed dictionary: " + m_seedDict.toString());
+    LOG.info("Test dictionary: " + m_seedDict.toString());
   }
   
   protected Set<EquivalenceClass> map1To2(Set<EquivalenceClass> all2, Set<EquivalenceClass> some1)
