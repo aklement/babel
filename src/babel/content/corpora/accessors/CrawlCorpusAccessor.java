@@ -13,7 +13,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import babel.util.misc.FileList;
+import babel.util.misc.FileListSampled;
 import babel.util.misc.PrefixSuffixFileNameFilter;
+import babel.util.misc.RegExFileNameFilter;
 
 public class CrawlCorpusAccessor extends TemporalCorpusAccessor
 {
@@ -50,6 +52,48 @@ public class CrawlCorpusAccessor extends TemporalCorpusAccessor
     this(corpusDir, DEFAULT_CHARSET, from, to, oneSentPerLine);
   }
   
+  // Corpus accessor should sample pages
+  public CrawlCorpusAccessor(String corpusDir, String charset, Date from, Date to, boolean oneSentPerLine, double sampleRate){
+	  super(oneSentPerLine);
+
+	    if (from == null || to == null || from.after(to))
+	    { throw new IllegalArgumentException("Dates missing / bad");
+	    }
+
+	    (m_fromDate = new GregorianCalendar()).setTime(from);
+	    (m_toDate = new GregorianCalendar()).setTime(to);
+	  
+	  
+	    resetFiles();
+	    resetDays();
+	    
+	    m_files = new FileListSampled(corpusDir, sampleRate);
+	    m_encoding = charset;
+	  
+  }
+  
+  // Corpus accesor should only use pages in titles
+  public CrawlCorpusAccessor(String corpusDir, String charset, Date from, Date to, boolean oneSentPerLine, String[] filtertitles){
+	  super(oneSentPerLine);
+	    
+	    if (from == null || to == null || from.after(to))
+	    { throw new IllegalArgumentException("Dates missing / bad");
+	    }
+
+	    (m_fromDate = new GregorianCalendar()).setTime(from);
+	    (m_toDate = new GregorianCalendar()).setTime(to);
+
+	  
+  	    resetFiles();
+	    resetDays();
+	    
+	    m_files = new FileListSampled(corpusDir, filtertitles);
+	    m_encoding = charset;
+	  
+  }
+  
+  
+  
   /**
    * Concatenates all files in the requested stream into a single input stream. 
    * Files appear in no particular order.
@@ -70,6 +114,13 @@ public class CrawlCorpusAccessor extends TemporalCorpusAccessor
     return retReader;
   }
 
+///Get file list to check that src and trg match
+  public FileList getFileList(){
+	  m_files.gather(2);
+	  m_files.sort();
+	  return m_files;
+  }
+  
   public boolean resetDays()
   {
     m_curDate = null;

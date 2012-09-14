@@ -106,7 +106,7 @@ public abstract class EquivalenceClass implements Comparable<EquivalenceClass>
     if (eq == null)
     { throw new NullPointerException();
     }
-    else if (!getClass().equals(eq.getClass()) || !m_initialized || !eq.m_initialized || (m_caseSensitive != eq.m_caseSensitive))
+    else if (!m_initialized || !eq.m_initialized || (m_caseSensitive != eq.m_caseSensitive)) // !getClass().equals(eq.getClass()) removed: simple can equal prefix eq
     { throw new RuntimeException(); 
     }
 

@@ -261,6 +261,9 @@ public class DataPreparer
     }
     
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);
+    if (src){
+    	//accessor.
+    }
     
     // Collect init classes
     SimpleEquivalenceClassCollector collector = new SimpleEquivalenceClassCollector(filters, false);
@@ -651,9 +654,25 @@ public class DataPreparer
     SimpleDateFormat sdf = new SimpleDateFormat( "yy-MM-dd" );
     Date fromDate = sdf.parse(Configurator.CONFIG.getString("corpora.crawls.DateFrom"));
     Date toDate = sdf.parse(Configurator.CONFIG.getString("corpora.crawls.DateTo"));
-    
-    return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate, oneSentPerLine);
+	double corpusSamplingRate = Configurator.CONFIG.getDouble("preprocessing.input.CorpusSampleRate",1.0);		  
+	  if (corpusSamplingRate==1.0){
+		    return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate, oneSentPerLine);
+	  }
+	  else{
+	  	    if (m_corpusTitleFilter==null){
+			    LOG.info("Sampling crawls corpus at rate of:"+corpusSamplingRate);
+			    CrawlCorpusAccessor myaccessor = new CrawlCorpusAccessor(appendSep(path) + subDir, "UTF-8", fromDate, toDate, oneSentPerLine, corpusSamplingRate);
+				m_corpusTitleFilter = myaccessor.getFileList().getNamedFileNames();
+				return myaccessor;
+		    }
+		    else{
+		    	LOG.info("Reusing wikitemp corpus sampled file list");
+				return new CrawlCorpusAccessor(appendSep(path) + subDir, "UTF-8", fromDate, toDate, oneSentPerLine, m_corpusTitleFilter);		  
+		    }
+		  }
+    //return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate, oneSentPerLine);
   }
+
   
   protected LexCorpusAccessor getWikiAccessor(boolean src)
   {
@@ -664,13 +683,28 @@ public class DataPreparer
     return new LexCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
   }
   
+  // If sampling rate specified: Automatically sampling first time (if no sampled file list exists), then using sample throughout
   protected WikiTempCorpusAccessor getWikiTempAccessor(boolean src){
-	    String path = Configurator.CONFIG.getString("corpora.wikitemp.Path");
-	    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.wikitemp.OneSentPerLine");
-	    String fileRegExp = src ? Configurator.CONFIG.getString("corpora.wikitemp.SrcRegExp") : Configurator.CONFIG.getString("corpora.wikitemp.TrgRegExp");
-
-	    return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
-
+	  String path = Configurator.CONFIG.getString("corpora.wikitemp.Path");
+	  boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.wikitemp.OneSentPerLine");
+	  String fileRegExp = src ? Configurator.CONFIG.getString("corpora.wikitemp.SrcRegExp") : Configurator.CONFIG.getString("corpora.wikitemp.TrgRegExp");
+	  double corpusSamplingRate = Configurator.CONFIG.getDouble("preprocessing.input.CorpusSampleRate",1.0);		  
+	  if (corpusSamplingRate==1.0){
+		  return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);		  
+	  }
+	  else{
+  	    if (m_corpusTitleFilter==null){
+		    LOG.info("Sampling wikitemp corpus at rate of:"+corpusSamplingRate);
+			WikiTempCorpusAccessor myaccessor = new WikiTempCorpusAccessor(fileRegExp, appendSep(path), "UTF-8", oneSentPerLine, corpusSamplingRate);
+			m_corpusTitleFilter = myaccessor.getFileList().getNamedFileNames();
+			return myaccessor;
+	    }
+	    else{
+	    	LOG.info("Reusing wikitemp corpus sampled file list");
+			return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), "UTF-8", oneSentPerLine, m_corpusTitleFilter);		  
+	    }
+	  }
+	  //return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
 }  
   
   protected void prepareDictsAndSrcEqsToInduct(
@@ -696,6 +730,7 @@ public class DataPreparer
     entireDict.pruneCounts(ridDictNumTrans);
     
     //ANNI update: test dictionary: answers don't need to be in trg context classes
+    //Note: in principle shouldn't have to get m_srcEqsToInduct from a dictionary. For now it's an easy hack to ignore target side and use same code
     m_seedDict = new Dictionary(srcEqs, entireDict, "Seed dictionary");
     
     LOG.info("Initial test dictionary: " + m_seedDict.toString());
@@ -826,5 +861,5 @@ public class DataPreparer
   protected double m_maxTokCountInSrc;
   protected double m_maxTokCountInTrg;  
   protected Random m_rand = new Random(1);
-
+  protected String[] m_corpusTitleFilter;
 }

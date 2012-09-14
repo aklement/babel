@@ -4,11 +4,13 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.io.SequenceInputStream;
 import java.util.Date;
+import java.util.HashMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import babel.util.misc.FileList;
+import babel.util.misc.FileListSampled;
 import babel.util.misc.RegExFileNameFilter;
 
 public class WikiTempCorpusAccessor extends TemporalCorpusAccessor
@@ -31,6 +33,31 @@ public class WikiTempCorpusAccessor extends TemporalCorpusAccessor
     m_files = new FileList(corpusDir, new RegExFileNameFilter(fileNameRegEx));
     m_encoding = charset;
   }
+  
+  // Corpus accessor should sample pages
+  public WikiTempCorpusAccessor(String fileNameRegEx, String corpusDir, String charset, boolean oneSentPerLine, double sampleRate){
+	  super(oneSentPerLine);
+	    
+	    resetFiles();
+	    resetDays();
+	    
+	    m_files = new FileListSampled(corpusDir, new RegExFileNameFilter(fileNameRegEx), sampleRate);
+	    m_encoding = charset;
+	  
+  }
+  
+  // Corpus accesor should only use pages in titles
+  public WikiTempCorpusAccessor(String fileNameRegEx, String corpusDir, String charset, boolean oneSentPerLine, String[] filtertitles){
+	  super(oneSentPerLine);
+	    
+	    resetFiles();
+	    resetDays();
+	    
+	    m_files = new FileListSampled(corpusDir, new RegExFileNameFilter(fileNameRegEx), filtertitles);
+	    m_encoding = charset;
+	  
+  }
+  
   
   /**
    * Concatenates all files in the requested stream into a single input stream. 

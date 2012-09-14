@@ -130,6 +130,13 @@ public class FileList implements Enumeration<InputStream>
     }
   }
   
+  /**
+   * Return named list of files, if there is one
+   */
+  public String[] getNamedFileNames(){
+	  return null;
+  }
+  
   protected String[] m_listOfFiles;
   protected int m_current;
   protected File m_dir;
