@@ -35,7 +35,7 @@ public class FileListSampled extends FileList implements Enumeration<InputStream
     m_generator = new Random();  
     m_useTitleFilter=false;
     m_fileTitles = new HashMap<String,Integer>();
-    System.out.println("New FileListSampled; using sample rate of "+sampleRate);
+    //System.out.println("New FileListSampled; using sample rate of "+sampleRate);
   }
 
   public FileListSampled(String dir, FilenameFilter nameFilter, String[] filtertitles) 
@@ -49,7 +49,7 @@ public class FileListSampled extends FileList implements Enumeration<InputStream
     for (String mytitle : filtertitles){
     	m_titleFilter.put(mytitle, 1);
     }
-	  System.out.println("New FileListSampled; filtering by "+filtertitles.length+" titles");
+	  //System.out.println("New FileListSampled; filtering by "+filtertitles.length+" titles");
   }
   
   
@@ -146,11 +146,11 @@ public class FileListSampled extends FileList implements Enumeration<InputStream
         		if (m_titleFilter.containsKey(file.getName().substring(0, file.getName().length()-3))){
             	    curList.add(parent.getAbsolutePath() + File.separator + file.getName()); //Remember page title        			
             	    m_fileTitles.put(file.getName().substring(0, file.getName().length()-3), 1);
-            	    System.out.println("Already sampled file: "+file.getName().substring(0,file.getName().length()-3));
+            	    //System.out.println("Already sampled file: "+file.getName().substring(0,file.getName().length()-3));
         		}
-        		else{
-        			System.out.println("Don't want to keep this one: "+file.getName().substring(0,file.getName().length()-3));
-        		}
+        		//else{
+        			//System.out.println("Don't want to keep this one: "+file.getName().substring(0,file.getName().length()-3));
+        		//}
         	}
         	else{ //If sampling for the first time
         	  double rando=m_generator.nextDouble();
@@ -158,7 +158,7 @@ public class FileListSampled extends FileList implements Enumeration<InputStream
             	    curList.add(parent.getAbsolutePath() + File.separator + file.getName()); //Remember page title
             	    m_fileTitles.put(file.getName().substring(0, file.getName().length()-3), 1);
             	    m_titleFilter.put(file.getName().substring(0, file.getName().length()-3), 1);
-            	    System.out.println("Sampled file: "+file.getName().substring(0, file.getName().length()-3));
+            	    //System.out.println("Sampled file: "+file.getName().substring(0, file.getName().length()-3));
                 }
               }
           }
