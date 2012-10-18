@@ -56,9 +56,9 @@ public class FreqBinInductPreparer {
 
   protected static final String DEFAULT_CHARSET = "UTF-8";
 
-  protected static final int SRC_LOW_THRESH = 10;
-  protected static final int SRC_HI_THRESH = 5000;
-  protected static final int TRG_LOW_THRESH = 10;
+  protected static final int SRC_LOW_THRESH = 3;
+  protected static final int SRC_HI_THRESH = 10000;
+  protected static final int TRG_LOW_THRESH = 3;
   protected static final int TRG_HI_THRESH = Integer.MAX_VALUE;
   
   public void prepare() throws Exception {
