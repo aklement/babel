@@ -43,7 +43,7 @@ public class ProbabilisticDictionary
     
     read(m_map, new InputStreamReader(new FileInputStream(dictFile), DEFAULT_ENCODING));
     construct(srcEqs, trgEqs);
-
+    construct(srcEqs, trgEqs);
   }
   
   
@@ -56,7 +56,7 @@ public class ProbabilisticDictionary
 
     read(m_map, new InputStreamReader(new SequenceInputStream(list), DEFAULT_ENCODING));
     construct(srcEqs, trgEqs);
-
+    construct(srcEqs, trgEqs);
   }
   
   public String getName()
@@ -256,27 +256,25 @@ public class ProbabilisticDictionary
       HashMap<EquivalenceClass,Double> translations;
       EquivalenceClass srcEq;
       Double prob;
-      Double updatedCorpusCount;
-      Double updatedContextCount;
+      double updatedCorpusCount;
+      double updatedContextCount;
       for (ContextualItem oldCi : oldCis)
       {
     	  srcEqId = oldCi.getContextEqId();
-          //System.out.println("Old context: "+oldCi.toString());
-        
+          
         // Look up src eq and then all of its translations
         if ((null != (srcEq = m_srcMap.get(srcEqId))) && (null != (translations = m_mapeq.get(srcEq))))
         {
         	// Add a contextual item for each translation keeping the src count
           for (EquivalenceClass trgEq : translations.keySet())
           {
-          	//System.out.println("Found a translation: "+trgEq.toString());
         	//Get probability
         	prob=translations.get(trgEq);
         	// Context context, Long contEqId, long count
         	// Change context count to true-context-count*translation-probability
         	updatedCorpusCount = prob * oldCi.getCorpusCount();
         	updatedContextCount = prob * oldCi.getContextCount();
-        	newCis.add(new ContextualItem(null, trgEq.getId(), updatedCorpusCount.longValue(), updatedContextCount.longValue()));
+        	newCis.add(new ContextualItem(null, trgEq.getId(), updatedCorpusCount, updatedContextCount));
           }
         }
       }

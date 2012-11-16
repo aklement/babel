@@ -28,9 +28,6 @@ public abstract class ProbDictScorer extends Scorer
     Context srcContext = (Context)srcEq.getProperty(Context.class.getName());     
     Context trgContext = (Context)trgEq.getProperty(Context.class.getName()); 
 
-    //System.out.println("src word is "+srcEq.toString()+" srcContext string: "+srcContext.toString());
-    //System.out.println("trg word is "+trgEq.toString()+" trgContext string: "+trgContext.toString());
-
     
     if (srcContext == null || trgContext == null || !srcContext.areContItemsScored() || !trgContext.areContItemsScored())
     { throw new IllegalArgumentException("At least one of the classes has no or unscored context.");
@@ -50,7 +47,7 @@ public abstract class ProbDictScorer extends Scorer
       score2 += w2 * w2;
       score += w1 * w2;
     }
-    
+
     return ((score1 * score2) == 0) ? 0 : score / Math.sqrt(score1 * score2);        
   }
   
