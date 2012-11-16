@@ -25,6 +25,7 @@ import babel.ranking.scorers.Scorer;
 import babel.ranking.scorers.timedistribution.TimeDistributionCosineScorer;
 import babel.ranking.scorers.context.DictScorer;
 import babel.ranking.scorers.context.FungS1Scorer;
+import babel.ranking.scorers.context.FungS1ScorerProb;
 import babel.ranking.scorers.edit.EditDistanceScorer;
 import babel.ranking.scorers.edit.EditDistanceTranslitScorer;
 
@@ -69,7 +70,13 @@ public class NBestCollector
     Set<EquivalenceClass> trgSet = preparer.getTrgEqs();
     
     // Setup scorers
-    DictScorer contextScorer = new FungS1Scorer(preparer.getProjDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
+    Scorer contextScorer;
+    if (Configurator.CONFIG.containsKey("resources.probprojdictionary.Path")){
+        contextScorer = new FungS1ScorerProb(preparer.getProbProjDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());    	
+    }
+    else{
+    	contextScorer = new FungS1Scorer(preparer.getProjDict(), preparer.getMaxSrcTokCount(), preparer.getMaxTrgTokCount());
+    }
     Scorer timeScorer = new TimeDistributionCosineScorer(windowSize, slidingWindow);
     SimpleDictionary translitDict = preparer.getTranslitDict();
     Scorer editScorer;
