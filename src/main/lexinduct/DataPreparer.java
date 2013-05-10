@@ -492,11 +492,18 @@ public class DataPreparer
   protected Set<EquivalenceClass> pruneEqClasses(Set<EquivalenceClass> eqClasses, boolean src, String stopWordsFileName, boolean filterRoman, boolean filterGarbage) throws Exception
   {
     String stopWordsDir = Configurator.CONFIG.getString("resources.stopwords.Path");
-    int pruneCandIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.candidates.PruneIfOccursFewerThan");
+    int pruneCandIfOccursFewerThan = -1;
+    if (src) {
+    	pruneCandIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.candidates.PruneIfOccursFewerThanSrc");
+    }
+    else{
+    	pruneCandIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.candidates.PruneIfOccursFewerThanTrg");    	
+    }
     int pruneCandIfOccursMoreThan = Configurator.CONFIG.getInt("preprocessing.candidates.PruneIfOccursMoreThan");
     int pruneMostFreq = src ? Configurator.CONFIG.getInt("preprocessing.candidates.PruneMostFrequentSrc") : Configurator.CONFIG.getInt("preprocessing.candidates.PruneMostFrequentTrg");
 
     LOG.info("Pruning " + (src ? "source" : "target")  + " candidates..."); 
+    LOG.info("Pruning candidates if they appear fewer than "+pruneCandIfOccursFewerThan+" times.");
     
     LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
     if (filterGarbage){
