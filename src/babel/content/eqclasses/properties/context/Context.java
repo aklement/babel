@@ -205,7 +205,7 @@ public class Context extends Property
   {
     public int compare(ContextualItem item1, ContextualItem item2)
     {
-      long diff = item2.getContextCount() - item1.getContextCount();
+      double diff = item2.getContextCount() - item1.getContextCount();
       return diff == 0 ? 0 : (diff < 0 ? -1 : 1);
     }
   }
@@ -246,7 +246,7 @@ public class Context extends Property
       this(context, contextEq.getId(), ((Number)contextEq.getProperty(Number.class.getName())).getNumber(), 1);
     }
 
-    public ContextualItem(Context context, Long contEqId, long corpusCount, long contextCount)
+    public ContextualItem(Context context, Long contEqId, double corpusCount, double contextCount)
     {
       m_contEqID = contEqId;
       m_context = context;
@@ -265,12 +265,12 @@ public class Context extends Property
       m_contCount++;
     }
     
-    public long getContextCount()
+    public double getContextCount()
     {
       return m_contCount;
     }
 
-    public long getCorpusCount()
+    public double getCorpusCount()
     {
       return m_corpCount;
     }
@@ -327,8 +327,8 @@ public class Context extends Property
     }
     
     protected Context m_context;
-    protected long m_contCount;
-    protected long m_corpCount;
+    protected double m_contCount;
+    protected double m_corpCount;
     protected double m_score;
     protected Long m_contEqID;
   }

@@ -49,6 +49,7 @@ import babel.content.eqclasses.properties.type.Type.EqType;
 import babel.ranking.scorers.Scorer;
 import babel.util.config.Configurator;
 import babel.util.dict.Dictionary;
+import babel.util.dict.ProbabilisticDictionary;
 import babel.util.dict.SimpleDictionary;
 import babel.util.dict.SimpleDictionary.DictHalves;
 import babel.util.persistence.EqClassPersister;
@@ -83,6 +84,7 @@ public class DataPreparer
     boolean alignDistros = Configurator.CONFIG.getBoolean("preprocessing.time.Align");
     String srcStopFileName = Configurator.CONFIG.containsKey("resources.stopwords.SrcStopWords") ? Configurator.CONFIG.getString("resources.stopwords.SrcStopWords") : null;
     String trgStopFileName = Configurator.CONFIG.containsKey("resources.stopwords.TrgStopWords") ? Configurator.CONFIG.getString("resources.stopwords.TrgStopWords") : null;
+    boolean filterGarbage = Configurator.CONFIG.containsKey("preprocessing.FilterGarbage") ? Configurator.CONFIG.getBoolean("preprocessing.FilterGarbage") : true; 
     
     Class<EquivalenceClass> srcEqClassClass = (Class<EquivalenceClass>)Class.forName(srcEqClassName);
     Class<EquivalenceClass> trgEqClassClass = (Class<EquivalenceClass>)Class.forName(trgEqClassName);
@@ -108,6 +110,12 @@ public class DataPreparer
       prepareTranslitDictionary(m_contextSrcEqs);
       //Prepare dictionary for PROJECTION
       prepareProjDictionary(m_contextSrcEqs, m_contextTrgEqs);
+      // If probabilistic dictionary, prepare it now
+      if (Configurator.CONFIG.containsKey("resources.probprojdictionary.Path")){
+		  setProbProjDict(m_contextSrcEqs, m_contextTrgEqs);    	  
+      }
+      
+    		  
       
       LOG.info(" - Reading source and target properties...");
       readProps(true, m_srcEqs, SRC_PROP_EXT);
@@ -117,8 +125,9 @@ public class DataPreparer
     { 
       LOG.info(" - Failed to read previously collected stuff (" + e.toString() + "), collecting from scratch ...");
       
-      Set<EquivalenceClass> allSrcEqs = collectInitEqClasses(true, filterRomanSrc);
-      Set<EquivalenceClass> allTrgEqs = collectInitEqClasses(false, filterRomanTrg);
+      
+      Set<EquivalenceClass> allSrcEqs = collectInitEqClasses(true, filterRomanSrc, filterGarbage);
+      Set<EquivalenceClass> allTrgEqs = collectInitEqClasses(false, filterRomanTrg, filterGarbage);
       LOG.info(" - All source types: " + allSrcEqs.size() + (filterRomanSrc ? " (without romanization) " : ""));
       LOG.info(" - All target types: " + allTrgEqs.size() + (filterRomanTrg ? " (without romanization) " : ""));
       
@@ -139,8 +148,8 @@ public class DataPreparer
       LOG.info(" - Candidate target classes: " + m_trgEqs.size());
 
       LOG.info(" - Pruning candidate classes...");
-      m_srcEqs = pruneEqClasses(m_srcEqs, true, srcStopFileName, filterRomanSrc);
-      m_trgEqs = pruneEqClasses(m_trgEqs, false, trgStopFileName, filterRomanTrg);
+      m_srcEqs = pruneEqClasses(m_srcEqs, true, srcStopFileName, filterRomanSrc, filterGarbage);
+      m_trgEqs = pruneEqClasses(m_trgEqs, false, trgStopFileName, filterRomanTrg, filterGarbage);
       LOG.info(" - Pruned candidate source classes: " + m_srcEqs.size());
       LOG.info(" - Pruned candidate target classes: " + m_trgEqs.size());
       
@@ -150,7 +159,10 @@ public class DataPreparer
       prepareTranslitDictionary(m_contextSrcEqs);
       //Prepare dictionary for PROJECTION
       prepareProjDictionary(m_contextSrcEqs, m_contextTrgEqs);
-      
+      // If probabilistic dictionary, prepare it now
+      if (Configurator.CONFIG.containsKey("resources.probprojdictionary.Path")){
+		  setProbProjDict(m_contextSrcEqs, m_contextTrgEqs);    	  
+      }      
       
       LOG.info(" - Collecting candidate properties...");
       Set<Integer> srcBins = collectProps(true, m_srcEqs, m_contextSrcEqs, m_projDict);
@@ -234,6 +246,26 @@ public class DataPreparer
 	    return m_projDict;
 	  }
   
+  
+  public ProbabilisticDictionary getProbProjDict(){
+	  return m_probProjDict;
+  }
+
+  public void setProbProjDict(Set<EquivalenceClass> srcEqs, Set<EquivalenceClass> trgEqs) throws Exception{
+	    String dictDir = Configurator.CONFIG.getString("resources.probprojdictionary.Path");
+	    int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.ProjDictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
+	    
+	    LOG.info(" - Reading/preparing probabilistic projection dictionary ...");
+	    
+	    String dictFileName = Configurator.CONFIG.getString("resources.probprojdictionary.Dictionary");
+	    m_probProjDict = new ProbabilisticDictionary(dictDir + dictFileName, "ProbabilisticProjectionDictionary", srcEqs, trgEqs);
+
+	    m_probProjDict.pruneCounts(ridDictNumTrans);
+	    	    
+	    LOG.info(" - Probabilistic Projection dictionary: " + m_probProjDict.toString()); 
+  }
+  
+  
   protected Set<EquivalenceClass> readEqClasses(boolean src, Class<? extends EquivalenceClass> eqClsssClass, String eqfileName, String propFileExtension) throws Exception
   {
     // Read init classes
@@ -249,15 +281,25 @@ public class DataPreparer
     return eqClasses;
   }
   
-  protected Set<EquivalenceClass> collectInitEqClasses(boolean src, boolean filterRoman) throws Exception
+  protected Set<EquivalenceClass> collectInitEqClasses(boolean src, boolean filterRoman, boolean filterGarbage) throws Exception
   {
     Set<EquivalenceClass> eqClasses;
   
     ArrayList<EquivalenceClassFilter> filters = new ArrayList<EquivalenceClassFilter>(3);
-    filters.add(new GarbageFilter());
-    filters.add(new LengthFilter(2));
+    if (filterGarbage){
+      filters.add(new GarbageFilter());
+      filters.add(new LengthFilter(2));
+      LOG.info("Filtering garbarge and by length");
+    }
+    else{
+    	LOG.info("WARNING: not filtering garbage");
+    }
     if (filterRoman)
     { filters.add(new RomanizationFilter());
+    	LOG.info("Filtering roman characters");
+    }
+    else{
+    	LOG.info("Not filtering roman characters");
     }
     
     CorpusAccessor accessor = getAccessor(Configurator.CONFIG.getString("preprocessing.input.Context"), src);
@@ -447,7 +489,7 @@ public class DataPreparer
     LOG.info("There are " + toRemove.size() + " common days between src and trg distributions.");    
   }
 
-  protected Set<EquivalenceClass> pruneEqClasses(Set<EquivalenceClass> eqClasses, boolean src, String stopWordsFileName, boolean filterRoman) throws Exception
+  protected Set<EquivalenceClass> pruneEqClasses(Set<EquivalenceClass> eqClasses, boolean src, String stopWordsFileName, boolean filterRoman, boolean filterGarbage) throws Exception
   {
     String stopWordsDir = Configurator.CONFIG.getString("resources.stopwords.Path");
     int pruneCandIfOccursFewerThan = Configurator.CONFIG.getInt("preprocessing.candidates.PruneIfOccursFewerThan");
@@ -457,7 +499,9 @@ public class DataPreparer
     LOG.info("Pruning " + (src ? "source" : "target")  + " candidates..."); 
     
     LinkedList<EquivalenceClassFilter> filters = new LinkedList<EquivalenceClassFilter>();
-    filters.add(new GarbageFilter());
+    if (filterGarbage){
+    	filters.add(new GarbageFilter());
+    }
     if (filterRoman)
     { filters.add(new RomanizationFilter());
     }
@@ -715,12 +759,14 @@ public class DataPreparer
     int ridDictNumTrans = Configurator.CONFIG.containsKey("experiments.DictionaryPruneNumTranslations") ? Configurator.CONFIG.getInt("experiments.DictionaryPruneNumTranslations") : -1;
     SimpleDictionary entireDict;
     //boolean allowSeedTestOverlap = Configurator.CONFIG.containsKey("experiments.DictionaryAllowSeedTestOverlap") ? Configurator.CONFIG.getBoolean("experiments.DictionaryAllowSeedTestOverlap") : false;
+    //Boolean will check for punctuation and lowercase input test dict. By default, do cleanup.
+    boolean testDictCleanup = Configurator.CONFIG.containsKey("experiments.TestDictCleanup") ? Configurator.CONFIG.getBoolean("experiments.TestDictCleanup") : true;
     
     LOG.info("Reading/preparing test dictionaries ...");
     
     if (Configurator.CONFIG.containsKey("resources.dictionary.Dictionary")) {
       String dictFileName = Configurator.CONFIG.getString("resources.dictionary.Dictionary");
-      entireDict = new SimpleDictionary(dictDir + dictFileName, "EntireDictionary");
+      entireDict = new SimpleDictionary(dictDir + dictFileName, "EntireDictionary", testDictCleanup);
     } else {
       String srcDictFileName = Configurator.CONFIG.getString("resources.dictionary.SrcName");
       String trgDictFileName = Configurator.CONFIG.getString("resources.dictionary.TrgName");      
@@ -729,10 +775,11 @@ public class DataPreparer
         
     entireDict.pruneCounts(ridDictNumTrans);
     
+    LOG.info("Before comparing with source words, dictionary: "+entireDict.toString());
+    LOG.info("Number of src strings: "+entireDict.getAllSrc().size());
     //ANNI update: test dictionary: answers don't need to be in trg context classes
     //Note: in principle shouldn't have to get m_srcEqsToInduct from a dictionary. For now it's an easy hack to ignore target side and use same code
     m_seedDict = new Dictionary(srcEqs, entireDict, "Seed dictionary");
-    
     LOG.info("Initial test dictionary: " + m_seedDict.toString());
     
     m_srcEqsToInduct = selectSrcTokensToInduct(m_seedDict, srcEqs); 
@@ -849,7 +896,8 @@ public class DataPreparer
 
   protected Dictionary m_seedDict;
   protected Dictionary m_projDict = null;
-
+  protected ProbabilisticDictionary m_probProjDict = null;
+  
   protected SimpleDictionary m_translitDict = null;  
   protected Set<EquivalenceClass> m_contextSrcEqs;
   protected Set<EquivalenceClass> m_contextTrgEqs;

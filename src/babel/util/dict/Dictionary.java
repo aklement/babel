@@ -102,6 +102,7 @@ public class Dictionary
     HashMap<String, EquivalenceClass> srcMap = null;
     HashMap<String, EquivalenceClass> trgMap = null;
     
+    // Put src eqs in srcMap, if there are any
     if (srcEq != null) { 
       srcMap = new HashMap<String, EquivalenceClass>();
     
@@ -113,6 +114,7 @@ public class Dictionary
       }
     }
 
+    // Put trg eqs in trgMap, if there are any
     if (trgEq != null) {
       trgMap = new HashMap<String, EquivalenceClass>();
     
@@ -160,6 +162,9 @@ public class Dictionary
           }
         }
       }
+      //else{
+    //	  System.out.println("WARNING: source word "+sDictWord+" not found.");
+     // }
     }
   }
 

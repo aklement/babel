@@ -41,6 +41,17 @@ public class SimpleDictionary
     read(m_map, new InputStreamReader(new FileInputStream(dictFile), DEFAULT_ENCODING));
   }
   
+  // Read a dictionary without lowercasing and cleaning up punctuation
+  public SimpleDictionary(String dictFile, String name, Boolean cleanup) throws Exception{
+	  this(name);
+	  if (cleanup){
+		    read(m_map, new InputStreamReader(new FileInputStream(dictFile), DEFAULT_ENCODING));		  
+	  }
+	  else{
+	      readNoClean(m_map, new InputStreamReader(new FileInputStream(dictFile), DEFAULT_ENCODING));
+	  }
+  }
+  
   public SimpleDictionary(String dictPath, String fileNameRegEx, String name) throws Exception
   {
     this(name);
@@ -154,7 +165,7 @@ public class SimpleDictionary
     
     while (null != (line = reader.readLine()))
     {
-      toks = line.split("\\s");
+      toks = line.split("\\t");
       if (toks.length>1){
         srcTok = toks[0].toLowerCase();
         trgTok = toks[1].toLowerCase();
@@ -166,6 +177,29 @@ public class SimpleDictionary
           }
           transSet.add(trgTok);
         }
+      }
+    }
+    reader.close();
+  }
+  
+  protected void readNoClean(HashMap<String, HashSet<String>> hash, InputStreamReader dictReader) throws Exception
+  { 
+    BufferedReader reader = new BufferedReader(dictReader);
+    String line;
+    String[] toks;
+    HashSet<String> transSet;
+    String srcTok, trgTok;
+    
+    while (null != (line = reader.readLine()))
+    {
+      toks = line.split("\\t");
+      if (toks.length>1){
+        srcTok = toks[0];
+        trgTok = toks[1];      
+          if (null == (transSet = hash.get(srcTok)))
+          { hash.put(srcTok, transSet = new HashSet<String>());
+          }
+          transSet.add(trgTok);
       }
     }
     reader.close();
