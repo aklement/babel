@@ -787,8 +787,23 @@ public class PhrasePreparer {
     SimpleDateFormat sdf = new SimpleDateFormat( "yy-MM-dd" );
     Date fromDate = sdf.parse(Configurator.CONFIG.getString("corpora.crawls.DateFrom"));
     Date toDate = sdf.parse(Configurator.CONFIG.getString("corpora.crawls.DateTo"));
-    
-    return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate, oneSentPerLine);
+	double corpusSamplingRate = Configurator.CONFIG.getDouble("preprocessing.input.CorpusSampleRate",1.0);		  
+	  if (corpusSamplingRate==1.0){
+		    return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate, oneSentPerLine);
+	  }
+	  else{
+	  	    if (m_corpusTitleFilter==null){
+			    LOG.info("Sampling crawls corpus at rate of:"+corpusSamplingRate);
+			    CrawlCorpusAccessor myaccessor = new CrawlCorpusAccessor(appendSep(path) + subDir, "UTF-8", fromDate, toDate, oneSentPerLine, corpusSamplingRate);
+				m_corpusTitleFilter = myaccessor.getFileList().getNamedFileNames();
+				return myaccessor;
+		    }
+		    else{
+		    	LOG.info("Reusing crawls corpus sampled file list");
+				return new CrawlCorpusAccessor(appendSep(path) + subDir, "UTF-8", fromDate, toDate, oneSentPerLine, m_corpusTitleFilter);		  
+		    }
+		  }
+    //return new CrawlCorpusAccessor(appendSep(path) + subDir, fromDate, toDate, oneSentPerLine);
   }
   
   protected LexCorpusAccessor getWikiAccessor(boolean src)
@@ -804,8 +819,24 @@ public class PhrasePreparer {
 	    String path = Configurator.CONFIG.getString("corpora.wikitemp.Path");
 	    boolean oneSentPerLine = Configurator.CONFIG.getBoolean("corpora.wikitemp.OneSentPerLine");
 	    String fileRegExp = src ? Configurator.CONFIG.getString("corpora.wikitemp.SrcRegExp") : Configurator.CONFIG.getString("corpora.wikitemp.TrgRegExp");
+		  double corpusSamplingRate = Configurator.CONFIG.getDouble("preprocessing.input.CorpusSampleRate",1.0);		  
+		  if (corpusSamplingRate==1.0){
+			  return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);		  
+		  }
+		  else{
+	  	    if (m_corpusTitleFilter==null){
+			    LOG.info("Sampling wikitemp corpus at rate of:"+corpusSamplingRate);
+				WikiTempCorpusAccessor myaccessor = new WikiTempCorpusAccessor(fileRegExp, appendSep(path), "UTF-8", oneSentPerLine, corpusSamplingRate);
+				m_corpusTitleFilter = myaccessor.getFileList().getNamedFileNames();
+				return myaccessor;
+		    }
+		    else{
+		    	LOG.info("Reusing wikitemp corpus sampled file list");
+				return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), "UTF-8", oneSentPerLine, m_corpusTitleFilter);		  
+		    }
+		  }
 
-	    return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
+	    //return new WikiTempCorpusAccessor(fileRegExp, appendSep(path), oneSentPerLine);
 
   }
 
@@ -836,5 +867,7 @@ public class PhrasePreparer {
   protected long m_maxTokCountInTrg = 0;
   protected long m_maxPhrCountInSrc = 0;
   protected long m_maxPhrCountInTrg = 0;
+  protected String[] m_corpusTitleFilter;
+
   
  }
